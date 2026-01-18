@@ -1,7 +1,34 @@
-# Root ignore rules
-/.git
-/.vs/
-*.sln
+# General artifacts
+node_modules/
+dist/
+build/
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnp.*.mjs
+.pnp/
+.eslintcache
+.turbo/
+.parcel-cache/
+.vite/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Environment and local config
 .env
+.env.*
+
+# IDE/editor
+.idea/
+.vscode/
+.vs/
+
+# Repo-specific exclusions
+*.sln
+/.git
+/.codex/
 /skills/
 /AGENTS.md
