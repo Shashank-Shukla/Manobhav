@@ -1,0 +1,3 @@
+# docker-compose placeholder (add services as needed)
+version: "3.9"
+services: {}

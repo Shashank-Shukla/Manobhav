@@ -1,0 +1,7 @@
+# Root ignore rules
+/.git
+/.vs/
+*.sln
+.env
+/skills/
+/AGENTS.md
