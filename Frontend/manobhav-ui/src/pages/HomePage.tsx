@@ -62,18 +62,16 @@ const HeroSection = () => (
         </div>
       </div>
 
-      <div className="relative z-10">
-        <div className="relative w-full aspect-square max-w-lg mx-auto">
-          <div className="absolute inset-4 bg-white/40 backdrop-blur-sm rounded-full border border-white/60" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <svg viewBox="0 0 400 300" className="w-full h-full drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
-              <path d="M200,100 C220,100 230,120 230,140 C230,180 170,180 170,140 C170,120 180,100 200,100 Z" fill={theme.colors.sage.DEFAULT} />
-              <circle cx="200" cy="80" r="25" fill={theme.colors.dustyRose.DEFAULT} />
-              <path d="M230,140 Q260,110 280,150 Q250,180 230,140" fill={theme.colors.powderBlue.DEFAULT} opacity="0.8" />
-              <path d="M170,140 Q140,110 120,150 Q150,180 170,140" fill={theme.colors.powderBlue.DEFAULT} opacity="0.8" />
-              <path d="M100,250 Q200,220 300,250" stroke={theme.colors.sage.dark} strokeWidth="4" fill="none" />
-            </svg>
-          </div>
+        <div className="relative z-10 hidden lg:block">
+          <div className="relative w-full aspect-square max-w-lg mx-auto">
+             <div className="absolute inset-4 bg-white/40 backdrop-blur-sm rounded-full border border-white/60" />
+             <div className="absolute inset-0 flex items-center justify-center">
+                <img
+                  src="/girl-in-pink-panties-with-a-heart-in-her-hand-sitting-on-the-floor-vector.svg"
+                  alt="Calm illustration"
+                  className="w-[82%] h-[82%] object-contain drop-shadow-xl"
+                />
+             </div>
 
           <div className="absolute top-10 right-0 bg-white p-4 rounded-2xl shadow-lg animate-bounce duration-[3000ms] border border-gray-100">
             <div className="flex items-center gap-3">

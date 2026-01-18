@@ -1,10 +1,21 @@
 export function Footer() {
   return (
-    <footer className="bg-slate-50/50 pt-20 pb-10 px-6 border-t border-slate-200 backdrop-blur-sm">
+    <footer className="bg-[#f2f4f5] pt-20 pb-10 px-6 border-t border-slate-200">
       <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 mb-16">
         <div className="col-span-1 md:col-span-2">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-full bg-[#9CAF88] flex items-center justify-center text-white font-bold text-sm">M</div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 overflow-hidden rounded-full bg-black flex items-center justify-center">
+              <img
+                src="/Manobhav_Logo.png"
+                alt="Manobhav"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null;
+                  target.style.display = 'none';
+                }}
+              />
+            </div>
             <span className="font-bold text-lg text-slate-700">Manobhav</span>
           </div>
           <p className="mt-6 text-gray-500 max-w-xs leading-relaxed">
