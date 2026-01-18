@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
-import { NavBar } from './components/layout/NavBar';
-import { Footer } from './components/layout/Footer';
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { NavBar } from './shared/layout/NavBar';
+import { Footer } from './shared/layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
-import { MoodSearchBar } from './components/interactive/MoodSearchBar';
+import { ErrorPageGeneric } from './component/Error/ErrorPageGeneric';
+import { ErrorPage50x } from './component/Error/ErrorPage50x';
+import { ErrorBoundary } from './component/common/ErrorBoundary';
 import { theme } from './utils/theme';
+
+const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 
 export type View = 'home' | 'login';
 type ThemeMode = 'light' | 'dark';
@@ -25,6 +29,8 @@ export default function App() {
 
   const toggleTheme = () => setThemeMode((m) => (m === 'light' ? 'dark' : 'light'));
 
+  const goHome = () => setCurrentView('home');
+
   return (
     <div className="font-[Poppins] min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
       <div className="fixed inset-0 bg-[var(--bg-gradient)] -z-50" />
@@ -32,13 +38,29 @@ export default function App() {
       <NavBar onNavigate={setCurrentView} themeMode={themeMode} onToggleTheme={toggleTheme} />
 
       <main className="min-h-screen pt-6">
-        {currentView === 'home' && <HomePage />}
-        {currentView === 'login' && <LoginPage onBack={() => setCurrentView('home')} />}
+        {currentView === 'home' && (
+          <ErrorBoundary
+            context="route-home"
+            fallback={<ErrorPageGeneric onHome={goHome} />}
+          >
+            <HomePage />
+          </ErrorBoundary>
+        )}
+        {currentView === 'login' && (
+          <ErrorBoundary
+            context="route-login"
+            fallback={<ErrorPage50x onHome={goHome} />}
+          >
+            <LoginPage onBack={() => setCurrentView('home')} />
+          </ErrorBoundary>
+        )}
       </main>
 
       {currentView === 'home' && (
         <>
-          <MoodSearchBar />
+          <Suspense fallback={null}>
+            <MoodSearchBar />
+          </Suspense>
           <Footer />
         </>
       )}

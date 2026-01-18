@@ -11,6 +11,7 @@ export function Logo({ onClick, className = '' }: LogoProps) {
           src="Manobhav_Logo.png"
           alt="Manobhav"
           className="w-full h-full object-cover"
+          loading="lazy"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.onerror = null;

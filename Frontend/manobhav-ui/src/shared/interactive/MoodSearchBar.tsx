@@ -104,3 +104,5 @@ export function MoodSearchBar() {
     </div>
   );
 }
+
+export default MoodSearchBar;
