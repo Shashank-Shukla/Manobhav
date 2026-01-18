@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Sparkles, X } from 'lucide-react';
 import { Text } from '../primitives/Text';
 
@@ -15,11 +15,8 @@ export function MoodSearchBar() {
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  const ideaText = useMemo(() => {
-    const pick = ideas[Math.floor(Math.random() * ideas.length)];
-    return pick;
-  }, [suggestion]);
+  const [ideaIndex] = useState(() => Math.floor(Math.random() * ideas.length));
+  const ideaText = ideas[ideaIndex];
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 60);
@@ -29,7 +26,13 @@ export function MoodSearchBar() {
   }, []);
 
   useEffect(() => {
-    setIsExpanded(!isScrolled);
+    if (isScrolled && isExpanded) {
+      setIsExpanded(false);
+    }
+    if (!isScrolled && !isExpanded) {
+      setIsExpanded(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScrolled]);
 
   const getSuggestion = () => {

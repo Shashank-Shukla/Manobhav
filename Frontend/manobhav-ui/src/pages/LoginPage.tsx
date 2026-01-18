@@ -9,7 +9,7 @@ type LoginPageProps = {
 
 export function LoginPage({ onBack }: LoginPageProps) {
   return (
-    <div className="min-h-screen pt-24 px-6 pb-12 flex items-center justify-center animate-in slide-in-from-right-10 duration-500">
+    <div className="min-h-screen pt-24 px-6 pb-12 flex items-center justify-center animate-in slide-in-from-right-10 duration-500 relative">
       <div className="w-full max-w-5xl bg-white rounded-[3rem] shadow-2xl overflow-hidden grid md:grid-cols-2 relative border border-gray-100">
         <div className="bg-[#E6EDE8] relative hidden md:flex items-center justify-center p-12 overflow-hidden">
           <AbstractShape color="#9CAF88" className="top-10 left-10 w-64 h-64 animate-blob opacity-20" />
