@@ -1,6 +1,6 @@
-import { ErrorBoundary } from '../component/common/ErrorBoundary';
-import { LeftPanel } from '../component/Login/LeftPanel';
-import { LoginForm } from '../component/Login/LoginForm';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
+import { LeftPanel } from '../components/Login/LeftPanel';
+import { LoginForm } from '../components/Login/LoginForm';
 
 type LoginPageProps = {
   onBack: () => void;

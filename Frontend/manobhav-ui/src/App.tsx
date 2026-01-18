@@ -3,9 +3,9 @@ import { NavBar } from './shared/layout/NavBar';
 import { Footer } from './shared/layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
-import { ErrorPageGeneric } from './component/Error/ErrorPageGeneric';
-import { ErrorPage50x } from './component/Error/ErrorPage50x';
-import { ErrorBoundary } from './component/common/ErrorBoundary';
+import { ErrorPageGeneric } from './components/Error/ErrorPageGeneric';
+import { ErrorPage50x } from './components/Error/ErrorPage50x';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { theme } from './utils/theme';
 
 const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));

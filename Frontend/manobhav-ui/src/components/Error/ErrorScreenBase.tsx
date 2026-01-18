@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes } from 'react';
 import { Button } from '../../shared/primitives/Button';
 import { Text } from '../../shared/primitives/Text';
 import { AbstractShape } from '../../shared/primitives/AbstractShape';

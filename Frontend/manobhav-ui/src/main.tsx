@@ -2,8 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
-import { ErrorBoundary } from './component/common/ErrorBoundary';
-import { ErrorPage40x } from './component/Error/ErrorPage40x';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { ErrorPage40x } from './components/Error/ErrorPage40x';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

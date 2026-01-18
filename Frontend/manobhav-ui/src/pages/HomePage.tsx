@@ -1,8 +1,8 @@
-import { ErrorBoundary } from '../component/common/ErrorBoundary';
-import { HeroSection } from '../component/Home/HeroSection';
-import { ServicesSection } from '../component/Home/ServicesSection';
-import { TeamSection } from '../component/Home/TeamSection';
-import { InsightsSection } from '../component/Home/InsightsSection';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
+import { HeroSection } from '../components/Home/HeroSection';
+import { ServicesSection } from '../components/Home/ServicesSection';
+import { TeamSection } from '../components/Home/TeamSection';
+import { InsightsSection } from '../components/Home/InsightsSection';
 
 export function HomePage() {
   return (
