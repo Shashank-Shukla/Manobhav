@@ -1,4 +1,0 @@
-2026-01-18T04:14:57.591473Z  INFO codex_core::auth: Reloading auth
-2026-01-18T04:14:57.615795Z  INFO codex_core::auth: Reloaded auth, changed: true
-2026-01-18T04:17:24.450469Z  INFO codex_core::config: cwd not set, using current dir
-2026-01-18T04:25:22.709837Z  INFO codex_tui::chatwidget: Selected model: gpt-5.1-codex-max, Selected effort: high
