@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { ArrowUpRight, Menu, Moon, Sun, X } from 'lucide-react';
 import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
 
 type NavBarProps = {
   onNavigate: (view: 'home' | 'login') => void;
+  themeMode: 'light' | 'dark';
+  onToggleTheme: () => void;
 };
 
-export function NavBar({ onNavigate }: NavBarProps) {
+export function NavBar({ onNavigate, themeMode, onToggleTheme }: NavBarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -39,11 +41,16 @@ export function NavBar({ onNavigate }: NavBarProps) {
     <>
       <nav className={`fixed left-0 right-0 z-50 flex justify-center transition-all duration-500 ${scrolled ? 'top-2' : 'top-6'}`}>
         <div
-          className="relative flex items-center justify-between px-6 py-3 shadow-sm border border-white/40 transition-all duration-300"
+          className="relative flex items-center justify-between px-6 py-3 shadow-lg border transition-all duration-300"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.65)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            background:
+              themeMode === 'dark'
+                ? 'linear-gradient(120deg, rgba(30,41,59,0.82), rgba(17,24,39,0.78))'
+                : 'linear-gradient(120deg, rgba(230,237,232,0.85), rgba(255,255,255,0.75))',
+            borderColor: themeMode === 'dark' ? 'rgba(148,163,184,0.35)' : 'rgba(255,255,255,0.5)',
+            boxShadow: themeMode === 'dark' ? '0 20px 60px rgba(0,0,0,0.25)' : '0 20px 60px rgba(0,0,0,0.06)',
+            backdropFilter: 'blur(18px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(18px) saturate(140%)',
             width: 'clamp(340px, 95%, 1200px)',
             maxWidth: '75%',
             borderRadius: '9999px',
@@ -69,7 +76,19 @@ export function NavBar({ onNavigate }: NavBarProps) {
             ))}
           </div>
 
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center gap-3">
+            <button
+              onClick={onToggleTheme}
+              className="p-2 rounded-full bg-white/80 text-slate-700 shadow-sm border border-white/50 hover:-translate-y-0.5 transition-all"
+              style={{
+                backgroundColor: themeMode === 'dark' ? 'rgba(30,41,59,0.6)' : 'rgba(255,255,255,0.8)',
+                color: themeMode === 'dark' ? '#E5E7EB' : '#1F2937',
+                borderColor: themeMode === 'dark' ? 'rgba(148,163,184,0.4)' : 'rgba(255,255,255,0.6)',
+              }}
+              aria-label="Toggle theme"
+            >
+              {themeMode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             <Button variant="nav" onClick={() => onNavigate('login')}>
               Login
             </Button>

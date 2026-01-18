@@ -1,14 +1,4 @@
-import {
-  ArrowRight,
-  BookOpen,
-  Heart,
-  MessageCircle,
-  ShieldCheck,
-  Smile,
-  Star,
-  User,
-  Wind,
-} from 'lucide-react';
+import { ArrowRight, BookOpen, Heart, MessageCircle, ShieldCheck, Smile, User, Wind } from 'lucide-react';
 import { AbstractShape } from '../components/primitives/AbstractShape';
 import { Button } from '../components/primitives/Button';
 import { Text } from '../components/primitives/Text';

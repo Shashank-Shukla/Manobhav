@@ -6,7 +6,7 @@ type LogoProps = {
 export function Logo({ onClick, className = '' }: LogoProps) {
   return (
     <div onClick={onClick} className={`flex items-center gap-2 cursor-pointer ${className}`}>
-      <div className="relative w-10 h-10 overflow-hidden rounded-full bg-slate-100 flex items-center justify-center">
+      <div className="relative w-10 h-10 overflow-hidden rounded-full bg-black flex items-center justify-center">
         <img
           src="Manobhav_Logo.png"
           alt="Manobhav"
