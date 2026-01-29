@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "dgSpecHash": "wHvoH39PyQc=",
-  "success": false,
+  "dgSpecHash": "BeE0S5sExxA=",
+  "success": true,
   "projectFilePath": "/home/steiner-shukla/Projects/Manobhav/Backend/manobhav-api/src/Infrastructure/Infrastructure.csproj",
   "expectedPackageFiles": [
     "/home/steiner-shukla/.nuget/packages/fluentvalidation/12.1.1/fluentvalidation.12.1.1.nupkg.sha512",
@@ -24,7 +24,7 @@
     "/home/steiner-shukla/.nuget/packages/microsoft.entityframeworkcore.tools/10.0.2/microsoft.entityframeworkcore.tools.10.0.2.nupkg.sha512",
     "/home/steiner-shukla/.nuget/packages/microsoft.extensions.caching.abstractions/10.0.2/microsoft.extensions.caching.abstractions.10.0.2.nupkg.sha512",
     "/home/steiner-shukla/.nuget/packages/microsoft.extensions.caching.memory/10.0.2/microsoft.extensions.caching.memory.10.0.2.nupkg.sha512",
-    "/home/steiner-shukla/.nuget/packages/microsoft.extensions.configuration.abstractions/8.0.0/microsoft.extensions.configuration.abstractions.8.0.0.nupkg.sha512",
+    "/home/steiner-shukla/.nuget/packages/microsoft.extensions.configuration.abstractions/10.0.2/microsoft.extensions.configuration.abstractions.10.0.2.nupkg.sha512",
     "/home/steiner-shukla/.nuget/packages/microsoft.extensions.dependencyinjection/10.0.2/microsoft.extensions.dependencyinjection.10.0.2.nupkg.sha512",
     "/home/steiner-shukla/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/10.0.2/microsoft.extensions.dependencyinjection.abstractions.10.0.2.nupkg.sha512",
     "/home/steiner-shukla/.nuget/packages/microsoft.extensions.dependencymodel/10.0.2/microsoft.extensions.dependencymodel.10.0.2.nupkg.sha512",
@@ -49,17 +49,5 @@
     "/home/steiner-shukla/.nuget/packages/system.composition.runtime/9.0.0/system.composition.runtime.9.0.0.nupkg.sha512",
     "/home/steiner-shukla/.nuget/packages/system.composition.typedparts/9.0.0/system.composition.typedparts.9.0.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1605",
-      "level": "Error",
-      "message": "Warning As Error: Detected package downgrade: Microsoft.Extensions.Configuration.Abstractions from 10.0.2 to 8.0.0. Reference the package directly from the project to select a different version. \n Infrastructure -> Microsoft.EntityFrameworkCore.Design 10.0.2 -> Microsoft.Extensions.Configuration.Abstractions (>= 10.0.2) \n Infrastructure -> Microsoft.Extensions.Configuration.Abstractions (>= 8.0.0)",
-      "projectPath": "/home/steiner-shukla/Projects/Manobhav/Backend/manobhav-api/src/Infrastructure/Infrastructure.csproj",
-      "filePath": "/home/steiner-shukla/Projects/Manobhav/Backend/manobhav-api/src/Infrastructure/Infrastructure.csproj",
-      "libraryId": "Microsoft.Extensions.Configuration.Abstractions",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  "logs": []
 }
