@@ -103,7 +103,7 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
             className="min-w-[56px] px-3 py-2 rounded-full text-sm font-semibold text-white"
             style={{ backgroundColor: '#9CAF88' }}
           >
-            {Math.min(current, questions.length)} done
+            {Math.min(current, questions.length)}
           </div>
           {Array.from({ length: totalSteps }).map((_, idx) => (
             <div
@@ -115,7 +115,7 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
             className="min-w-[56px] px-3 py-2 rounded-full text-sm font-semibold text-gray-700"
             style={{ backgroundColor: '#E5E7EB', color: '#4B5563' }}
           >
-            {questions.length} total
+            {questions.length}
           </div>
         </div>
 
@@ -130,17 +130,27 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
           </button>
 
           <div
-            className="bg-white/92 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/30 p-10 flex items-center justify-center"
-            style={{ width: '50vw', minWidth: '320px', maxWidth: '900px', height: '40vh', minHeight: '240px', maxHeight: '520px' }}
+            className="bg-white/82 backdrop-blur-[18px] rounded-3xl shadow-2xl border border-white/30 flex items-center justify-center"
+            style={{ width: '70vw', minWidth: '320px', maxWidth: '1100px', height: '50vh', minHeight: '260px', maxHeight: '620px', padding: '2.5rem 3em' }}
           >
             {current < questions.length ? (
               <div className="w-full space-y-4">
-                <Text variant="h3" className="text-center">{questions[current].text}</Text>
+                <Text variant="h3" className="text-left">{questions[current].text}</Text>
                 <input
                   className="w-full bg-transparent border-0 border-b-2 border-b-[#9CAF88] rounded-none px-1 pb-3 text-lg outline-none focus:ring-0 focus:border-b-[#7A8C6A]"
                   value={answers[current]}
                   onChange={(e) => onChange(e.target.value)}
                   placeholder="How do you feel about that?"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (current < questions.length - 1) {
+                        goNext();
+                      } else {
+                        setCurrent(totalSteps - 1);
+                      }
+                    }
+                  }}
                 />
               </div>
             ) : (
