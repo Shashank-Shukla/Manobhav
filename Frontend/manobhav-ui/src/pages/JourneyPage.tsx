@@ -168,6 +168,7 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
                   value={answers[current]}
                   onChange={(e) => onChange(e.target.value)}
                   placeholder="How do you feel about that?"
+                  autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
