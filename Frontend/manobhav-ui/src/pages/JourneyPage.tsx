@@ -157,7 +157,7 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
           </button>
 
           <div
-            className="bg-white/82 backdrop-blur-[26px] rounded-3xl shadow-2xl border border-white/30 flex items-center justify-center transition-all duration-300"
+            className="bg-white/82 backdrop-blur-[32px] rounded-3xl shadow-2xl border border-white/30 flex items-center justify-center transition-all duration-300"
             style={{ width: '70vw', minWidth: '320px', maxWidth: '1100px', height: '50vh', minHeight: '260px', maxHeight: '620px', padding: '2.5rem 3em' }}
           >
             {current < questions.length ? (
