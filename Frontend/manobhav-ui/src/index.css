@@ -149,8 +149,8 @@ a {
   100% { transform: scale(1.15); opacity: 0; }
 }
 .animate-wave-outer {
-  width: calc(100% + 8px);
-  height: calc(100% + 8px);
+  width: calc(100% + 2em);
+  height: calc(100% + 2em);
   animation: buttonWave 1.6s ease-out infinite;
 }
 
