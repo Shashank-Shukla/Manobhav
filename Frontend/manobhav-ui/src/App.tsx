@@ -19,7 +19,7 @@ export default function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem('manobhav-theme');
     if (stored === 'light' || stored === 'dark') return stored;
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return 'light'; // default to light mode
   });
 
   useEffect(() => {
@@ -37,7 +37,9 @@ export default function App() {
     <div className="font-[Poppins] min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
       <div className="fixed inset-0 bg-[var(--bg-gradient)] -z-50" />
 
-      <NavBar onNavigate={setCurrentView} themeMode={themeMode} onToggleTheme={toggleTheme} />
+      {currentView !== 'journey' && (
+        <NavBar onNavigate={setCurrentView} themeMode={themeMode} onToggleTheme={toggleTheme} />
+      )}
 
       <main className="min-h-screen pt-6">
         {currentView === 'home' && (
