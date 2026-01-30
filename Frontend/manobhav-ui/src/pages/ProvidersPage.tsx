@@ -21,9 +21,8 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react';
-import { CalendarRange, Filter, Search, SortDesc, ArrowLeft } from 'lucide-react';
+import { CalendarRange, Filter, Search, SortDesc } from 'lucide-react';
 import { theme } from '../utils/theme';
-import { Button as SoftButton } from '../shared/primitives/Button';
 
 type ProvidersPageProps = {
   onBackHome: () => void;
@@ -94,9 +93,16 @@ export function ProvidersPage({ onBackHome }: ProvidersPageProps) {
   );
 
   return (
-    <div className="min-h-screen pt-24 pb-10 px-6 bg-[var(--bg-gradient)] text-[color:var(--text-color)]">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="bg-white/85 backdrop-blur-xl rounded-3xl shadow-xl border border-white/40 p-6 space-y-4">
+    <div className="h-screen bg-[var(--bg-gradient)] text-[color:var(--text-color)] flex flex-col overflow-hidden">
+      {/* Query container */}
+      <div className="pt-24 pb-4 px-0 w-full flex items-center justify-end pr-6">
+        <Button size="sm" variant="outline" onClick={onBackHome}>
+          Back to Home
+        </Button>
+      </div>
+
+      <div className="px-0 w-full">
+        <div className="bg-white/85 backdrop-blur-xl shadow-xl border-t border-b border-white/40 px-6 py-5 space-y-4">
           <Flex align="center" gap={3} wrap="wrap">
             <InputGroup flex={1} maxW="70%">
               <InputLeftElement pointerEvents="none">
@@ -145,68 +151,69 @@ export function ProvidersPage({ onBackHome }: ProvidersPageProps) {
             "{search || 'Any'}" from {dateRange} | {filter}. Sorting by: {sort}.
           </Text>
         </div>
-
-        <div className="flex gap-6">
-          <Box width="60vw">
-            <VStack align="stretch" spacing={4}>
-              {filteredProviders.map((p) => (
-                <Card key={p.id} variant="outline" borderColor="gray.100" boxShadow="xl" bg="white">
-                  <CardBody>
-                    <Flex gap={4} align="stretch">
-                      <Flex align="center" justify="center" minW="72px">
-                        <Avatar name={p.name} bg={p.avatarColor} color="white" size="lg" />
-                      </Flex>
-
-                      <Flex direction="column" flex={1} gap={2}>
-                        <CardHeader padding={0}>
-                          <Text fontSize="lg" fontWeight="bold" color="gray.800">
-                            {p.name}
-                          </Text>
-                        </CardHeader>
-                        <Text fontSize="sm" color="gray.600">
-                          {p.summary}
-                        </Text>
-                        <HStack spacing={2} flexWrap="wrap">
-                          {p.specializations.map((spec) => (
-                            <Tag key={spec} colorScheme="green" variant="subtle">
-                              {spec}
-                            </Tag>
-                          ))}
-                        </HStack>
-                      </Flex>
-
-                      <Divider orientation="vertical" />
-
-                      <VStack align="flex-start" spacing={2} minW="150px">
-                        <Text fontSize="sm" fontWeight="semibold" color="gray.700">
-                          Next available
-                        </Text>
-                        <Flex gap={2} wrap="wrap">
-                          {p.nextDates.slice(0, 10).map((d) => (
-                            <Button key={d} size="xs" variant="outline" colorScheme="green">
-                              {d}
-                            </Button>
-                          ))}
-                        </Flex>
-                      </VStack>
-                    </Flex>
-                  </CardBody>
-                </Card>
-              ))}
-            </VStack>
-          </Box>
-
-          <Box flex={1} minH="300px" className="bg-white/60 border border-dashed border-gray-200 rounded-2xl" />
-        </div>
       </div>
 
-      <div className="mt-12 h-8 flex items-center justify-between text-sm text-gray-600 border-top border-gray-200 pt-3">
-        <span>Manobhav © {new Date().getFullYear()}</span>
-        <SoftButton variant="secondary" onClick={onBackHome} className="flex items-center gap-2">
-          <ArrowLeft size={16} /> Back home
-        </SoftButton>
+      {/* Populate container */}
+      <div className="flex flex-1 gap-6 mt-8 px-0 overflow-hidden">
+        <Box width="60vw" className="overflow-auto px-6" sx={{ scrollbarWidth: 'thin' }}>
+          <VStack align="stretch" spacing={4}>
+            {filteredProviders.map((p) => (
+              <Card key={p.id} variant="outline" borderColor="gray.100" boxShadow="xl" bg="white">
+                <CardBody>
+                  <Flex gap={4} align="stretch">
+                    <Flex align="center" justify="center" minW="72px">
+                      <Avatar name={p.name} bg={p.avatarColor} color="white" size="lg" />
+                    </Flex>
+
+                    <Flex direction="column" flex={1} gap={2}>
+                      <CardHeader padding={0}>
+                        <Text fontSize="lg" fontWeight="bold" color="gray.800">
+                          {p.name}
+                        </Text>
+                      </CardHeader>
+                      <Text fontSize="sm" color="gray.600">
+                        {p.summary}
+                      </Text>
+                      <HStack spacing={2} flexWrap="wrap">
+                        {p.specializations.map((spec) => (
+                          <Tag key={spec} colorScheme="green" variant="subtle">
+                            {spec}
+                          </Tag>
+                        ))}
+                      </HStack>
+                    </Flex>
+
+                    <Divider orientation="vertical" />
+
+                    <VStack align="flex-start" spacing={2} minW="150px">
+                      <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+                        Next available
+                      </Text>
+                      <Flex gap={2} wrap="wrap">
+                        {p.nextDates.slice(0, 10).map((d) => (
+                          <Button key={d} size="xs" variant="outline" colorScheme="green">
+                            {d}
+                          </Button>
+                        ))}
+                      </Flex>
+                    </VStack>
+                  </Flex>
+                </CardBody>
+              </Card>
+            ))}
+          </VStack>
+        </Box>
+
+        <Box flex={1} minH="300px" className="mr-6 bg-white/60 border border-dashed border-gray-200 rounded-2xl" />
+      </div>
+
+      {/* Footer */}
+      <div
+        className="h-8 flex items-center justify-center text-sm text-white"
+        style={{ backgroundColor: theme.colors.sage.DEFAULT }}
+      >
+        Manobhav © {new Date().getFullYear()}
       </div>
     </div>
   );
 }
-

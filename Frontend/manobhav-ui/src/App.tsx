@@ -35,7 +35,7 @@ export default function App() {
   const goJourney = () => setCurrentView('journey');
   const goProviders = () => setCurrentView('providers');
 
-  const mainClass = currentView === 'journey' ? 'min-h-screen' : 'min-h-screen pt-6';
+  const mainClass = currentView === 'journey' || currentView === 'providers' ? 'min-h-screen' : 'min-h-screen pt-6';
 
   return (
     <div className="font-[Poppins] min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
@@ -67,7 +67,7 @@ export default function App() {
             context="route-journey"
             fallback={<ErrorPageGeneric onHome={goHome} />}
           >
-            <JourneyPage onBackHome={goHome} />
+            <JourneyPage onBackHome={goHome} onFinish={goProviders} />
           </ErrorBoundary>
         )}
         {currentView === 'providers' && (
