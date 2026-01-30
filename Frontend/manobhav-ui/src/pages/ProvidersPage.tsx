@@ -23,6 +23,8 @@ import {
 } from '@chakra-ui/react';
 import { CalendarRange, Filter, Search, SortDesc } from 'lucide-react';
 import { theme } from '../utils/theme';
+import providersData from '../assets/providers.json';
+import { StarIcon } from '@chakra-ui/icons';
 
 type ProvidersPageProps = {
   onBackHome: () => void;
@@ -35,74 +37,72 @@ type Provider = {
   specializations: string[];
   avatarColor: string;
   nextDates: string[];
+  longDescription: string;
+  shortDescription: string;
+  sessions: number;
+  rating: number;
 };
 
-const sampleProviders: Provider[] = [
-  {
-    id: 'p1',
-    name: 'Dr. Ananya Rao',
-    summary: 'Clinical psychologist focusing on anxiety and burnout with calm, skills-first care.',
-    specializations: ['Anxiety', 'CBT', 'Work Stress'],
-    avatarColor: theme.colors.sage.DEFAULT,
-    nextDates: Array.from({ length: 10 }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i + 1);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }),
-  },
-  {
-    id: 'p2',
-    name: 'Sarah Jenkins',
-    summary: 'Wellness coach blending mindfulness with gentle habit-building for sustainable change.',
-    specializations: ['Mindfulness', 'Habits', 'Sleep'],
-    avatarColor: theme.colors.powderBlue.DEFAULT,
-    nextDates: Array.from({ length: 10 }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i + 2);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }),
-  },
-  {
-    id: 'p3',
-    name: 'Dr. David Chen',
-    summary: 'Psychiatrist with a balanced approach to meds and talk therapy for mood stability.',
-    specializations: ['Mood', 'Medication Mgmt', 'Telehealth'],
-    avatarColor: theme.colors.dustyRose.DEFAULT,
-    nextDates: Array.from({ length: 10 }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i + 3);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }),
-  },
-];
+const colors = [theme.colors.sage.DEFAULT, theme.colors.powderBlue.DEFAULT, theme.colors.dustyRose.DEFAULT];
 
-export function ProvidersPage({ onBackHome }: ProvidersPageProps) {
+export function ProvidersPage({ onBackHome: _onBackHome }: ProvidersPageProps) {
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState<'Any' | 'Next 7 days' | 'Next 30 days'>('Any');
   const [filter, setFilter] = useState('Any');
   const [sort, setSort] = useState('Availability');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  void _onBackHome;
+
+  const providers = useMemo<Provider[]>(() => {
+    return (providersData as {
+      id: string;
+      name: string;
+      shortDescription: string;
+      longDescription: string;
+      specialities: string[];
+      availabilities: string[];
+      avatarUrl: string;
+    }[]).map((p, idx) => {
+      const nextDates = (p.availabilities as string[]).map((d: string) =>
+        new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      );
+      return {
+        id: p.id,
+        name: p.name,
+        summary: p.shortDescription,
+        longDescription: p.longDescription,
+        specializations: p.specialities,
+        avatarColor: colors[idx % colors.length],
+        nextDates,
+        sessions: 10 + idx * 2,
+        rating: 4.2 + (idx % 3) * 0.2, // 4.2, 4.4, 4.6
+      } as Provider;
+    });
+  }, []);
 
   const filteredProviders = useMemo(
     () =>
-      sampleProviders.filter(
+      providers.filter(
         (p) =>
           p.name.toLowerCase().includes(search.toLowerCase()) ||
           p.specializations.some((s) => s.toLowerCase().includes(search.toLowerCase())),
       ),
-    [search],
+    [providers, search],
+  );
+
+  const selected = useMemo(
+    () => filteredProviders.find((p) => p.id === selectedId) || filteredProviders[0],
+    [filteredProviders, selectedId],
   );
 
   return (
     <div className="h-screen bg-[var(--bg-gradient)] text-[color:var(--text-color)] flex flex-col overflow-hidden">
       {/* Query container */}
-      <div className="pt-24 pb-4 px-0 w-full flex items-center justify-end pr-6">
-        <Button size="sm" variant="outline" onClick={onBackHome}>
-          Back to Home
-        </Button>
-      </div>
-
-      <div className="px-0 w-full">
-        <div className="bg-white/85 backdrop-blur-xl shadow-xl border-t border-b border-white/40 px-6 py-5 space-y-4">
+      <div className="pt-24 pb-4 px-0 w-full">
+        <div
+          className="bg-white/85 backdrop-blur-xl shadow-xl border-t border-b border-white/40 px-6 py-5 space-y-4"
+          style={{ backgroundColor: '#E6EDE8' }}
+        >
           <Flex align="center" gap={3} wrap="wrap">
             <InputGroup flex={1} maxW="70%">
               <InputLeftElement pointerEvents="none">
@@ -154,11 +154,19 @@ export function ProvidersPage({ onBackHome }: ProvidersPageProps) {
       </div>
 
       {/* Populate container */}
-      <div className="flex flex-1 gap-6 mt-8 px-0 overflow-hidden">
+      <div className="flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4">
         <Box width="60vw" className="overflow-auto px-6" sx={{ scrollbarWidth: 'thin' }}>
           <VStack align="stretch" spacing={4}>
             {filteredProviders.map((p) => (
-              <Card key={p.id} variant="outline" borderColor="gray.100" boxShadow="xl" bg="white">
+              <Card
+                key={p.id}
+                variant="outline"
+                borderColor={selected?.id === p.id ? '#9CAF88' : 'gray.100'}
+                boxShadow="xl"
+                bg="white"
+                cursor="pointer"
+                onClick={() => setSelectedId(p.id)}
+              >
                 <CardBody>
                   <Flex gap={4} align="stretch">
                     <Flex align="center" justify="center" minW="72px">
@@ -204,7 +212,51 @@ export function ProvidersPage({ onBackHome }: ProvidersPageProps) {
           </VStack>
         </Box>
 
-        <Box flex={1} minH="300px" className="mr-6 bg-white/60 border border-dashed border-gray-200 rounded-2xl" />
+        <Box
+          flex={1}
+          minH="300px"
+          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl"
+          style={{ padding: '1.5rem' }}
+        >
+          {selected && (
+            <VStack align="stretch" spacing={3} className="h-full">
+              <Avatar name={selected.name} bg={selected.avatarColor} color="white" size="2xl" />
+              <Box h="1rem" />
+              <Text fontSize="md" color="gray.700" className="overflow-auto" style={{ maxHeight: '8rem' }}>
+                {selected.longDescription}
+              </Text>
+              <Box h="3px" />
+              <HStack spacing={2} flexWrap="wrap">
+                {selected.specializations.map((spec) => (
+                  <Tag key={spec} colorScheme="green" variant="subtle">
+                    {spec}
+                  </Tag>
+                ))}
+              </HStack>
+              <Box h="0.8rem" />
+              <Text fontWeight="semibold" color="gray.800">
+                No. of sessions taken: {selected.sessions}
+              </Text>
+              <Box h="0.8rem" />
+              <HStack spacing={1} align="center">
+                <Text fontWeight="semibold" color="gray.800">
+                  Rating:
+                </Text>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <StarIcon
+                    key={i}
+                    color={i + 1 <= Math.round(selected.rating) ? theme.colors.dustyRose.DEFAULT : '#E5E7EB'}
+                  />
+                ))}
+                <Text fontSize="sm" color="gray.600">
+                  {selected.rating.toFixed(1)}
+                </Text>
+              </HStack>
+              <Box h="0.8rem" />
+              <Button colorScheme="green">Proceed</Button>
+            </VStack>
+          )}
+        </Box>
       </div>
 
       {/* Footer */}

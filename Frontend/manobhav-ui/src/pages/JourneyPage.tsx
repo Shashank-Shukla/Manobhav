@@ -10,9 +10,10 @@ type Question = { id: number; text: string };
 
 type JourneyPageProps = {
   onBackHome: () => void;
+  onFinish: () => void;
 };
 
-export function JourneyPage({ onBackHome }: JourneyPageProps) {
+export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
   const questions = useMemo(() => questionsData as Question[], []);
   const [current, setCurrent] = useState(0); // includes submit step
   const [answers, setAnswers] = useState<string[]>(Array(questions.length).fill(''));
@@ -33,7 +34,6 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
   };
 
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
     const now = Date.now();
     if (now - lastScrollTs.current < 320) return; // throttle to one step
     lastScrollTs.current = now;
@@ -156,7 +156,7 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
             ) : (
               <div className="w-full flex flex-col items-center gap-4">
                 <Text variant="h3" className="text-center">Ready to share?</Text>
-                <Button variant="primary" onClick={onBackHome}>Submit</Button>
+                <Button variant="primary" onClick={onFinish}>Submit</Button>
               </div>
             )}
           </div>
