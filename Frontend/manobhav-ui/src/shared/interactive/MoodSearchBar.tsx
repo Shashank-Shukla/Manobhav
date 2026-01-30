@@ -9,7 +9,11 @@ const ideas = [
   (mood: string) => `Unclench your jaw, drop your shoulders, and breathe into your belly. Choose one gentle action you can do next, even while feeling ${mood || 'this'}.`,
 ];
 
-export function MoodSearchBar() {
+type Props = {
+  onReachHuman?: () => void;
+};
+
+export function MoodSearchBar({ onReachHuman }: Props) {
   const [mood, setMood] = useState('');
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,7 +66,10 @@ export function MoodSearchBar() {
             {suggestion}
           </Text>
           <div className="flex justify-center">
-            <button className="px-4 py-2 rounded-full border border-[#9CAF88] text-[#9CAF88] bg-white hover:bg-[#E6EDE8] transition">
+            <button
+              onClick={onReachHuman}
+              className="px-4 py-2 rounded-full border border-[#B57F8B] text-white bg-[#B57F8B] hover:bg-[#9c7a82] transition"
+            >
               Reach out to a human
             </button>
           </div>

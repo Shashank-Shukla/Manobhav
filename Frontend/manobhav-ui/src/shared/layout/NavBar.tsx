@@ -4,7 +4,7 @@ import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
 
 type NavBarProps = {
-  onNavigate: (view: 'home' | 'login') => void;
+  onNavigate: (view: 'home' | 'login' | 'journey' | 'providers') => void;
   themeMode: 'light' | 'dark';
   onToggleTheme: () => void;
 };
@@ -20,9 +20,9 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme }: NavBarProps) {
   }, []);
 
   const navItems = [
-    { label: 'About', target: 'about' },
-    { label: 'Insights', target: 'insights' },
-    { label: 'Talk to Us', target: 'talk-to-us' },
+    { label: 'About', target: 'about', type: 'scroll' as const },
+    { label: 'Insights', target: 'insights', type: 'scroll' as const },
+    { label: 'Talk to Us', target: 'providers', type: 'route' as const },
   ];
 
   const scrollToId = (id: string) => {
@@ -62,10 +62,14 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme }: NavBarProps) {
             {navItems.map((item) => (
               <a
                 key={item.label}
-                href={`#${item.target}`}
+                href={item.type === 'scroll' ? `#${item.target}` : '#'}
                 onClick={(e) => {
                   e.preventDefault();
-                  handleNavigateHomeAndScroll(item.target);
+                  if (item.type === 'route') {
+                    onNavigate('providers');
+                  } else {
+                    handleNavigateHomeAndScroll(item.target);
+                  }
                 }}
                 className="text-sm font-medium text-gray-600 hover:text-[#9CAF88] transition-colors relative group flex items-center gap-1"
               >
@@ -106,11 +110,15 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme }: NavBarProps) {
             {navItems.map((item) => (
               <a
                 key={item.label}
-                href={`#${item.target}`}
+                href={item.type === 'scroll' ? `#${item.target}` : '#'}
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileOpen(false);
-                  handleNavigateHomeAndScroll(item.target);
+                  if (item.type === 'route') {
+                    onNavigate('providers');
+                  } else {
+                    handleNavigateHomeAndScroll(item.target);
+                  }
                 }}
                 className="text-xl font-medium text-gray-800 flex items-center justify-center gap-2"
               >

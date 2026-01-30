@@ -4,6 +4,7 @@ import { Footer } from './shared/layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { JourneyPage } from './pages/JourneyPage';
+import { ProvidersPage } from './pages/ProvidersPage';
 import { ErrorPageGeneric } from './components/Error/ErrorPageGeneric';
 import { ErrorPage50x } from './components/Error/ErrorPage50x';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -11,7 +12,7 @@ import { theme } from './utils/theme';
 
 const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 
-export type View = 'home' | 'login' | 'journey';
+export type View = 'home' | 'login' | 'journey' | 'providers';
 type ThemeMode = 'light' | 'dark';
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
 
   const goHome = () => setCurrentView('home');
   const goJourney = () => setCurrentView('journey');
+  const goProviders = () => setCurrentView('providers');
 
   const mainClass = currentView === 'journey' ? 'min-h-screen' : 'min-h-screen pt-6';
 
@@ -68,12 +70,20 @@ export default function App() {
             <JourneyPage onBackHome={goHome} />
           </ErrorBoundary>
         )}
+        {currentView === 'providers' && (
+          <ErrorBoundary
+            context="route-providers"
+            fallback={<ErrorPageGeneric onHome={goHome} />}
+          >
+            <ProvidersPage onBackHome={goHome} />
+          </ErrorBoundary>
+        )}
       </main>
 
       {currentView === 'home' && (
         <>
           <Suspense fallback={null}>
-            <MoodSearchBar />
+            <MoodSearchBar onReachHuman={goJourney} />
           </Suspense>
           <Footer />
         </>
