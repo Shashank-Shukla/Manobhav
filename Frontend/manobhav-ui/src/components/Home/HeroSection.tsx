@@ -32,7 +32,15 @@ export function HeroSection({ onStartJourney }: HeroProps) {
           Connect with licensed therapists and discover a harmonious path to mental clarity. Your journey to a balanced mind starts here.
         </Text>
         <div className="flex flex-wrap gap-4">
-          <Button variant="primary" icon={ArrowRight} onClick={onStartJourney}>Get Started</Button>
+          <Button
+            variant="primary"
+            icon={ArrowRight}
+            onClick={onStartJourney}
+            className="relative overflow-hidden isolate"
+          >
+            <span className="pointer-events-none absolute inset-0 animate-wave opacity-60 bg-white/40" />
+            <span className="relative">Get Started</span>
+          </Button>
           <Button variant="secondary" icon={MessageCircle}>How it works</Button>
         </div>
         </div>

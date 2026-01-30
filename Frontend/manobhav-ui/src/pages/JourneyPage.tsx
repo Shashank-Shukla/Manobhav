@@ -25,6 +25,8 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
 
   const goPrev = () => !atFirst && setCurrent((i) => i - 1);
   const goNext = () => !atLast && setCurrent((i) => i + 1);
+  const touchStartY = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
 
   const onChange = (val: string) => {
     if (current >= questions.length) return;
@@ -41,6 +43,22 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
     if (e.deltaY < 0) goPrev();
   };
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchStartY.current = e.changedTouches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchEndY.current = e.changedTouches[0].clientY;
+    if (touchStartY.current === null || touchEndY.current === null) return;
+    const delta = touchStartY.current - touchEndY.current;
+    if (Math.abs(delta) > 30) {
+      if (delta > 0) goNext();
+      else goPrev();
+    }
+    touchStartY.current = null;
+    touchEndY.current = null;
+  };
+
   const [floatingLeaves] = useState(() => {
     const randomLeaves = () => {
       const count = Math.floor(Math.random() * 5) + 3; // 3-7 leaves
@@ -52,6 +70,7 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
         driftX: Math.random() * 16 - 8,
         driftY: Math.random() * 16 - 8,
         size: 72 + Math.random() * 28,
+        color: Math.random() > 0.5 ? '#E6EDE8' : '#B0CED6',
       }));
     };
     return randomLeaves();
@@ -61,6 +80,8 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
     <div
       className="relative w-screen h-screen overflow-hidden bg-[var(--bg-gradient)] text-[color:var(--text-color)]"
       onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* sage tint wash */}
       <div className="pointer-events-none absolute bottom-0 right-0 w-1/2 h-1/2 opacity-20"
@@ -69,28 +90,23 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
         }}
       />
 
-      {/* floating leaves */}
+      {/* floating blobs */}
       {floatingLeaves.map((leaf, idx) => (
-        <svg
+        <div
           key={idx}
-          viewBox="0 0 80 120"
-          className="absolute opacity-55 animate-float-sway"
+          className="absolute rounded-full opacity-50 animate-float-sway"
           style={{
             top: leaf.top,
             left: leaf.left,
             width: leaf.size,
             height: leaf.size,
+            background: leaf.color,
             animationDuration: leaf.duration,
             animationDelay: leaf.delay,
             '--drift-x': `${leaf.driftX}px`,
             '--drift-y': `${leaf.driftY}px`,
           } as CSSProperties}
-        >
-          <path
-            d="M40 5c10 20 25 40 30 60s-2 40-20 45-40-8-45-28 7-48 35-77Z"
-            fill="#9CAF88"
-          />
-        </svg>
+        />
       ))}
 
       <div className="absolute top-6 left-6 z-20">
@@ -98,24 +114,35 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
       </div>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 animate-in fade-in">
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-center gap-4 mb-8 w-full justify-center">
           <div
-            className="min-w-[56px] px-3 py-2 rounded-full text-sm font-semibold text-white"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold text-white"
             style={{ backgroundColor: '#9CAF88' }}
           >
             {Math.min(current, questions.length)}
           </div>
-          {Array.from({ length: totalSteps }).map((_, idx) => (
-            <div
-              key={idx}
-              className={`w-10 h-2 rounded-full transition-all ${idx === current ? 'bg-[#9CAF88]' : 'bg-gray-200/70'}`}
-            />
-          ))}
+          <div className="hidden md:flex items-center gap-2 max-w-[40vw]">
+            {Array.from({ length: totalSteps }).map((_, idx) => (
+              <div
+                key={idx}
+                className={`w-10 h-2 rounded-full transition-all ${idx <= current ? 'bg-[#9CAF88]' : 'bg-gray-200/70'}`}
+              />
+            ))}
+          </div>
           <div
-            className="min-w-[56px] px-3 py-2 rounded-full text-sm font-semibold text-gray-700"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold"
             style={{ backgroundColor: '#E5E7EB', color: '#4B5563' }}
           >
             {questions.length}
+          </div>
+        </div>
+
+        <div className="md:hidden w-full px-6 mb-4 sticky top-0">
+          <div className="h-2 w-full bg-gray-200/70 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#9CAF88] transition-all duration-300"
+              style={{ width: `${((current + 1) / totalSteps) * 100}%` }}
+            />
           </div>
         </div>
 
@@ -130,11 +157,11 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
           </button>
 
           <div
-            className="bg-white/82 backdrop-blur-[18px] rounded-3xl shadow-2xl border border-white/30 flex items-center justify-center"
+            className="bg-white/82 backdrop-blur-[26px] rounded-3xl shadow-2xl border border-white/30 flex items-center justify-center transition-all duration-300"
             style={{ width: '70vw', minWidth: '320px', maxWidth: '1100px', height: '50vh', minHeight: '260px', maxHeight: '620px', padding: '2.5rem 3em' }}
           >
             {current < questions.length ? (
-              <div className="w-full space-y-4">
+              <div className="w-full space-y-4 transition-all duration-300">
                 <Text variant="h3" className="text-left">{questions[current].text}</Text>
                 <input
                   className="w-full bg-transparent border-0 border-b-2 border-b-[#9CAF88] rounded-none px-1 pb-3 text-lg outline-none focus:ring-0 focus:border-b-[#7A8C6A]"
