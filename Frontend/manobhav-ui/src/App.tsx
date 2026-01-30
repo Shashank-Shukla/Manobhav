@@ -3,6 +3,7 @@ import { NavBar } from './shared/layout/NavBar';
 import { Footer } from './shared/layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
+import { JourneyPage } from './pages/JourneyPage';
 import { ErrorPageGeneric } from './components/Error/ErrorPageGeneric';
 import { ErrorPage50x } from './components/Error/ErrorPage50x';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -10,7 +11,7 @@ import { theme } from './utils/theme';
 
 const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 
-export type View = 'home' | 'login';
+export type View = 'home' | 'login' | 'journey';
 type ThemeMode = 'light' | 'dark';
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
   const toggleTheme = () => setThemeMode((m) => (m === 'light' ? 'dark' : 'light'));
 
   const goHome = () => setCurrentView('home');
+  const goJourney = () => setCurrentView('journey');
 
   return (
     <div className="font-[Poppins] min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
@@ -43,7 +45,7 @@ export default function App() {
             context="route-home"
             fallback={<ErrorPageGeneric onHome={goHome} />}
           >
-            <HomePage />
+            <HomePage onStartJourney={goJourney} />
           </ErrorBoundary>
         )}
         {currentView === 'login' && (
@@ -52,6 +54,14 @@ export default function App() {
             fallback={<ErrorPage50x onHome={goHome} />}
           >
             <LoginPage onBack={() => setCurrentView('home')} />
+          </ErrorBoundary>
+        )}
+        {currentView === 'journey' && (
+          <ErrorBoundary
+            context="route-journey"
+            fallback={<ErrorPageGeneric onHome={goHome} />}
+          >
+            <JourneyPage onBackHome={goHome} />
           </ErrorBoundary>
         )}
       </main>

@@ -51,16 +51,21 @@ export function MoodSearchBar() {
       `}
     >
       {suggestion && isExpanded && (
-        <div className="p-6 bg-[#F7E6E8]/90 backdrop-blur-md rounded-2xl border border-[#F7E6E8] shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500 w-full mb-2">
+        <div className="p-6 bg-[#F7E6E8]/90 backdrop-blur-md rounded-2xl border border-[#F7E6E8] shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500 w-full mb-4">
           <div className="flex justify-between items-start mb-2">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#B57F8B]/60">AI Guidance</span>
             <button onClick={() => setSuggestion(null)} className="text-[#B57F8B] hover:scale-110 transition-transform">
               <X size={14} />
             </button>
           </div>
-          <Text variant="body" className="text-[#B57F8B] font-medium leading-relaxed">
+          <Text variant="body" className="text-[#B57F8B] font-medium leading-relaxed mb-4">
             {suggestion}
           </Text>
+          <div className="flex justify-center">
+            <button className="px-4 py-2 rounded-full border border-[#9CAF88] text-[#9CAF88] bg-white hover:bg-[#E6EDE8] transition">
+              Reach out to a human
+            </button>
+          </div>
         </div>
       )}
 

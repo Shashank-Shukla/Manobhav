@@ -4,7 +4,11 @@ import { Button } from '../../shared/primitives/Button';
 import { Text } from '../../shared/primitives/Text';
 import { theme } from '../../utils/theme';
 
-export function HeroSection() {
+type HeroProps = {
+  onStartJourney?: () => void;
+};
+
+export function HeroSection({ onStartJourney }: HeroProps) {
   return (
     <section id="about" className="relative min-h-screen pt-32 pb-20 px-6 flex items-center overflow-hidden">
       <div className="absolute top-0 right-0 w-2/3 h-full bg-[#E6EDE8]/30 -z-10 rounded-l-[100px] translate-x-20" />
@@ -24,13 +28,13 @@ export function HeroSection() {
             <br />
             today.
           </Text>
-          <Text variant="body" className="text-lg text-gray-600 max-w-lg">
-            Connect with licensed therapists and discover a harmonious path to mental clarity. Your journey to a balanced mind starts here.
-          </Text>
-          <div className="flex flex-wrap gap-4">
-            <Button variant="primary" icon={ArrowRight}>Get Started</Button>
-            <Button variant="secondary" icon={MessageCircle}>How it works</Button>
-          </div>
+        <Text variant="body" className="text-lg text-gray-600 max-w-lg">
+          Connect with licensed therapists and discover a harmonious path to mental clarity. Your journey to a balanced mind starts here.
+        </Text>
+        <div className="flex flex-wrap gap-4">
+          <Button variant="primary" icon={ArrowRight} onClick={onStartJourney}>Get Started</Button>
+          <Button variant="secondary" icon={MessageCircle}>How it works</Button>
+        </div>
         </div>
 
         <div className="relative z-10 hidden lg:block">

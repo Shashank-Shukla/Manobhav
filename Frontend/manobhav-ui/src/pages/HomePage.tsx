@@ -4,11 +4,15 @@ import { ServicesSection } from '../components/Home/ServicesSection';
 import { TeamSection } from '../components/Home/TeamSection';
 import { InsightsSection } from '../components/Home/InsightsSection';
 
-export function HomePage() {
+type HomePageProps = {
+  onStartJourney?: () => void;
+};
+
+export function HomePage({ onStartJourney }: HomePageProps) {
   return (
     <div className="animate-in fade-in duration-500">
       <ErrorBoundary context="hero" fallback={null}>
-        <HeroSection />
+        <HeroSection onStartJourney={onStartJourney} />
       </ErrorBoundary>
       <ErrorBoundary context="services" fallback={null}>
         <ServicesSection />
