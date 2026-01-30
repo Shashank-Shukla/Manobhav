@@ -41,18 +41,21 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
     if (e.deltaY < 0) goPrev();
   };
 
-  const floatingLeaves = useMemo(() => {
-    const count = Math.floor(Math.random() * 5) + 3; // 3-7 leaves
-    return Array.from({ length: count }).map(() => ({
-      top: `${10 + Math.random() * 70}%`,
-      left: `${5 + Math.random() * 80}%`,
-      duration: `${10 + Math.random() * 6}s`,
-      delay: `${Math.random() * 2}s`,
-      driftX: Math.random() * 16 - 8,
-      driftY: Math.random() * 16 - 8,
-      size: 64 + Math.random() * 24,
-    }));
-  }, []);
+  const [floatingLeaves] = useState(() => {
+    const randomLeaves = () => {
+      const count = Math.floor(Math.random() * 5) + 3; // 3-7 leaves
+      return Array.from({ length: count }).map(() => ({
+        top: `${10 + Math.random() * 70}%`,
+        left: `${5 + Math.random() * 80}%`,
+        duration: `${10 + Math.random() * 6}s`,
+        delay: `${Math.random() * 2}s`,
+        driftX: Math.random() * 16 - 8,
+        driftY: Math.random() * 16 - 8,
+        size: 72 + Math.random() * 28,
+      }));
+    };
+    return randomLeaves();
+  });
 
   return (
     <div

@@ -33,6 +33,8 @@ export default function App() {
   const goHome = () => setCurrentView('home');
   const goJourney = () => setCurrentView('journey');
 
+  const mainClass = currentView === 'journey' ? 'min-h-screen' : 'min-h-screen pt-6';
+
   return (
     <div className="font-[Poppins] min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
       <div className="fixed inset-0 bg-[var(--bg-gradient)] -z-50" />
@@ -41,7 +43,7 @@ export default function App() {
         <NavBar onNavigate={setCurrentView} themeMode={themeMode} onToggleTheme={toggleTheme} />
       )}
 
-      <main className="min-h-screen pt-6">
+      <main className={mainClass}>
         {currentView === 'home' && (
           <ErrorBoundary
             context="route-home"
