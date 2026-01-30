@@ -18,6 +18,7 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // global middleware (exception handling, logging)
+app.UseMiddleware<LoggingMiddleware>();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
