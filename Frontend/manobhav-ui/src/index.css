@@ -141,3 +141,22 @@ a {
 .slide-in-from-bottom-4 {
   animation-name: slideFromBottom;
 }
+
+/* CTA wave for hero button */
+@keyframes buttonWave {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.animate-wave {
+  animation: buttonWave 1.8s ease-out infinite;
+}
+
+/* Question change animation */
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-slide {
+  animation: fadeSlide 0.35s ease;
+}

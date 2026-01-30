@@ -161,7 +161,7 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
             style={{ width: '70vw', minWidth: '320px', maxWidth: '1100px', height: '50vh', minHeight: '260px', maxHeight: '620px', padding: '2.5rem 3em' }}
           >
             {current < questions.length ? (
-              <div className="w-full space-y-4 transition-all duration-300">
+              <div key={current} className="w-full space-y-4 animate-fade-slide">
                 <Text variant="h3" className="text-left">{questions[current].text}</Text>
                 <input
                   className="w-full bg-transparent border-0 border-b-2 border-b-[#9CAF88] rounded-none px-1 pb-3 text-lg outline-none focus:ring-0 focus:border-b-[#7A8C6A]"
