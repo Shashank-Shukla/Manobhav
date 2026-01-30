@@ -51,6 +51,15 @@ export function ProvidersPage({ onBackHome: _onBackHome }: ProvidersPageProps) {
   const [filter, setFilter] = useState('Any');
   const [sort, setSort] = useState('Availability');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [blobs] = useState(() => {
+    const count = Math.floor(Math.random() * 3) + 2; // 2-4 blobs
+    return Array.from({ length: count }).map(() => ({
+      top: `${10 + Math.random() * 70}%`,
+      left: `${5 + Math.random() * 80}%`,
+      size: `${4 + Math.random() * 4}em`,
+      color: Math.random() > 0.5 ? theme.colors.sage.light : theme.colors.powderBlue.light,
+    }));
+  });
   void _onBackHome;
 
   const providers = useMemo<Provider[]>(() => {
@@ -154,8 +163,27 @@ export function ProvidersPage({ onBackHome: _onBackHome }: ProvidersPageProps) {
       </div>
 
       {/* Populate container */}
-      <div className="flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4">
-        <Box width="60vw" className="overflow-auto px-6" sx={{ scrollbarWidth: 'thin' }}>
+      <div className="relative flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4">
+        {/* background blobs */}
+        {blobs.map((b, idx) => (
+          <div
+            key={idx}
+            className="absolute rounded-full opacity-60 blur-3xl"
+            style={{
+              top: b.top,
+              left: b.left,
+              width: b.size,
+              height: b.size,
+              background: b.color,
+            }}
+          />
+        ))}
+
+        <Box
+          width="60vw"
+          className="overflow-auto px-6 backdrop-blur-[60px] bg-white/60"
+          sx={{ scrollbarWidth: 'thin' }}
+        >
           <VStack align="stretch" spacing={4}>
             {filteredProviders.map((p) => (
               <Card
@@ -193,34 +221,40 @@ export function ProvidersPage({ onBackHome: _onBackHome }: ProvidersPageProps) {
 
                     <Divider orientation="vertical" />
 
-                    <VStack align="flex-start" spacing={2} minW="150px">
-                      <Text fontSize="sm" fontWeight="semibold" color="gray.700">
-                        Next available
-                      </Text>
-                      <Flex gap={2} wrap="wrap">
-                        {p.nextDates.slice(0, 10).map((d) => (
-                          <Button key={d} size="xs" variant="outline" colorScheme="green">
-                            {d}
-                          </Button>
-                        ))}
-                      </Flex>
-                    </VStack>
-                  </Flex>
-                </CardBody>
-              </Card>
-            ))}
+                      <VStack align="flex-start" spacing={2} minW="150px">
+                        <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+                          Next available
+                        </Text>
+                        <Flex gap={2} wrap="wrap">
+                          {p.nextDates.slice(0, 10).map((d) => (
+                            <Button key={d} size="xs" variant="outline" colorScheme="green">
+                              {d}
+                            </Button>
+                          ))}
+                        </Flex>
+                        <Divider />
+                        <Button size="xs" variant="outline" isDisabled>
+                          More dates
+                        </Button>
+                      </VStack>
+                    </Flex>
+                  </CardBody>
+                </Card>
+              ))}
           </VStack>
         </Box>
 
         <Box
           flex={1}
           minH="300px"
-          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl"
+          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[60px]"
           style={{ padding: '1.5rem' }}
         >
           {selected && (
             <VStack align="stretch" spacing={3} className="h-full">
-              <Avatar name={selected.name} bg={selected.avatarColor} color="white" size="2xl" />
+              <Flex justify="center">
+                <Avatar name={selected.name} bg={selected.avatarColor} color="white" boxSize="7rem" />
+              </Flex>
               <Box h="1rem" />
               <Text fontSize="md" color="gray.700" className="overflow-auto" style={{ maxHeight: '8rem' }}>
                 {selected.longDescription}
@@ -253,7 +287,13 @@ export function ProvidersPage({ onBackHome: _onBackHome }: ProvidersPageProps) {
                 </Text>
               </HStack>
               <Box h="0.8rem" />
-              <Button colorScheme="green">Proceed</Button>
+              <Button
+                bg={theme.colors.sage.DEFAULT}
+                _hover={{ bg: theme.colors.sage.dark }}
+                color="white"
+              >
+                Book appointment
+              </Button>
             </VStack>
           )}
         </Box>
