@@ -148,7 +148,9 @@ a {
   70% { transform: scale(1.6); opacity: 0; }
   100% { transform: scale(1.8); opacity: 0; }
 }
-.animate-wave {
+.animate-wave-outer {
+  width: 120%;
+  padding-top: 120%;
   animation: buttonWave 1.8s ease-out infinite;
 }
 
