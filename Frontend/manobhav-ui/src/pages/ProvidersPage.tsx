@@ -28,6 +28,7 @@ import { StarIcon } from '@chakra-ui/icons';
 
 type ProvidersPageProps = {
   onBackHome: () => void;
+  onBook: () => void;
 };
 
 type Provider = {
@@ -45,7 +46,7 @@ type Provider = {
 
 const colors = [theme.colors.sage.DEFAULT, theme.colors.powderBlue.DEFAULT, theme.colors.dustyRose.DEFAULT];
 
-export function ProvidersPage({ onBackHome: _onBackHome }: ProvidersPageProps) {
+export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPageProps) {
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState<'Any' | 'Next 7 days' | 'Next 30 days'>('Any');
   const [filter, setFilter] = useState('Any');
@@ -291,6 +292,7 @@ export function ProvidersPage({ onBackHome: _onBackHome }: ProvidersPageProps) {
                 bg={theme.colors.sage.DEFAULT}
                 _hover={{ bg: theme.colors.sage.dark }}
                 color="white"
+                onClick={onBook}
               >
                 Book appointment
               </Button>

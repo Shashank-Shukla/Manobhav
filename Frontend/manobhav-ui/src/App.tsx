@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { JourneyPage } from './pages/JourneyPage';
 import { ProvidersPage } from './pages/ProvidersPage';
+import { AppointmentPage } from './pages/AppointmentPage';
 import { ErrorPageGeneric } from './components/Error/ErrorPageGeneric';
 import { ErrorPage50x } from './components/Error/ErrorPage50x';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -12,7 +13,7 @@ import { theme } from './utils/theme';
 
 const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 
-export type View = 'home' | 'login' | 'journey' | 'providers';
+export type View = 'home' | 'login' | 'journey' | 'providers' | 'appointment';
 type ThemeMode = 'light' | 'dark';
 
 export default function App() {
@@ -34,8 +35,9 @@ export default function App() {
   const goHome = () => setCurrentView('home');
   const goJourney = () => setCurrentView('journey');
   const goProviders = () => setCurrentView('providers');
+  const goAppointment = () => setCurrentView('appointment');
 
-  const mainClass = currentView === 'journey' || currentView === 'providers' ? 'min-h-screen' : 'min-h-screen pt-6';
+  const mainClass = currentView === 'journey' || currentView === 'providers' || currentView === 'appointment' ? 'min-h-screen' : 'min-h-screen pt-6';
 
   return (
     <div className="font-[Poppins] min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
@@ -75,7 +77,15 @@ export default function App() {
             context="route-providers"
             fallback={<ErrorPageGeneric onHome={goHome} />}
           >
-            <ProvidersPage onBackHome={goHome} />
+            <ProvidersPage onBackHome={goHome} onBook={goAppointment} />
+          </ErrorBoundary>
+        )}
+        {currentView === 'appointment' && (
+          <ErrorBoundary
+            context="route-appointment"
+            fallback={<ErrorPageGeneric onHome={goHome} />}
+          >
+            <AppointmentPage />
           </ErrorBoundary>
         )}
       </main>
