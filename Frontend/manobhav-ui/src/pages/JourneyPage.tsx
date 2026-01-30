@@ -62,6 +62,13 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
       className="relative w-screen h-screen overflow-hidden bg-[var(--bg-gradient)] text-[color:var(--text-color)]"
       onWheel={handleWheel}
     >
+      {/* sage tint wash */}
+      <div className="pointer-events-none absolute bottom-0 right-0 w-1/2 h-1/2 opacity-20"
+        style={{
+          background: 'radial-gradient(120% 120% at 100% 100%, rgba(156,175,136,0.7), rgba(156,175,136,0))',
+        }}
+      />
+
       {/* floating leaves */}
       {floatingLeaves.map((leaf, idx) => (
         <svg
@@ -91,34 +98,49 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
       </div>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 animate-in fade-in">
-        <div className="flex gap-2 mb-8 justify-center">
+        <div className="flex items-center gap-4 mb-8">
+          <div
+            className="min-w-[56px] px-3 py-2 rounded-full text-sm font-semibold text-white"
+            style={{ backgroundColor: '#9CAF88' }}
+          >
+            {Math.min(current, questions.length)} done
+          </div>
           {Array.from({ length: totalSteps }).map((_, idx) => (
             <div
               key={idx}
               className={`w-10 h-2 rounded-full transition-all ${idx === current ? 'bg-[#9CAF88]' : 'bg-gray-200/70'}`}
             />
           ))}
+          <div
+            className="min-w-[56px] px-3 py-2 rounded-full text-sm font-semibold text-gray-700"
+            style={{ backgroundColor: '#E5E7EB', color: '#4B5563' }}
+          >
+            {questions.length} total
+          </div>
         </div>
 
         <div className="flex flex-col items-center gap-6">
           <button
             onClick={goPrev}
             disabled={atFirst}
-            className="p-3 rounded-full bg-white/70 backdrop-blur-xl shadow-2xl text-gray-600 disabled:opacity-30 hover:-translate-y-0.5 transition transform-gpu drop-shadow-xl"
+            className="p-3 rounded-full bg-white/70 backdrop-blur-xl shadow-2xl text-gray-600 disabled:opacity-30 hover:-translate-y-0.5 transition transform-gpu drop-shadow-xl border-0"
             aria-label="Previous question"
           >
             <ArrowUp size={22} />
           </button>
 
-          <div className="w-full max-w-2xl bg-white/92 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/30 p-10 min-h-[240px] flex items-center justify-center">
+          <div
+            className="bg-white/92 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/30 p-10 flex items-center justify-center"
+            style={{ width: '50vw', minWidth: '320px', maxWidth: '900px', height: '40vh', minHeight: '240px', maxHeight: '520px' }}
+          >
             {current < questions.length ? (
               <div className="w-full space-y-4">
                 <Text variant="h3" className="text-center">{questions[current].text}</Text>
                 <input
-                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-lg outline-none focus:border-[#9CAF88] focus:ring-2 focus:ring-[#9CAF88]/30 bg-white/85"
+                  className="w-full bg-transparent border-0 border-b-2 border-b-[#9CAF88] rounded-none px-1 pb-3 text-lg outline-none focus:ring-0 focus:border-b-[#7A8C6A]"
                   value={answers[current]}
                   onChange={(e) => onChange(e.target.value)}
-                  placeholder="Type your response..."
+                  placeholder="How do you feel about that?"
                 />
               </div>
             ) : (
@@ -132,7 +154,7 @@ export function JourneyPage({ onBackHome }: JourneyPageProps) {
           <button
             onClick={goNext}
             disabled={atLast}
-            className="p-3 rounded-full bg-white/70 backdrop-blur-xl shadow-2xl text-gray-600 disabled:opacity-30 hover:translate-y-0.5 transition transform-gpu drop-shadow-xl"
+            className="p-3 rounded-full bg-white/70 backdrop-blur-xl shadow-2xl text-gray-600 disabled:opacity-30 hover:translate-y-0.5 transition transform-gpu drop-shadow-xl border-0"
             aria-label="Next question"
           >
             <ArrowDown size={22} />
