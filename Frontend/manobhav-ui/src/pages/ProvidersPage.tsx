@@ -17,6 +17,15 @@ import {
   MenuButton,
   MenuItem,
   MenuList,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverHeader,
+  PopoverBody,
+  PopoverFooter,
+  PopoverArrow,
+  PopoverCloseButton,
+  Stack,
   Tag,
   Text,
   VStack,
@@ -48,7 +57,9 @@ const colors = [theme.colors.sage.DEFAULT, theme.colors.powderBlue.DEFAULT, them
 
 export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPageProps) {
   const [search, setSearch] = useState('');
-  const [dateRange, setDateRange] = useState<'Any' | 'Next 7 days' | 'Next 30 days'>('Any');
+  const todayIso = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [filter, setFilter] = useState('Any');
   const [sort, setSort] = useState('Availability');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -105,10 +116,21 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
     [filteredProviders, selectedId],
   );
 
+  const summary = useMemo(() => {
+    const parts: string[] = [];
+    const cleanSearch = search.trim();
+    if (cleanSearch) parts.push(`Searching "${cleanSearch}"`);
+    if (dateFrom && dateTo) parts.push(`Filtered by date ranging from ${dateFrom} to ${dateTo}`);
+    else if (dateFrom) parts.push(`Filtered by date starting ${dateFrom}`);
+    if (filter !== 'Any') parts.push(`Filtered by "${filter}"`);
+    if (sort !== 'Availability') parts.push(`Sorted by "${sort}"`);
+    return parts.join(' | ');
+  }, [search, dateFrom, dateTo, filter, sort]);
+
   return (
     <div className="h-screen bg-[var(--bg-gradient)] text-[color:var(--text-color)] flex flex-col overflow-hidden">
       {/* Query container */}
-      <div className="pt-24 pb-4 px-0 w-full">
+      <div className="pt-24 pb-4 px-0 w-full relative z-20">
         <div
           className="bg-white/85 backdrop-blur-xl shadow-xl border-t border-b border-white/40 px-6 py-5 space-y-4"
           style={{ backgroundColor: '#E6EDE8' }}
@@ -127,12 +149,43 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
               />
             </InputGroup>
 
-            <IconButton
-              aria-label="Date range"
-              icon={<CalendarRange size={18} />}
-              variant="outline"
-              onClick={() => setDateRange(dateRange === 'Any' ? 'Next 7 days' : 'Any')}
-            />
+            <Popover placement="bottom-start">
+              <PopoverTrigger>
+                <IconButton aria-label="Date range" icon={<CalendarRange size={18} />} variant="outline" />
+              </PopoverTrigger>
+              <PopoverContent width="280px">
+                <PopoverArrow />
+                <PopoverCloseButton />
+                <PopoverHeader fontWeight="bold">Select range</PopoverHeader>
+                <PopoverBody>
+                  <Stack spacing={3}>
+                    <div className="flex flex-col gap-1">
+                      <Text fontSize="sm">From</Text>
+                      <Input
+                        type="date"
+                        min={todayIso}
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Text fontSize="sm">To</Text>
+                      <Input
+                        type="date"
+                        min={dateFrom || todayIso}
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                      />
+                    </div>
+                  </Stack>
+                </PopoverBody>
+                <PopoverFooter>
+                  <Button size="sm" variant="ghost" onClick={() => { setDateFrom(''); setDateTo(''); }}>
+                    Clear
+                  </Button>
+                </PopoverFooter>
+              </PopoverContent>
+            </Popover>
 
             <Menu>
               <MenuButton as={IconButton} aria-label="Filter" icon={<Filter size={18} />} variant="outline" />
@@ -157,14 +210,16 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
             </Menu>
           </Flex>
 
-          <Text fontSize="sm" color="gray.600">
-            "{search || 'Any'}" from {dateRange} | {filter}. Sorting by: {sort}.
-          </Text>
+          {summary && (
+            <Text fontSize="sm" color="gray.600">
+              {summary}
+            </Text>
+          )}
         </div>
       </div>
 
       {/* Populate container */}
-      <div className="relative flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4">
+      <div className="relative flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4 z-10">
         {/* background blobs */}
         {blobs.map((b, idx) => (
           <div
