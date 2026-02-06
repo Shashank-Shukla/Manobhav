@@ -7,7 +7,10 @@ export function AppointmentPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-gradient)] text-[color:var(--text-color)]">
       <main className="flex-1 px-0 pb-0">
-        <div className="w-full h-[calc(100vh-2.5rem)] bg-black overflow-hidden shadow-2xl border border-white/10">
+        <div
+          className="w-full bg-black overflow-hidden shadow-2xl border border-white/10"
+          style={{ height: 'calc(100vh - 2.5rem)' }}
+        >
           <JitsiMeeting
             domain="meet.jit.si"
             roomName={roomName}
