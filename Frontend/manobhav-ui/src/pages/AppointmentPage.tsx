@@ -1,17 +1,17 @@
 import { useMemo } from 'react';
+import { JitsiMeeting } from '@jitsi/react-sdk';
 import { Logo } from '../shared/Logo';
 
 function formatNow() {
   const now = new Date();
-  const date = now
-    .toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    .replace(/\./g, '/'); // ensure DD/MM/YYYY
+  const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '/');
   const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   return `${date} | ${time}`;
 }
 
 export function AppointmentPage() {
   const meetingStamp = useMemo(() => formatNow(), []);
+  const roomName = useMemo(() => `manobhav-${crypto.randomUUID()}`, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-gradient)] text-[color:var(--text-color)]">
@@ -37,12 +37,21 @@ export function AppointmentPage() {
           </div>
         </div>
 
-        {/* Meeting container */}
+        {/* Jitsi meeting container */}
         <div className="flex flex-1 mt-8">
-          <div className="w-[80vw] bg-black text-white flex items-center justify-center">
-            <p className="text-center px-6">Video chat interface coming soon!</p>
+          <div className="w-[80vw] bg-black/90 text-white flex items-center justify-center">
+            <JitsiMeeting
+              domain="meet.jit.si"
+              roomName={roomName}
+              configOverwrite={{ startWithAudioMuted: true, startWithVideoMuted: false, prejoinPageEnabled: true }}
+              interfaceConfigOverwrite={{}}
+              getIFrameRef={(iframe) => {
+                if (iframe) iframe.style.height = '100%';
+              }}
+              loadingComponent={<div className="text-center">Loading meeting…</div>}
+            />
           </div>
-          <div className="flex-1 bg-white text-gray-800 flex items-center justify-center">
+          <div className="flex-1 bg-white text-gray-800 flex items-center justify-center border-l border-gray-200">
             <p className="text-center px-6">1-on-1 chat messaging coming soon!</p>
           </div>
         </div>
@@ -66,4 +75,3 @@ export function AppointmentPage() {
     </div>
   );
 }
-
