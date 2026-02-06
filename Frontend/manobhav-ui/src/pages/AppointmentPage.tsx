@@ -1,27 +1,13 @@
 import { useMemo } from 'react';
 import { JitsiMeeting } from '@jitsi/react-sdk';
-import { Logo } from '../shared/Logo';
 
 export function AppointmentPage() {
   const roomName = useMemo(() => `manobhav-${crypto.randomUUID()}`, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-gradient)] text-[color:var(--text-color)]">
-      {/* Navbar with centered logo inside trapezium */}
-      <header className="w-full flex justify-center pt-4 pb-6 sticky top-0 z-30">
-        <div
-          className="px-10 py-3 shadow-lg"
-          style={{
-            background: 'rgba(255,255,255,0.9)',
-            clipPath: 'polygon(12% 0, 88% 0, 100% 100%, 0 100%)',
-          }}
-        >
-          <Logo />
-        </div>
-      </header>
-
-      <main className="flex-1 px-4 pb-6">
-        <div className="w-full h-[70vh] bg-black/90 rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+      <main className="flex-1 px-0 pb-0">
+        <div className="w-full h-[calc(100vh-2.5rem)] bg-black overflow-hidden shadow-2xl border border-white/10">
           <JitsiMeeting
             domain="meet.jit.si"
             roomName={roomName}
