@@ -41,14 +41,14 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme, variant = 'glass'
   return (
     <>
       <nav
-        className={`${
+        className={
           variant === 'glass'
             ? `fixed left-0 right-0 z-50 flex justify-center transition-all duration-500 ${scrolled ? 'top-2' : 'top-6'}`
-            : 'relative w-full z-30 flex justify-center mt-4 mb-4'
-        }`}
+            : 'relative w-full z-30 flex justify-center top-0 left-0 right-0'
+        }
       >
         <div
-          className="relative flex items-center justify-between px-6 py-3 shadow-lg border transition-all duration-300 w-full"
+          className="relative flex items-center justify-between px-6 py-3 shadow-lg border transition-all duration-300 w-full max-w-[1200px] gap-4"
           style={
             variant === 'glass'
               ? {
@@ -70,13 +70,13 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme, variant = 'glass'
                   boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
                   width: '100%',
                   maxWidth: '100%',
-                  borderRadius: '0.75rem',
+                  borderRadius: 0,
                 }
           }
         >
           <Logo onClick={() => onNavigate('/')} />
 
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex flex-1 items-center justify-center gap-4">
             {navItems.map((item) => (
               <a
                 key={item.label}

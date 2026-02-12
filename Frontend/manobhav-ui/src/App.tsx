@@ -95,13 +95,7 @@ function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggle
                 </>
               )}
               {flow === 'journey' && (
-                <JourneyPage onBackHome={() => setFlow('home')} onFinish={() => setFlow('providers')} />
-              )}
-              {flow === 'providers' && (
-                <>
-                  <ProvidersPage onBackHome={() => setFlow('home')} onBook={handleBook} />
-                  {!hideFooter && <SimpleFooter />}
-                </>
+                <JourneyPage onBackHome={() => setFlow('home')} onFinish={() => navigate('/providers')} />
               )}
             </ErrorBoundary>
           }
