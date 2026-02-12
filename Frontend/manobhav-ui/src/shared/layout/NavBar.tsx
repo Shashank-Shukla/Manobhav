@@ -4,12 +4,13 @@ import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
 
 type NavBarProps = {
-  onNavigate: (view: 'home' | 'login' | 'journey' | 'providers') => void;
+  onNavigate: (path: string) => void;
   themeMode: 'light' | 'dark';
   onToggleTheme: () => void;
+  variant?: 'glass' | 'flat';
 };
 
-export function NavBar({ onNavigate, themeMode, onToggleTheme }: NavBarProps) {
+export function NavBar({ onNavigate, themeMode, onToggleTheme, variant = 'glass' }: NavBarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -33,30 +34,47 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme }: NavBarProps) {
   };
 
   const handleNavigateHomeAndScroll = (id: string) => {
-    onNavigate('home');
+    onNavigate('/');
     setTimeout(() => scrollToId(id), 100);
   };
 
   return (
     <>
-      <nav className={`fixed left-0 right-0 z-50 flex justify-center transition-all duration-500 ${scrolled ? 'top-2' : 'top-6'}`}>
+      <nav
+        className={`${
+          variant === 'glass'
+            ? `fixed left-0 right-0 z-50 flex justify-center transition-all duration-500 ${scrolled ? 'top-2' : 'top-6'}`
+            : 'relative w-full z-30 flex justify-center mt-4 mb-4'
+        }`}
+      >
         <div
-          className="relative flex items-center justify-between px-6 py-3 shadow-lg border transition-all duration-300"
-          style={{
-            background:
-              themeMode === 'dark'
-                ? 'linear-gradient(120deg, rgba(30,41,59,0.82), rgba(17,24,39,0.78))'
-                : 'linear-gradient(120deg, rgba(230,237,232,0.85), rgba(255,255,255,0.75))',
-            borderColor: themeMode === 'dark' ? 'rgba(148,163,184,0.35)' : 'rgba(255,255,255,0.5)',
-            boxShadow: themeMode === 'dark' ? '0 20px 60px rgba(0,0,0,0.25)' : '0 20px 60px rgba(0,0,0,0.06)',
-            backdropFilter: 'blur(18px) saturate(140%)',
-            WebkitBackdropFilter: 'blur(18px) saturate(140%)',
-            width: 'clamp(340px, 95%, 1200px)',
-            maxWidth: '75%',
-            borderRadius: '9999px',
-          }}
+          className="relative flex items-center justify-between px-6 py-3 shadow-lg border transition-all duration-300 w-full"
+          style={
+            variant === 'glass'
+              ? {
+                  background:
+                    themeMode === 'dark'
+                      ? 'linear-gradient(120deg, rgba(30,41,59,0.82), rgba(17,24,39,0.78))'
+                      : 'linear-gradient(120deg, rgba(230,237,232,0.85), rgba(255,255,255,0.75))',
+                  borderColor: themeMode === 'dark' ? 'rgba(148,163,184,0.35)' : 'rgba(255,255,255,0.5)',
+                  boxShadow: themeMode === 'dark' ? '0 20px 60px rgba(0,0,0,0.25)' : '0 20px 60px rgba(0,0,0,0.06)',
+                  backdropFilter: 'blur(18px) saturate(140%)',
+                  WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+                  width: 'clamp(340px, 95%, 1200px)',
+                  maxWidth: '75%',
+                  borderRadius: '9999px',
+                }
+              : {
+                  background: '#ffffff',
+                  borderColor: '#E5E7EB',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                  width: '100%',
+                  maxWidth: '100%',
+                  borderRadius: '0.75rem',
+                }
+          }
         >
-          <Logo onClick={() => onNavigate('home')} />
+          <Logo onClick={() => onNavigate('/')} />
 
           <div className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
@@ -66,7 +84,7 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme }: NavBarProps) {
                 onClick={(e) => {
                   e.preventDefault();
                   if (item.type === 'route') {
-                    onNavigate('providers');
+                    onNavigate('/providers');
                   } else {
                     handleNavigateHomeAndScroll(item.target);
                   }
@@ -115,7 +133,7 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme }: NavBarProps) {
                   e.preventDefault();
                   setMobileOpen(false);
                   if (item.type === 'route') {
-                    onNavigate('providers');
+                    onNavigate('/providers');
                   } else {
                     handleNavigateHomeAndScroll(item.target);
                   }

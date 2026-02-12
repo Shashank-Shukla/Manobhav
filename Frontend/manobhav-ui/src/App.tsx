@@ -18,10 +18,13 @@ import { ErrorPage40x } from './components/Error/ErrorPage40x';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { theme } from './utils/theme';
 import { Button } from './shared/primitives/Button';
+import { SimpleFooter } from './shared/layout/SimpleFooter';
+import { ProvidersPage } from './pages/ProvidersPage';
 
 const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 
 type ThemeMode = 'light' | 'dark';
+type FlowStep = 'home' | 'journey' | 'providers';
 
 export default function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
@@ -52,23 +55,61 @@ export default function App() {
 function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggleTheme: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const hideNav = location.pathname === '/journey' || location.pathname === '/appointment';
-  const hideFooter = hideNav;
+  const [flow, setFlow] = useState<FlowStep>('home');
+
+  useEffect(() => {
+    if (location.pathname !== '/') {
+      setFlow('home');
+    }
+  }, [location.pathname]);
+
+  const hideNav =
+    location.pathname === '/journey' ||
+    location.pathname === '/appointment' ||
+    (location.pathname === '/' && flow === 'journey');
+
+  const hideFooter =
+    hideNav ||
+    location.pathname === '/appointment';
+
+  const navVariant = location.pathname === '/providers' || (location.pathname === '/' && flow === 'providers') ? 'flat' : 'glass';
+
+  const handleBook = () => {
+    const loggedIn = sessionStorage.getItem('manobhav-logged-in') === 'true';
+    if (!loggedIn) {
+      navigate('/login');
+    } else {
+      navigate('/appointment');
+    }
+  };
 
   return (
     <>
-      {!hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} onToggleTheme={onToggleTheme} />}
+      {!hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} onToggleTheme={onToggleTheme} variant={navVariant} />}
 
       <Routes>
         <Route
           path="/"
           element={
             <ErrorBoundary context="route-home" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-              <HomePage onStartJourney={() => navigate('/journey')} />
-              <Suspense fallback={null}>
-                <MoodSearchBar onReachHuman={() => navigate('/journey')} />
-              </Suspense>
-              {!hideFooter && <Footer />}
+              {flow === 'home' && (
+                <>
+                  <HomePage onStartJourney={() => setFlow('journey')} />
+                  <Suspense fallback={null}>
+                    <MoodSearchBar onReachHuman={() => setFlow('journey')} />
+                  </Suspense>
+                  {!hideFooter && <Footer />}
+                </>
+              )}
+              {flow === 'journey' && (
+                <JourneyPage onBackHome={() => setFlow('home')} onFinish={() => setFlow('providers')} />
+              )}
+              {flow === 'providers' && (
+                <>
+                  <ProvidersPage onBackHome={() => setFlow('home')} onBook={handleBook} />
+                  {!hideFooter && <SimpleFooter />}
+                </>
+              )}
             </ErrorBoundary>
           }
         />
@@ -96,8 +137,8 @@ function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggle
           path="/providers"
           element={
             <ErrorBoundary context="route-providers" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-              <ProvidersPage onBackHome={() => navigate('/')} onBook={() => navigate('/appointment')} />
-              {!hideFooter && <Footer />}
+              <ProvidersPage onBackHome={() => navigate('/')} onBook={handleBook} />
+              {!hideFooter && <SimpleFooter />}
             </ErrorBoundary>
           }
         />
@@ -140,9 +181,11 @@ function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggle
         <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
       </Routes>
 
-      {!hideFooter && location.pathname !== '/' && location.pathname !== '/providers' && location.pathname !== '/login' && (
-        <Footer />
-      )}
+      {!hideFooter &&
+        location.pathname !== '/' &&
+        location.pathname !== '/providers' &&
+        location.pathname !== '/login' &&
+        location.pathname !== '/appointment' && <Footer />}
     </>
   );
 }
