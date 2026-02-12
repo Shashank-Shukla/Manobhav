@@ -64,7 +64,7 @@ function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggle
   const hideFooter =
     hideNav || location.pathname === '/appointment';
 
-  const navVariant = 'glass';
+  const navVariant = location.pathname === '/providers' ? 'flat' : 'glass';
 
   const handleBook = () => {
     const loggedIn = sessionStorage.getItem('manobhav-logged-in') === 'true';
