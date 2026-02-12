@@ -54,17 +54,17 @@ function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggle
   const location = useLocation();
   const navigate = useNavigate();
   const [flow, setFlow] = useState<FlowStep>('home');
+  const isHomeFlow = location.pathname === '/';
 
   const hideNav =
     location.pathname === '/journey' ||
     location.pathname === '/appointment' ||
-    (location.pathname === '/' && flow === 'journey');
+    (isHomeFlow && flow === 'journey');
 
   const hideFooter =
-    hideNav ||
-    location.pathname === '/appointment';
+    hideNav || location.pathname === '/appointment';
 
-  const navVariant = location.pathname === '/providers' || (location.pathname === '/' && flow === 'providers') ? 'flat' : 'glass';
+  const navVariant = location.pathname === '/providers' ? 'flat' : 'glass';
 
   const handleBook = () => {
     const loggedIn = sessionStorage.getItem('manobhav-logged-in') === 'true';
