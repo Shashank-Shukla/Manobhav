@@ -129,17 +129,16 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
 
   return (
     <div
-      className="flex flex-col bg-[var(--bg-gradient)] text-[color:var(--text-color)] overflow-hidden h-screen"
+      className="flex flex-col text-[color:var(--text-color)] overflow-hidden h-screen"
       style={{ height: 'calc(100vh - 4.5rem)' }}
     >
       {/* Query container */}
-      <div className="pb-4 px-0 w-full relative z-20 flex-none">
+      <div className="pb-4 px-0 w-full relative z-20 flex-none bg-[#F9FAFB]">
         <div
-          className="bg-white/85 backdrop-blur-xl shadow-xl border-t border-b border-white/40 px-6 py-5 space-y-4"
-          style={{ backgroundColor: '#E6EDE8' }}
+          className="bg-white/90 backdrop-blur-xl shadow-xl border border-white/60 px-6 py-5 space-y-4"
         >
           <Flex align="center" gap={3} wrap="wrap">
-            <InputGroup flex={1} maxW="70%">
+            <InputGroup flex={1} maxW="70%" boxShadow="sm" border="1px solid rgba(0,0,0,0.05)" rounded="md">
               <InputLeftElement pointerEvents="none">
                 <Search size={16} color="#9CA3AF" />
               </InputLeftElement>
@@ -222,7 +221,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
       </div>
 
       {/* Populate container */}
-      <div className="relative flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4 z-10 min-h-0">
+      <div className="relative flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4 z-10 min-h-0 bg-[#F9FAFB]">
         {/* background blobs */}
         {blobs.map((b, idx) => (
           <div
