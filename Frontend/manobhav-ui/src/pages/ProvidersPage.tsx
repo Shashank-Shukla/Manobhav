@@ -130,7 +130,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
   return (
     <div className="h-screen bg-[var(--bg-gradient)] text-[color:var(--text-color)] flex flex-col overflow-hidden">
       {/* Query container */}
-      <div className="pt-24 pb-4 px-0 w-full relative z-20">
+      <div className="pb-4 px-0 w-full relative z-20">
         <div
           className="bg-white/85 backdrop-blur-xl shadow-xl border-t border-b border-white/40 px-6 py-5 space-y-4"
           style={{ backgroundColor: '#E6EDE8' }}
