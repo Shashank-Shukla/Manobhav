@@ -130,7 +130,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
   return (
     <div className="h-screen bg-[var(--bg-gradient)] text-[color:var(--text-color)] flex flex-col overflow-hidden">
       {/* Query container */}
-      <div className="pb-4 px-0 w-full relative z-20">
+      <div className="pb-4 px-0 w-full relative z-20 flex-none">
         <div
           className="bg-white/85 backdrop-blur-xl shadow-xl border-t border-b border-white/40 px-6 py-5 space-y-4"
           style={{ backgroundColor: '#E6EDE8' }}
@@ -219,7 +219,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
       </div>
 
       {/* Populate container */}
-      <div className="relative flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4 z-10">
+      <div className="relative flex flex-1 gap-6 mt-8 px-0 overflow-hidden pb-4 z-10 min-h-0">
         {/* background blobs */}
         {blobs.map((b, idx) => (
           <div
@@ -237,7 +237,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
 
         <Box
           width="60vw"
-          className="overflow-auto px-6 backdrop-blur-[60px] bg-white/60"
+          className="overflow-auto px-6 backdrop-blur-[60px] bg-white/60 h-full min-h-0"
           sx={{ scrollbarWidth: 'thin' }}
         >
           <VStack align="stretch" spacing={4}>
@@ -303,7 +303,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
         <Box
           flex={1}
           minH="300px"
-          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[60px]"
+          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[60px] h-full min-h-0 overflow-auto"
           style={{ padding: '1.5rem' }}
         >
           {selected && (
