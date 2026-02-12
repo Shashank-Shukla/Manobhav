@@ -26,7 +26,6 @@ export function AppointmentPage() {
                 iframe.style.width = '100%';
               }
             }}
-            loadingComponent={<div className="text-center text-white py-6">Loading meeting…</div>}
           />
         </div>
       </main>
