@@ -19,7 +19,6 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { theme } from './utils/theme';
 import { Button } from './shared/primitives/Button';
 import { SimpleFooter } from './shared/layout/SimpleFooter';
-import { ProvidersPage } from './pages/ProvidersPage';
 
 const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 
@@ -56,12 +55,6 @@ function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggle
   const location = useLocation();
   const navigate = useNavigate();
   const [flow, setFlow] = useState<FlowStep>('home');
-
-  useEffect(() => {
-    if (location.pathname !== '/') {
-      setFlow('home');
-    }
-  }, [location.pathname]);
 
   const hideNav =
     location.pathname === '/journey' ||
