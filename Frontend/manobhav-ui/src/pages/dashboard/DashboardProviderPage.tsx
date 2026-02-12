@@ -26,3 +26,4 @@ export function DashboardProviderPage() {
   );
 }
 
+export default DashboardProviderPage;

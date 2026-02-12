@@ -25,3 +25,4 @@ export function OnboardingPatientPage({ onBack }: Props) {
   );
 }
 
+export default OnboardingPatientPage;

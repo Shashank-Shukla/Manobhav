@@ -25,3 +25,4 @@ export function OnboardingProviderPage({ onBack }: Props) {
   );
 }
 
+export default OnboardingProviderPage;

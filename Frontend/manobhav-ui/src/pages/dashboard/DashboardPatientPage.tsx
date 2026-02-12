@@ -26,3 +26,4 @@ export function DashboardPatientPage() {
   );
 }
 
+export default DashboardPatientPage;

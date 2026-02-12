@@ -368,3 +368,5 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
     </div>
   );
 }
+
+export default ProvidersPage;

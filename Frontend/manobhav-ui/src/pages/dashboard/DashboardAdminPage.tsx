@@ -14,3 +14,4 @@ export function DashboardAdminPage() {
   );
 }
 
+export default DashboardAdminPage;

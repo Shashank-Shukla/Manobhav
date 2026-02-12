@@ -6,10 +6,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom'],
-          chakra: ['@chakra-ui/react', '@chakra-ui/icons', '@emotion/react', '@emotion/styled', 'framer-motion'],
-          jitsi: ['@jitsi/react-sdk'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@jitsi/react-sdk')) return 'jitsi';
+            if (id.includes('@chakra-ui')) return 'chakra';
+            if (id.includes('@emotion') || id.includes('framer-motion')) return 'chakra';
+            if (id.includes('react')) return 'react';
+          }
+          return undefined;
         },
       },
     },

@@ -36,3 +36,5 @@ export function AppointmentPage() {
     </div>
   );
 }
+
+export default AppointmentPage;
