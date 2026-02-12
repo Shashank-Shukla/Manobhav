@@ -18,7 +18,6 @@ import { ErrorPage40x } from './components/Error/ErrorPage40x';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { theme } from './utils/theme';
 import { Button } from './shared/primitives/Button';
-import { SimpleFooter } from './shared/layout/SimpleFooter';
 
 const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 
@@ -125,7 +124,6 @@ function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggle
           element={
             <ErrorBoundary context="route-providers" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
               <ProvidersPage onBackHome={() => navigate('/')} onBook={handleBook} />
-              {!hideFooter && <SimpleFooter />}
             </ErrorBoundary>
           }
         />
