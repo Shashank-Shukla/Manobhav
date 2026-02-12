@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { NavBar } from './shared/layout/NavBar';
 import { Footer } from './shared/layout/Footer';
 import { HomePage } from './pages/HomePage';
@@ -45,6 +46,7 @@ export default function App() {
         <div className="fixed inset-0 bg-[var(--bg-gradient)] -z-50" />
         <AppShell themeMode={themeMode} onToggleTheme={toggleTheme} />
         <style>{`:root { font-family: ${theme.font}; }`}</style>
+        <Analytics />
       </div>
     </BrowserRouter>
   );
