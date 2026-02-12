@@ -128,7 +128,10 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
   }, [search, dateFrom, dateTo, filter, sort]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-[var(--bg-gradient)] text-[color:var(--text-color)] overflow-hidden h-full">
+    <div
+      className="flex flex-col bg-[var(--bg-gradient)] text-[color:var(--text-color)] overflow-hidden h-screen"
+      style={{ height: 'calc(100vh - 4.5rem)' }}
+    >
       {/* Query container */}
       <div className="pb-4 px-0 w-full relative z-20 flex-none">
         <div
