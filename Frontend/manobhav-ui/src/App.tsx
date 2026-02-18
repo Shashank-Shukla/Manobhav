@@ -26,19 +26,15 @@ type ThemeMode = 'light' | 'dark';
 type FlowStep = 'home' | 'journey' | 'providers';
 
 export default function App() {
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    const stored = localStorage.getItem('manobhav-theme');
-    if (stored === 'light' || stored === 'dark') return stored;
-    return 'light';
-  });
+  const [themeMode] = useState<ThemeMode>('light');
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', themeMode);
-    document.body.classList.toggle('dark', themeMode === 'dark');
-    localStorage.setItem('manobhav-theme', themeMode);
-  }, [themeMode]);
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.body.classList.remove('dark');
+    localStorage.setItem('manobhav-theme', 'light');
+  }, []);
 
-  const toggleTheme = () => setThemeMode((m) => (m === 'light' ? 'dark' : 'light'));
+  const toggleTheme = () => undefined;
 
   return (
     <BrowserRouter>

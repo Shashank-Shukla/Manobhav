@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, Menu, Moon, Sun, X } from 'lucide-react';
+import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
 
 type NavBarProps = {
   onNavigate: (path: string) => void;
   themeMode: 'light' | 'dark';
-  onToggleTheme: () => void;
   variant?: 'glass' | 'flat';
 };
 
-export function NavBar({ onNavigate, themeMode, onToggleTheme, variant = 'glass' }: NavBarProps) {
+export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -98,19 +97,7 @@ export function NavBar({ onNavigate, themeMode, onToggleTheme, variant = 'glass'
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={onToggleTheme}
-              className="p-2 rounded-full bg-white/80 text-slate-700 shadow-sm border border-white/50 hover:-translate-y-0.5 transition-all"
-              style={{
-                backgroundColor: themeMode === 'dark' ? 'rgba(30,41,59,0.6)' : 'rgba(255,255,255,0.8)',
-                color: themeMode === 'dark' ? '#E5E7EB' : '#1F2937',
-                borderColor: themeMode === 'dark' ? 'rgba(148,163,184,0.4)' : 'rgba(255,255,255,0.6)',
-              }}
-              aria-label="Toggle theme"
-            >
-              {themeMode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+          <div className="hidden md:flex items-center gap-4">
             <Button variant="nav" onClick={() => onNavigate('login')}>
               Login
             </Button>
