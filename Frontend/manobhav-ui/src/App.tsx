@@ -34,13 +34,11 @@ export default function App() {
     localStorage.setItem('manobhav-theme', 'light');
   }, []);
 
-  const toggleTheme = () => undefined;
-
   return (
     <BrowserRouter>
       <div className="font-[Poppins] min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
         <div className="fixed inset-0 bg-[var(--bg-gradient)] -z-50" />
-        <AppShell themeMode={themeMode} onToggleTheme={toggleTheme} />
+        <AppShell themeMode={themeMode} />
         <style>{`:root { font-family: ${theme.font}; }`}</style>
         <Analytics />
       </div>
@@ -48,7 +46,7 @@ export default function App() {
   );
 }
 
-function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggleTheme: () => void }) {
+function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [flow, setFlow] = useState<FlowStep>('home');
@@ -75,7 +73,7 @@ function AppShell({ themeMode, onToggleTheme }: { themeMode: ThemeMode; onToggle
 
   return (
     <>
-      {!hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} onToggleTheme={onToggleTheme} variant={navVariant} />}
+      {!hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} variant={navVariant} />}
 
       <Routes>
         <Route
