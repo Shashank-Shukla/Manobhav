@@ -63,6 +63,8 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
   const [filter, setFilter] = useState('Any');
   const [sort, setSort] = useState('Availability');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [showCalendar, setShowCalendar] = useState(false);
   const [blobs] = useState(() => {
     const count = Math.floor(Math.random() * 3) + 2; // 2-4 blobs
     return Array.from({ length: count }).map(() => ({
@@ -285,13 +287,27 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                         </Text>
                         <Flex gap={2} wrap="wrap">
                           {p.nextDates.slice(0, 10).map((d) => (
-                            <Button key={d} size="xs" variant="outline" colorScheme="green">
+                            <Button
+                              key={d}
+                              size="xs"
+                              variant="outline"
+                              colorScheme="green"
+                              onClick={() => {
+                                setSelectedDate(d);
+                                setShowCalendar(false);
+                              }}
+                            >
                               {d}
                             </Button>
                           ))}
                         </Flex>
                         <Divider />
-                        <Button size="xs" variant="outline" isDisabled>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => setShowCalendar(true)}
+                          className="transition-all duration-300 ease-in-out"
+                        >
                           More dates
                         </Button>
                       </VStack>
@@ -305,10 +321,10 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
         <Box
           flex={1}
           minH="300px"
-          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[60px] h-full min-h-0 overflow-auto"
+          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[60px] h-full min-h-0 overflow-auto transition-all duration-300 ease-in-out"
           style={{ padding: '1.5rem' }}
         >
-          {selected && (
+          {selected && !showCalendar && (
             <VStack align="stretch" spacing={3} className="h-full">
               <Flex justify="center">
                 <Avatar name={selected.name} bg={selected.avatarColor} color="white" boxSize="7rem" />
@@ -350,8 +366,28 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                 _hover={{ bg: theme.colors.sage.dark }}
                 color="white"
                 onClick={onBook}
+                isDisabled={!selectedDate}
+                opacity={selectedDate ? 1 : 0.6}
+                cursor={selectedDate ? 'pointer' : 'not-allowed'}
               >
                 Book appointment
+              </Button>
+            </VStack>
+          )}
+          {selected && showCalendar && (
+            <VStack align="stretch" spacing={4} className="h-full transition-all duration-300 ease-in-out">
+              <Text variant="h3">Choose a date</Text>
+              <Input
+                type="date"
+                min={todayIso}
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  if (e.target.value) setShowCalendar(false);
+                }}
+              />
+              <Button variant="secondary" onClick={() => setShowCalendar(false)}>
+                Cancel
               </Button>
             </VStack>
           )}
