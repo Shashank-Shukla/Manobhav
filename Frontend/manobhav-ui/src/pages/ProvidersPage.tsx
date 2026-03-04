@@ -369,6 +369,11 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                 isDisabled={!selectedDate}
                 opacity={selectedDate ? 1 : 0.6}
                 cursor={selectedDate ? 'pointer' : 'not-allowed'}
+                _disabled={{
+                  bg: theme.colors.grey.DEFAULT,
+                  color: '#FFFFFF',
+                  borderColor: theme.colors.grey.dark,
+                }}
               >
                 Book appointment
               </Button>
