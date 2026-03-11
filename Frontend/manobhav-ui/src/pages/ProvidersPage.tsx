@@ -6,7 +6,6 @@ import {
   Card,
   CardBody,
   CardHeader,
-  Divider,
   Flex,
   HStack,
   IconButton,
@@ -60,7 +59,7 @@ type Provider = {
   rating: number;
 };
 
-const colors = [theme.colors.sage.DEFAULT, theme.colors.powderBlue.DEFAULT, theme.colors.dustyRose.DEFAULT];
+const defaultThemeColors = [theme.colors.sage.DEFAULT, theme.colors.powderBlue.DEFAULT, theme.colors.dustyRose.DEFAULT];
 
 export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPageProps) {
   const [search, setSearch] = useState('');
@@ -75,12 +74,18 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
   const [showCalendar, setShowCalendar] = useState(false);
   const [tempCalendarIso, setTempCalendarIso] = useState<string>('');
   const [blobs] = useState(() => {
-    const count = Math.floor(Math.random() * 3) + 2; // 2-4 blobs
+    const darkPalette = [
+      theme.colors.sage.dark,
+      theme.colors.dustyRose.dark,
+      theme.colors.powderBlue.dark,
+      theme.colors.grey.dark,
+    ];
+    const count = Math.floor(Math.random() * 10);
     return Array.from({ length: count }).map(() => ({
       top: `${10 + Math.random() * 70}%`,
       left: `${5 + Math.random() * 80}%`,
       size: `${4 + Math.random() * 4}em`,
-      color: Math.random() > 0.5 ? theme.colors.sage.light : theme.colors.powderBlue.light,
+      color: darkPalette[Math.floor(Math.random() * darkPalette.length)],
     }));
   });
   void _onBackHome;
@@ -105,7 +110,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
         summary: p.shortDescription,
         longDescription: p.longDescription,
         specializations: p.specialities,
-        avatarColor: colors[idx % colors.length],
+        avatarColor: defaultThemeColors[idx % defaultThemeColors.length],
         nextDates,
         sessions: 10 + idx * 2,
         rating: 4.2 + (idx % 3) * 0.2, // 4.2, 4.4, 4.6
@@ -238,7 +243,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
         {blobs.map((b, idx) => (
           <div
             key={idx}
-            className="absolute rounded-full opacity-60 blur-3xl"
+            className="absolute rounded-full opacity-80 blur-[3em]"
             style={{
               top: b.top,
               left: b.left,
@@ -251,9 +256,10 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
 
         <Box
           width="60vw"
-          className="overflow-auto px-6 backdrop-blur-[60px] bg-white/60 h-full min-h-0"
+          className="overflow-auto px-6 backdrop-blur-[8px] h-full min-h-0"
           sx={{ scrollbarWidth: 'thin' }}
         >
+          {/* Providers List */} 
           <VStack align="stretch" spacing={4}>
             {filteredProviders.map((p) => (
               <Card
@@ -289,13 +295,11 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                       </HStack>
                     </Flex>
 
-                    <Divider orientation="vertical" />
-
-                      <VStack align="flex-start" spacing={2} minW="150px">
-                        <Text fontSize="sm" fontWeight="semibold" color="gray.700">
-                          Next available
-                        </Text>
-                        <Flex gap={2} wrap="wrap">
+                    <VStack align="flex-start" spacing={2} minW="150px">
+                      <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+                        Next available
+                      </Text>
+                      <Flex gap={2} wrap="wrap">
                         {p.nextDates.slice(0, 10).map((d) => (
                           <Button
                             key={d.iso}
@@ -311,8 +315,8 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                             {d.display}
                           </Button>
                         ))}
-                        </Flex>
-                        <Divider />
+                      </Flex>
+                      <Flex justify="flex-end" w="100%">
                         <Button
                           size="xs"
                           variant="outline"
@@ -321,20 +325,22 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                         >
                           More dates
                         </Button>
-                      </VStack>
-                    </Flex>
-                  </CardBody>
-                </Card>
-              ))}
+                      </Flex>
+                    </VStack>
+                  </Flex>
+                </CardBody>
+              </Card>
+            ))}
           </VStack>
         </Box>
 
         <Box
           flex={1}
           minH="18rem"
-          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[60px] h-full min-h-0 overflow-auto transition-all duration-700 ease-in-out"
+          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[8px] h-full min-h-0 overflow-auto transition-all duration-700 ease-in-out"
           style={{ padding: '1.5rem' }}
         >
+          {/* Provider Details */}
           <MUIThemeProvider theme={muiCalendarTheme}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               {selected && !showCalendar && (
@@ -407,7 +413,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                     className="flex items-start justify-center"
                   >
                     <StaticDatePicker
-                      displayStaticWrapperAs="desktop"
+                      displayStaticWrapperAs="mobile"
                       disablePast
                       value={tempCalendarIso ? dayjs(tempCalendarIso) : selectedDateIso ? dayjs(selectedDateIso) : dayjs()}
                       onChange={(value: Dayjs | null) => {
@@ -427,19 +433,55 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                       }}
                       sx={{
                         width: '100%',
-                        maxWidth: '32rem',
-                        minHeight: '22rem',
+                        maxWidth: '36rem',
+                        minHeight: '26rem',
                         '.MuiPickersToolbar-root': {
                           color: '#ffffff',
-                          borderRadius: '1rem',
+                          borderRadius: '0.9rem',
                           border: '1px solid rgba(255,255,255,0.35)',
                           backgroundColor: theme.colors.sage.DEFAULT,
+                          minHeight: '60px',
+                          padding: '0.75rem 1rem',
                         },
                         '.MuiPickersLayout-root': {
-                          padding: '0.5rem 0.75rem',
+                          padding: '0.35rem 0.75rem 0.75rem',
                         },
                         '.MuiDateCalendar-root': {
                           width: '100%',
+                          fontSize: '1.05rem',
+                        },
+                        '.MuiDayCalendar-weekDayLabel': {
+                          fontSize: '1.1rem',
+                          fontWeight: 700,
+                          color: theme.colors.sage.dark,
+                          textTransform: 'uppercase',
+                          padding: '0.2rem 0',
+                          minWidth: '2.5rem',
+                          textAlign: 'center',
+                          margin: '0 0.2rem',
+                        },
+                        '.MuiPickersCalendarHeader-label': {
+                          fontSize: '1.05rem',
+                          fontWeight: 700,
+                        },
+                        '.MuiDayCalendar-weekContainer': {
+                          justifyContent: 'center',
+                          gap: '0.25rem',
+                        },
+                        '.MuiPickersCalendarHeader-root': {
+                          padding: '0 0.75rem',
+                        },
+                        '.MuiDayCalendar-header': {
+                          justifyContent: 'space-around',
+                        },
+                        '.MuiPickersLayout-contentWrapper': {
+                          padding: '0.25rem 0.25rem 0.75rem',
+                        },
+                        '.MuiPickersSlideTransition-root': {
+                          minHeight: '18rem',
+                        },
+                        '.MuiDayCalendar-weekContainer': {
+                          justifyContent: 'space-around',
                         },
                         '.MuiPickersDay-root': {
                           '&.Mui-selected': {
