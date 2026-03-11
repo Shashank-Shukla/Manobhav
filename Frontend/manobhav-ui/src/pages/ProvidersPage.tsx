@@ -34,6 +34,13 @@ import { CalendarRange, Filter, Search, SortDesc } from 'lucide-react';
 import { theme } from '../utils/theme';
 import providersData from '../assets/providers.json';
 import { StarIcon } from '@chakra-ui/icons';
+import { ThemeProvider as MUIThemeProvider } from '@mui/material/styles';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
+import { PickersDay } from '@mui/x-date-pickers/PickersDay';
+import dayjs, { Dayjs } from 'dayjs';
+import { muiCalendarTheme } from '../utils/theme';
 
 type ProvidersPageProps = {
   onBackHome: () => void;
@@ -46,7 +53,7 @@ type Provider = {
   summary: string;
   specializations: string[];
   avatarColor: string;
-  nextDates: string[];
+  nextDates: { display: string; iso: string }[];
   longDescription: string;
   shortDescription: string;
   sessions: number;
@@ -63,8 +70,10 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
   const [filter, setFilter] = useState('Any');
   const [sort, setSort] = useState('Availability');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDateLabel, setSelectedDateLabel] = useState<string>('');
+  const [selectedDateIso, setSelectedDateIso] = useState<string>('');
   const [showCalendar, setShowCalendar] = useState(false);
+  const [tempCalendarIso, setTempCalendarIso] = useState<string>('');
   const [blobs] = useState(() => {
     const count = Math.floor(Math.random() * 3) + 2; // 2-4 blobs
     return Array.from({ length: count }).map(() => ({
@@ -86,9 +95,10 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
       availabilities: string[];
       avatarUrl: string;
     }[]).map((p, idx) => {
-      const nextDates = (p.availabilities as string[]).map((d: string) =>
-        new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      );
+      const nextDates = (p.availabilities as string[]).map((d: string) => ({
+        display: new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        iso: new Date(d).toISOString().split('T')[0],
+      }));
       return {
         id: p.id,
         name: p.name,
@@ -286,20 +296,21 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                           Next available
                         </Text>
                         <Flex gap={2} wrap="wrap">
-                          {p.nextDates.slice(0, 10).map((d) => (
-                            <Button
-                              key={d}
-                              size="xs"
-                              variant="outline"
-                              colorScheme="green"
-                              onClick={() => {
-                                setSelectedDate(d);
-                                setShowCalendar(false);
-                              }}
-                            >
-                              {d}
-                            </Button>
-                          ))}
+                        {p.nextDates.slice(0, 10).map((d) => (
+                          <Button
+                            key={d.iso}
+                            size="xs"
+                            variant="outline"
+                            colorScheme="green"
+                            onClick={() => {
+                              setSelectedDateLabel(d.display);
+                              setSelectedDateIso(d.iso);
+                              setShowCalendar(false);
+                            }}
+                          >
+                            {d.display}
+                          </Button>
+                        ))}
                         </Flex>
                         <Divider />
                         <Button
@@ -320,82 +331,166 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
 
         <Box
           flex={1}
-          minH="300px"
-          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[60px] h-full min-h-0 overflow-auto transition-all duration-300 ease-in-out"
+          minH="18rem"
+          className="mr-6 bg-white/80 border border-gray-200 rounded-2xl backdrop-blur-[60px] h-full min-h-0 overflow-auto transition-all duration-700 ease-in-out"
           style={{ padding: '1.5rem' }}
         >
-          {selected && !showCalendar && (
-            <VStack align="stretch" spacing={3} className="h-full">
-              <Flex justify="center">
-                <Avatar name={selected.name} bg={selected.avatarColor} color="white" boxSize="7rem" />
-              </Flex>
-              <Box h="1rem" />
-              <Text fontSize="md" color="gray.700" className="overflow-auto" style={{ maxHeight: '8rem' }}>
-                {selected.longDescription}
-              </Text>
-              <Box h="3px" />
-              <HStack spacing={2} flexWrap="wrap">
-                {selected.specializations.map((spec) => (
-                  <Tag key={spec} colorScheme="green" variant="subtle">
-                    {spec}
-                  </Tag>
-                ))}
-              </HStack>
-              <Box h="0.8rem" />
-              <Text fontWeight="semibold" color="gray.800">
-                No. of sessions taken: {selected.sessions}
-              </Text>
-              <Box h="0.8rem" />
-              <HStack spacing={1} align="center">
-                <Text fontWeight="semibold" color="gray.800">
-                  Rating:
-                </Text>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <StarIcon
-                    key={i}
-                    color={i + 1 <= Math.round(selected.rating) ? theme.colors.dustyRose.DEFAULT : '#E5E7EB'}
-                  />
-                ))}
-                <Text fontSize="sm" color="gray.600">
-                  {selected.rating.toFixed(1)}
-                </Text>
-              </HStack>
-              <Box h="0.8rem" />
-              <Button
-                bg={theme.colors.sage.DEFAULT}
-                _hover={{ bg: theme.colors.sage.dark }}
-                color="white"
-                onClick={onBook}
-                isDisabled={!selectedDate}
-                opacity={selectedDate ? 1 : 0.6}
-                cursor={selectedDate ? 'pointer' : 'not-allowed'}
-                _disabled={{
-                  bg: theme.colors.grey.DEFAULT,
-                  color: '#FFFFFF',
-                  borderColor: theme.colors.grey.dark,
-                }}
-              >
-                Book appointment
-              </Button>
-            </VStack>
-          )}
-          {selected && showCalendar && (
-            <VStack align="stretch" spacing={4} className="h-full transition-all duration-300 ease-in-out">
-              <Text variant="h3">Choose a date</Text>
-              <Input
-                type="date"
-                min={todayIso}
-                value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value);
-                  if (e.target.value) setShowCalendar(false);
-                }}
-              />
-              <Button variant="secondary" onClick={() => setShowCalendar(false)}>
-                Cancel
-              </Button>
-            </VStack>
-          )}
+          <MUIThemeProvider theme={muiCalendarTheme}>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              {selected && !showCalendar && (
+                <VStack align="stretch" spacing={3} className="h-full transition-all duration-700 ease-in-out">
+                  <Flex justify="center">
+                    <Avatar name={selected.name} bg={selected.avatarColor} color="white" boxSize="7rem" />
+                  </Flex>
+                  <Box h="1rem" />
+                  <Text fontSize="md" color="gray.700" className="overflow-auto" style={{ maxHeight: '8rem' }}>
+                    {selected.longDescription}
+                  </Text>
+                  <Box h="3px" />
+                  <HStack spacing={2} flexWrap="wrap">
+                    {selected.specializations.map((spec) => (
+                      <Tag key={spec} colorScheme="green" variant="subtle">
+                        {spec}
+                      </Tag>
+                    ))}
+                  </HStack>
+                  <Box h="0.8rem" />
+                  <Text fontWeight="semibold" color="gray.800">
+                    No. of sessions taken: {selected.sessions}
+                  </Text>
+                  <Box h="0.8rem" />
+                  <HStack spacing={1} align="center">
+                    <Text fontWeight="semibold" color="gray.800">
+                      Rating:
+                    </Text>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <StarIcon
+                        key={i}
+                        color={i + 1 <= Math.round(selected.rating) ? theme.colors.dustyRose.DEFAULT : '#E5E7EB'}
+                      />
+                    ))}
+                    <Text fontSize="sm" color="gray.600">
+                      {selected.rating.toFixed(1)}
+                    </Text>
+                  </HStack>
+                  <Box h="0.8rem" />
+                  <Button
+                    px="1.25em"
+                    py="0.5em"
+                    borderRadius="8px"
+                    bg={theme.colors.sage.DEFAULT}
+                    _hover={{ bg: theme.colors.sage.dark }}
+                    color="white"
+                    onClick={onBook}
+                    isDisabled={!selectedDateLabel}
+                    opacity={selectedDateLabel ? 1 : 0.6}
+                    cursor={selectedDateLabel ? 'pointer' : 'not-allowed'}
+                    _disabled={{
+                      bg: theme.colors.grey.DEFAULT,
+                      color: '#FFFFFF',
+                      borderColor: theme.colors.grey.dark,
+                    }}
+                  >
+                    Book appointment {selectedDateLabel ? `(${selectedDateLabel})` : ''}
+                  </Button>
+                </VStack>
+              )}
+              {selected && showCalendar && (
+                <VStack align="stretch" spacing={3} className="transition-all duration-700 ease-in-out items-center">
+                  <Text fontSize="lg" fontWeight="bold" color={theme.colors.textMain} textAlign="center">
+                    Choose a date
+                  </Text>
+                  <Box
+                    margin="0.75rem auto"
+                    width="100%"
+                    maxW="34rem"
+                    className="flex items-start justify-center"
+                  >
+                    <StaticDatePicker
+                      displayStaticWrapperAs="desktop"
+                      disablePast
+                      value={tempCalendarIso ? dayjs(tempCalendarIso) : selectedDateIso ? dayjs(selectedDateIso) : dayjs()}
+                      onChange={(value: Dayjs | null) => {
+                        if (value) {
+                          const isoVal = value.format('YYYY-MM-DD');
+                          setTempCalendarIso(isoVal);
+                        }
+                      }}
+                      slots={{ day: PickersDay }}
+                      slotProps={{
+                        actionBar: { actions: [] },
+                        day: {
+                          sx: {
+                            borderRadius: '50%',
+                          },
+                        },
+                      }}
+                      sx={{
+                        width: '100%',
+                        maxWidth: '32rem',
+                        minHeight: '22rem',
+                        '.MuiPickersToolbar-root': {
+                          color: '#ffffff',
+                          borderRadius: '1rem',
+                          border: '1px solid rgba(255,255,255,0.35)',
+                          backgroundColor: theme.colors.sage.DEFAULT,
+                        },
+                        '.MuiPickersLayout-root': {
+                          padding: '0.5rem 0.75rem',
+                        },
+                        '.MuiDateCalendar-root': {
+                          width: '100%',
+                        },
+                        '.MuiPickersDay-root': {
+                          '&.Mui-selected': {
+                            backgroundColor: theme.colors.sage.DEFAULT,
+                            color: '#ffffff',
+                          },
+                          '&.Mui-selected:hover': {
+                            backgroundColor: theme.colors.sage.dark,
+                          },
+                          '&:hover': {
+                            backgroundColor: theme.colors.sage.light,
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+                  <HStack spacing={3} justify="center" pt={2}>
+                    <Button
+                      px="1.25em"
+                      py="0.5em"
+                      borderRadius="8px"
+                      bg={theme.colors.sage.DEFAULT}
+                      _hover={{ bg: theme.colors.sage.dark }}
+                      color="white"
+                      onClick={() => {
+                        const isoToSet = tempCalendarIso || selectedDateIso || dayjs().format('YYYY-MM-DD');
+                        setSelectedDateIso(isoToSet);
+                        setSelectedDateLabel(dayjs(isoToSet).format('MMM D, YYYY'));
+                        setDateFrom(isoToSet);
+                        setDateTo(isoToSet);
+                        setShowCalendar(false);
+                        setTempCalendarIso('');
+                      }}
+                      isDisabled={!(tempCalendarIso || selectedDateIso)}
+                    >
+                      Choose {tempCalendarIso ? dayjs(tempCalendarIso).format('MMM D, YYYY') : selectedDateLabel || ''}
+                    </Button>
+                    <Button
+                      px="1.25em"
+                      py="0.5em"
+                      borderRadius="8px"
+                      variant="outline"
+                      onClick={() => { setShowCalendar(false); setTempCalendarIso(''); }}
+                    >
+                      Cancel
+                    </Button>
+                  </HStack>
+                </VStack>
+              )}
+            </LocalizationProvider>
+          </MUIThemeProvider>
         </Box>
       </div>
 
