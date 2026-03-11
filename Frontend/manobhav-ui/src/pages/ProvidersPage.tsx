@@ -464,10 +464,6 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
                           fontSize: '1.05rem',
                           fontWeight: 700,
                         },
-                        '.MuiDayCalendar-weekContainer': {
-                          justifyContent: 'center',
-                          gap: '0.25rem',
-                        },
                         '.MuiPickersCalendarHeader-root': {
                           padding: '0 0.75rem',
                         },
