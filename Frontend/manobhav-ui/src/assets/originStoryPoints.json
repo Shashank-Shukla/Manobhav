@@ -1,0 +1,26 @@
+[
+  {
+    "title": "It started in school",
+    "copy": "While dealing with anxiety in school, Guramrit Kaur experienced how much the right support can matter at the right time.",
+    "icon": "school",
+    "accent": "#dcecf1"
+  },
+  {
+    "title": "A teacher changed the direction",
+    "copy": "In 11th grade, a psychology teacher offered empathy, clarity, and encouragement, turning a difficult phase into the beginning of a calling.",
+    "icon": "heartHandshake",
+    "accent": "#f6d8cf"
+  },
+  {
+    "title": "Training gave the work depth",
+    "copy": "That experience led to formal study in Clinical Psychology and Expressive Arts Therapy, shaping a way of healing that is both grounded and creative.",
+    "icon": "bookOpen",
+    "accent": "#dce7d6"
+  },
+  {
+    "title": "Manobhav came from a real gap",
+    "copy": "Over time, one truth became clear: many people need help, but struggle to find trained, empathetic professionals who feel safe to open up to. Manobhav was created in response to that gap.",
+    "icon": "lightbulb",
+    "accent": "#f2e4b8"
+  }
+]

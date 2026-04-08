@@ -1,44 +1,11 @@
+import { OrganicBlob, RollingSectionWave } from '../../shared/interactive/AboutVectors';
 import { SectionReveal } from './SectionReveal';
-
-function RollingWave({ flip = false }: { flip?: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 1440 240"
-      preserveAspectRatio="none"
-      className={`absolute left-0 h-28 w-full md:h-36 ${flip ? 'bottom-0 rotate-180' : 'top-0'}`}
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M0 130C115 91 231 87 346 120C453 150 559 206 687 190C820 173 899 106 1020 84C1150 61 1285 90 1440 54V240H0V130Z"
-        fill="#fbf6eb"
-      />
-    </svg>
-  );
-}
-
-function SoftBlob({ className, color }: { className?: string; color: string }) {
-  return (
-    <svg
-      viewBox="0 0 220 220"
-      className={`absolute ${className ?? ''}`}
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M48.6,-73.6C63.9,-66.8,77.8,-54,84.2,-38.7C90.6,-23.3,89.4,-5.5,84.7,11.1C80,27.7,71.8,43.2,60.2,55.7C48.6,68.3,33.7,77.9,17.4,82.7C1.1,87.5,-16.6,87.5,-31.7,81.7C-46.8,75.9,-59.2,64.3,-68,50.2C-76.9,36.1,-82.3,19.5,-83.3,2.5C-84.3,-14.4,-80.9,-31.8,-72.3,-45.8C-63.7,-59.8,-49.8,-70.5,-35.1,-77.2C-20.4,-83.9,-4.8,-86.5,10.3,-84.1C25.4,-81.7,33.3,-80.4,48.6,-73.6Z"
-        fill={color}
-        opacity="0.7"
-      />
-    </svg>
-  );
-}
 
 function VectorMotion() {
   return (
     <div className="relative mx-auto w-full max-w-[420px] animate-float-soft">
-      <SoftBlob className="-left-8 top-8 h-32 w-32" color="#f6d8cf" />
-      <SoftBlob className="-right-6 bottom-10 h-24 w-24" color="#d7ebe2" />
+      <OrganicBlob className="absolute -left-8 top-8 h-32 w-32" color="#f6d8cf" />
+      <OrganicBlob className="absolute -right-6 bottom-10 h-24 w-24" color="#d7ebe2" />
       <div className="relative z-10 rounded-[2.5rem] bg-white/70 p-6 shadow-[0_28px_60px_rgba(50,63,92,0.10)] backdrop-blur-sm">
         <div className="relative overflow-hidden rounded-[2rem] bg-[#f9f1dd] px-6 py-8">
           <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#dce8ee] opacity-80 animate-spin-slow" />
@@ -98,8 +65,8 @@ function SquishyCard({
 export function VisionSection() {
   return (
     <section id="vision-section" className="relative overflow-hidden bg-[#fbf6eb] px-6 pb-28 pt-24 md:pb-32 md:pt-28">
-      <RollingWave />
-      <RollingWave flip />
+      <RollingSectionWave className="absolute left-0 top-0 h-28 w-full md:h-36" />
+      <RollingSectionWave className="absolute bottom-0 left-0 h-28 w-full rotate-180 md:h-36" />
 
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[8%] top-40 h-32 w-32 rounded-full bg-[#fff3de] blur-3xl" />

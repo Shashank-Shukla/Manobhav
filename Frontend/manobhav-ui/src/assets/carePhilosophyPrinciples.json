@@ -1,0 +1,30 @@
+[
+  {
+    "title": "Judgment-free and confidential",
+    "copy": "People should be able to seek support without shame, fear, or the pressure to have everything figured out.",
+    "icon": "lockKeyhole",
+    "surface": "bg-[#edf4ee] border-[#dce7de]",
+    "tone": "bg-[#dce7de] text-[#7A8C6A]"
+  },
+  {
+    "title": "Clinical care with warmth",
+    "copy": "We value evidence-based practice, but never at the cost of empathy, presence, and relational trust.",
+    "icon": "heart",
+    "surface": "bg-[#f7ebe7] border-[#ecd9d4]",
+    "tone": "bg-[#ecd9d4] text-[#B57F8B]"
+  },
+  {
+    "title": "Healing through expression",
+    "copy": "Creative reflection can open doors that words alone sometimes cannot. That is why expressive arts matter here.",
+    "icon": "palette",
+    "surface": "bg-[#ebf3f5] border-[#d6e5ea]",
+    "tone": "bg-[#d6e5ea] text-[#8BAAB3]"
+  },
+  {
+    "title": "Growth beyond stigma",
+    "copy": "We want to help build a culture where therapy is not hidden or feared, but embraced as an act of strength.",
+    "icon": "sparkles",
+    "surface": "bg-[#f2eadc] border-[#e5d8c2]",
+    "tone": "bg-[#e8dcc8] text-[#5f6770]"
+  }
+]

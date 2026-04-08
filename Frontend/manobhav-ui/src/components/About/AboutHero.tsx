@@ -1,3 +1,5 @@
+import { AboutBottomWave, HeroLeafVector, ScrollArrowIcon } from '../../shared/interactive/AboutVectors';
+
 type AboutHeroProps = {
   onScrollToVision: () => void;
 };
@@ -36,60 +38,6 @@ function SpeechBubble({
   );
 }
 
-function LeafVector({
-  className,
-  color,
-}: {
-  className?: string;
-  color: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 120 200"
-      className={`absolute ${className ?? ''}`}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path d="M60 195V25" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.55" />
-      <path
-        d="M60 48C28 36 18 14 14 0C46 4 66 16 72 44C76 64 68 78 60 88C50 76 42 62 60 48Z"
-        fill={color}
-        opacity="0.82"
-      />
-      <path
-        d="M60 94C24 84 8 58 0 40C38 42 62 52 70 84C76 108 70 126 60 138C48 124 40 110 60 94Z"
-        fill={color}
-        opacity="0.72"
-      />
-      <path
-        d="M60 140C28 128 14 104 8 84C44 88 66 100 72 132C76 152 70 170 60 182C48 168 40 156 60 140Z"
-        fill={color}
-        opacity="0.62"
-      />
-      <path d="M60 58C82 44 96 26 106 10C104 42 92 60 60 74" fill={color} opacity="0.58" />
-      <path d="M60 106C86 90 102 72 112 56C112 92 98 112 60 124" fill={color} opacity="0.48" />
-    </svg>
-  );
-}
-
-function BottomWave() {
-  return (
-    <svg
-      viewBox="0 0 1440 220"
-      preserveAspectRatio="none"
-      className="absolute bottom-0 left-0 h-24 w-full md:h-32"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M0 164C121 131 235 135 341 166C451 199 565 219 687 191C805 165 906 95 1023 80C1150 64 1288 106 1440 57V220H0V164Z"
-        fill="#fbf6eb"
-      />
-    </svg>
-  );
-}
-
 function ScrollIndicator({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -102,16 +50,7 @@ function ScrollIndicator({ onClick }: { onClick: () => void }) {
       <span className="flex h-14 w-9 items-start justify-center rounded-full border-2 border-[#243b6b]/45 p-2">
         <span className="h-3 w-1.5 rounded-full bg-[#243b6b] animate-scroll-dot" />
       </span>
-      <svg
-        viewBox="0 0 24 24"
-        className="h-6 w-6 animate-scroll-bob"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <path d="M12 5V19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M7 14L12 19L17 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <ScrollArrowIcon className="h-6 w-6 animate-scroll-bob" />
     </button>
   );
 }
@@ -126,8 +65,8 @@ export function AboutHero({ onScrollToVision }: AboutHeroProps) {
         <div className="absolute left-10 top-28 h-24 w-24 rounded-full bg-white/20 blur-2xl" />
         <div className="absolute right-12 top-24 h-32 w-32 rounded-full bg-[#f3d1c8]/30 blur-3xl" />
         <div className="absolute bottom-28 right-1/3 h-28 w-28 rounded-full bg-white/20 blur-2xl" />
-        <LeafVector className="bottom-28 left-0 hidden h-40 w-24 md:block lg:left-10 lg:h-48 lg:w-28" color="#92c29c" />
-        <LeafVector className="bottom-24 right-6 hidden h-36 w-20 md:block lg:right-20 lg:h-44 lg:w-24" color="#9acdb4" />
+        <HeroLeafVector className="absolute bottom-28 left-0 hidden h-40 w-24 md:block lg:left-10 lg:h-48 lg:w-28" color="#92c29c" />
+        <HeroLeafVector className="absolute bottom-24 right-6 hidden h-36 w-20 md:block lg:right-20 lg:h-44 lg:w-24" color="#9acdb4" />
         <SpeechBubble className="left-[10%] top-32" tone="blue" tailSide="left" />
         <SpeechBubble className="top-28 right-[24%]" tone="mint" tailSide="right" />
       </div>
@@ -158,7 +97,7 @@ export function AboutHero({ onScrollToVision }: AboutHeroProps) {
       </div>
 
       <ScrollIndicator onClick={onScrollToVision} />
-      <BottomWave />
+      <AboutBottomWave className="absolute bottom-0 left-0 h-24 w-full md:h-32" />
     </section>
   );
 }

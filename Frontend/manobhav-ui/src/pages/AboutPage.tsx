@@ -1,9 +1,14 @@
 import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AboutHero } from '../components/About/AboutHero';
+import { CarePhilosophy } from '../components/About/CarePhilosophy';
+import { FounderSection } from '../components/About/FounderSection';
 import { OriginStory } from '../components/About/OriginStory';
+import { TeamIntro } from '../components/About/TeamIntro';
 import { VisionSection } from '../components/About/VisionSection';
 
 export function AboutPage() {
+  const navigate = useNavigate();
   const visionRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToVision = () => {
@@ -17,6 +22,9 @@ export function AboutPage() {
         <VisionSection />
       </div>
       <OriginStory />
+      <FounderSection />
+      <CarePhilosophy />
+      <TeamIntro onExploreProviders={() => navigate('/providers')} />
     </div>
   );
 }
