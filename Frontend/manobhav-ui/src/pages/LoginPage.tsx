@@ -8,14 +8,16 @@ type LoginPageProps = {
 
 export function LoginPage({ onBack }: LoginPageProps) {
   return (
-    <div className="min-h-screen pt-24 px-6 pb-12 flex items-center justify-center animate-in slide-in-from-right-10 duration-500 relative">
-      <div className="w-full max-w-5xl bg-white rounded-[3rem] shadow-2xl overflow-hidden grid md:grid-cols-2 relative border border-gray-100">
-        <ErrorBoundary context="login-left" fallback={null}>
-          <LeftPanel />
-        </ErrorBoundary>
-        <ErrorBoundary context="login-form" fallback={null}>
-          <LoginForm onBack={onBack} />
-        </ErrorBoundary>
+    <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden px-4 pb-4 pt-24 md:px-6 md:pb-6 md:pt-28 animate-in slide-in-from-right-10 duration-500">
+      <div className="flex h-full max-h-full w-full items-center justify-center overflow-hidden">
+        <div className="relative grid max-h-full w-full max-w-5xl min-h-0 overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-2xl md:grid-cols-2 md:rounded-[3rem]">
+          <ErrorBoundary context="login-left" fallback={null}>
+            <LeftPanel />
+          </ErrorBoundary>
+          <ErrorBoundary context="login-form" fallback={null}>
+            <LoginForm onBack={onBack} />
+          </ErrorBoundary>
+        </div>
       </div>
     </div>
   );

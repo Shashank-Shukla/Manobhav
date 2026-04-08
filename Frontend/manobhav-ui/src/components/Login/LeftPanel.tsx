@@ -3,7 +3,7 @@ import { AbstractShape } from '../../shared/primitives/AbstractShape';
 
 export function LeftPanel() {
   return (
-    <div className="bg-[#E6EDE8] relative hidden md:flex items-center justify-center p-12 overflow-hidden">
+    <div className="relative hidden min-h-0 overflow-hidden bg-[#E6EDE8] p-12 md:flex md:items-center md:justify-center">
       <AbstractShape color="#9CAF88" className="top-10 left-10 w-64 h-64 animate-blob opacity-20" />
       <AbstractShape color="#D6A2AD" className="bottom-10 right-10 w-48 h-48 animate-blob animation-delay-2000 opacity-20" />
 

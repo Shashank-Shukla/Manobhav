@@ -26,7 +26,7 @@ export function Footer() {
         <div>
           <h4 className="font-bold text-slate-800 mb-6">Platform</h4>
           <ul className="space-y-4 text-gray-500">
-            <li><a href="#" className="hover:text-[#D6A2AD]">Browse Therapists</a></li>
+            <li><a href="/providers" className="hover:text-[#D6A2AD]">Browse Therapists</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">How it Works</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">Pricing</a></li>
           </ul>
@@ -35,7 +35,7 @@ export function Footer() {
         <div>
           <h4 className="font-bold text-slate-800 mb-6">Company</h4>
           <ul className="space-y-4 text-gray-500">
-            <li><a href="#" className="hover:text-[#D6A2AD]">About Us</a></li>
+            <li><a href="/about" className="hover:text-[#D6A2AD]">About Us</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">Careers</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">Contact</a></li>
           </ul>

@@ -8,7 +8,7 @@ type LoginFormProps = {
 
 export function LoginForm({ onBack }: LoginFormProps) {
   return (
-    <div className="p-8 md:p-16 relative">
+    <div className="relative h-full min-h-0 overflow-y-auto p-6 md:p-10 lg:p-16">
       <button onClick={onBack} className="absolute top-8 left-8 p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500">
         <ArrowLeft size={24} />
       </button>

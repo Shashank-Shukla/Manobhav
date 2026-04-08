@@ -351,10 +351,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
   ) : null;
 
   return (
-    <div
-      className="flex flex-col text-[color:var(--text-color)] overflow-hidden h-screen"
-      style={{ height: 'calc(100vh - 4.5rem)' }}
-    >
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden text-[color:var(--text-color)]">
       {/* Query container */}
       <div className="pb-4 px-0 w-full relative z-20 flex-none bg-[#F9FAFB]">
         <div
@@ -450,7 +447,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
       </div>
 
       {/* Populate container */}
-      <div className="relative z-10 mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto bg-[#F9FAFB] px-0 pb-4 lg:mt-8 lg:flex-row lg:gap-6 lg:overflow-hidden">
+      <div className="relative z-10 mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden bg-[#F9FAFB] px-0 pb-4 lg:mt-8 lg:flex-row lg:gap-6">
         {/* background blobs */}
         {blobs.map((b, idx) => (
           <div
@@ -468,7 +465,7 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
 
         <Box
           width={{ base: '100%', lg: '60vw' }}
-          overflowY={{ base: 'visible', lg: 'auto' }}
+          overflowY="auto"
           className="min-h-0 px-4 backdrop-blur-[8px] md:px-6 lg:h-full"
           sx={{ scrollbarWidth: 'thin' }}
         >
@@ -586,14 +583,6 @@ export function ProvidersPage({ onBackHome: _onBackHome, onBook }: ProvidersPage
           </Flex>
           {detailsContent}
         </div>
-      </div>
-
-      {/* Footer */}
-      <div
-        className="h-8 flex items-center justify-center text-sm text-white"
-        style={{ backgroundColor: theme.colors.sage.DEFAULT }}
-      >
-        Manobhav © {new Date().getFullYear()}
       </div>
     </div>
   );

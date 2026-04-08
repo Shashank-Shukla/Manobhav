@@ -20,9 +20,9 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
   }, []);
 
   const navItems = [
-    { label: 'About', target: 'about', type: 'scroll' as const },
+    { label: 'About', path: '/about', type: 'route' as const },
     { label: 'Insights', target: 'insights', type: 'scroll' as const },
-    { label: 'Talk to Us', target: 'providers', type: 'route' as const },
+    { label: 'Talk to Us', path: '/providers', type: 'route' as const },
   ];
 
   const scrollToId = (id: string) => {
@@ -79,11 +79,11 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
             {navItems.map((item) => (
               <a
                 key={item.label}
-                href={item.type === 'scroll' ? `#${item.target}` : '#'}
+                href={item.type === 'scroll' ? `#${item.target}` : item.path}
                 onClick={(e) => {
                   e.preventDefault();
                   if (item.type === 'route') {
-                    onNavigate('/providers');
+                    onNavigate(item.path);
                   } else {
                     handleNavigateHomeAndScroll(item.target);
                   }
@@ -98,7 +98,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="nav" onClick={() => onNavigate('login')}>
+            <Button variant="nav" onClick={() => onNavigate('/login')}>
               Login
             </Button>
           </div>
@@ -115,12 +115,12 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
             {navItems.map((item) => (
               <a
                 key={item.label}
-                href={item.type === 'scroll' ? `#${item.target}` : '#'}
+                href={item.type === 'scroll' ? `#${item.target}` : item.path}
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileOpen(false);
                   if (item.type === 'route') {
-                    onNavigate('/providers');
+                    onNavigate(item.path);
                   } else {
                     handleNavigateHomeAndScroll(item.target);
                   }
@@ -131,7 +131,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
                 {item.label === 'Talk to Us' && <ArrowUpRight size={18} className="text-[#9CAF88]" />}
               </a>
             ))}
-            <Button variant="primary" onClick={() => { setMobileOpen(false); onNavigate('login'); }}>
+            <Button variant="primary" onClick={() => { setMobileOpen(false); onNavigate('/login'); }}>
               Login
             </Button>
           </div>
