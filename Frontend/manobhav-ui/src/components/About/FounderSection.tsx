@@ -5,7 +5,7 @@ import { SectionReveal } from './SectionReveal';
 
 export function FounderSection() {
   return (
-    <section className="relative overflow-hidden bg-[#f7f1e6] px-6 py-24 md:py-28">
+    <section className="relative h-full overflow-hidden bg-[#f7f1e6] px-6 py-16 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#f7f1e6" />
       <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full rotate-180 md:h-32" fill="#f7f1e6" />
 
@@ -14,8 +14,8 @@ export function FounderSection() {
         <div className="absolute bottom-24 right-[10%] h-40 w-40 rounded-full bg-[#dce8ee]/55 blur-3xl" />
       </div>
 
-      <SectionReveal className="relative mx-auto max-w-7xl">
-        <div className="grid gap-8 rounded-[2.5rem] border border-[#efe4cf] bg-[#f9f2e6]/88 p-8 shadow-[0_24px_60px_rgba(61,72,92,0.08)] backdrop-blur-sm lg:grid-cols-[0.72fr_1.28fr] lg:p-10">
+      <SectionReveal className="relative mx-auto flex h-full max-w-7xl items-center">
+        <div className="grid w-full gap-6 rounded-[2.5rem] border border-[#efe4cf] bg-[#f9f2e6]/88 p-6 shadow-[0_24px_60px_rgba(61,72,92,0.08)] backdrop-blur-sm lg:grid-cols-[0.72fr_1.28fr] lg:p-8">
           <div className="relative overflow-hidden rounded-[2rem] border border-[#e8dcc8] bg-[#ecdfc5]/72 p-8">
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/25 to-transparent" />
             <div className="relative z-10 flex h-full flex-col justify-between gap-8">
@@ -24,7 +24,7 @@ export function FounderSection() {
                   Founder
                 </Text>
                 <div className="my-6 flex justify-center lg:justify-start">
-                  <div className="about-founder-blob">
+                  <div className="about-founder-blob scale-[0.92] md:scale-100">
                     <div className="about-founder-blob__image">
                       <img
                         src="https://static.wixstatic.com/media/f7ec8a_798f707ce00f4932997fec9f1c6210cc~mv2.jpg/v1/fill/w_565,h_435,fp_0.50_0.51,lg_1,q_80,enc_avif,quality_auto/image.jpg"

@@ -34,7 +34,7 @@ const teamSignals = [
 
 export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
   return (
-    <section className="relative overflow-hidden bg-[#f5efe3] px-6 py-24 md:py-28">
+    <section className="relative h-full overflow-hidden bg-[#f5efe3] px-6 py-16 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#f5efe3" />
 
       <div className="pointer-events-none absolute inset-0">
@@ -42,8 +42,9 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
         <div className="absolute bottom-20 right-[10%] h-36 w-36 rounded-full bg-[#dde9ef]/50 blur-3xl" />
       </div>
 
-      <SectionReveal className="relative mx-auto max-w-7xl">
-        <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <SectionReveal className="relative mx-auto flex h-full max-w-7xl items-center">
+        <div className="w-full">
+        <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <Text variant="caption" className="text-[#7d8f8a]">
               Team Intro
@@ -108,6 +109,7 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
               </Text>
             </div>
           </div>
+        </div>
         </div>
       </SectionReveal>
     </section>

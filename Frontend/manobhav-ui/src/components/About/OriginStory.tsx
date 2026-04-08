@@ -37,7 +37,7 @@ function StoryIllustrationBackground() {
 
 export function OriginStory() {
   return (
-    <section className="relative overflow-hidden bg-[#f5efe3] px-6 pb-28 pt-24 md:pb-32 md:pt-28">
+    <section className="relative h-full overflow-hidden bg-[#f5efe3] px-6 py-16 md:py-20">
       <StoryTopWave className="absolute left-0 top-0 h-24 w-full md:h-32" />
       <StoryIllustrationBackground />
 
@@ -46,8 +46,8 @@ export function OriginStory() {
         <div className="absolute right-[12%] bottom-24 h-36 w-36 rounded-full bg-[#e4edf1] blur-3xl" />
       </div>
 
-      <SectionReveal className="relative mx-auto max-w-7xl">
-        <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+      <SectionReveal className="relative mx-auto flex h-full max-w-7xl items-center">
+        <div className="grid w-full gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
           <div className="max-w-xl space-y-5">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[#7d8f8a]">Origin Story</p>
             <h2 className="text-4xl font-extrabold uppercase leading-[0.95] text-[#243b6b] md:text-5xl">

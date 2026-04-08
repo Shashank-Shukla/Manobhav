@@ -24,7 +24,7 @@ const typedPrinciples = principles as Principle[];
 
 export function CarePhilosophy() {
   return (
-    <section className="relative overflow-hidden bg-[#fbf6eb] px-6 py-24 md:py-28">
+    <section className="relative h-full overflow-hidden bg-[#fbf6eb] px-6 py-16 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#fbf6eb" />
       <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full rotate-180 md:h-32" fill="#fbf6eb" />
 
@@ -33,8 +33,9 @@ export function CarePhilosophy() {
         <div className="absolute bottom-28 right-[12%] h-36 w-36 rounded-full bg-[#e0edf2]/45 blur-3xl" />
       </div>
 
-      <SectionReveal className="relative mx-auto max-w-7xl">
-        <div className="mb-12 max-w-3xl">
+      <SectionReveal className="relative mx-auto flex h-full max-w-7xl items-center">
+        <div className="w-full">
+        <div className="mb-10 max-w-3xl">
           <Text variant="caption" className="text-[#7d8f8a]">
             Care Philosophy
           </Text>
@@ -67,6 +68,7 @@ export function CarePhilosophy() {
               </div>
             );
           })}
+        </div>
         </div>
       </SectionReveal>
     </section>

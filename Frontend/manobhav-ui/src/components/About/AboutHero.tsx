@@ -1,7 +1,7 @@
 import { AboutBottomWave, HeroLeafVector, ScrollArrowIcon } from '../../shared/interactive/AboutVectors';
 
 type AboutHeroProps = {
-  onScrollToVision: () => void;
+  onAdvanceSection: () => void;
 };
 
 function SpeechBubble({
@@ -55,10 +55,10 @@ function ScrollIndicator({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function AboutHero({ onScrollToVision }: AboutHeroProps) {
+export function AboutHero({ onAdvanceSection }: AboutHeroProps) {
   return (
     <section
-      className="relative overflow-hidden px-6 pb-28 pt-28 md:pb-36 md:pt-36"
+      className="relative h-full overflow-hidden px-6 pb-20 pt-24 md:pb-24 md:pt-28"
       style={{ backgroundColor: 'rgb(241, 229, 191)' }}
     >
       <div className="pointer-events-none absolute inset-0">
@@ -71,7 +71,7 @@ export function AboutHero({ onScrollToVision }: AboutHeroProps) {
         <SpeechBubble className="top-28 right-[24%]" tone="mint" tailSide="right" />
       </div>
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-11rem)] max-w-7xl items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
+      <div className="relative mx-auto grid h-full max-w-7xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
         <div className="relative order-2 flex justify-center lg:order-1 lg:justify-start">
           <div className="relative w-full max-w-3xl">
             <div className="absolute inset-x-12 bottom-2 h-12 rounded-full bg-[#d7e5ef] opacity-80 blur-md" />
@@ -96,7 +96,7 @@ export function AboutHero({ onScrollToVision }: AboutHeroProps) {
         </div>
       </div>
 
-      <ScrollIndicator onClick={onScrollToVision} />
+      <ScrollIndicator onClick={onAdvanceSection} />
       <AboutBottomWave className="absolute bottom-0 left-0 h-24 w-full md:h-32" />
     </section>
   );

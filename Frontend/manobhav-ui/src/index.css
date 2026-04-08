@@ -375,6 +375,66 @@ a {
   }
 }
 
+@keyframes aboutSectionEnterUp {
+  from {
+    opacity: 0;
+    transform: translateY(56px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes aboutSectionEnterDown {
+  from {
+    opacity: 0;
+    transform: translateY(-56px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes aboutSectionExitUp {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-42px) scale(0.99);
+  }
+}
+
+@keyframes aboutSectionExitDown {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(42px) scale(0.99);
+  }
+}
+
+.animate-about-section-enter-up {
+  animation: aboutSectionEnterUp 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-about-section-enter-down {
+  animation: aboutSectionEnterDown 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-about-section-exit-up {
+  animation: aboutSectionExitUp 220ms ease both;
+}
+
+.animate-about-section-exit-down {
+  animation: aboutSectionExitDown 220ms ease both;
+}
+
 .shine-shake-card {
   position: relative;
   overflow: hidden;

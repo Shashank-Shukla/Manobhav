@@ -64,7 +64,7 @@ function SquishyCard({
 
 export function VisionSection() {
   return (
-    <section id="vision-section" className="relative overflow-hidden bg-[#fbf6eb] px-6 pb-28 pt-24 md:pb-32 md:pt-28">
+    <section id="vision-section" className="relative h-full overflow-hidden bg-[#fbf6eb] px-6 py-16 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-28 w-full md:h-36" />
       <RollingSectionWave className="absolute bottom-0 left-0 h-28 w-full rotate-180 md:h-36" />
 
@@ -73,7 +73,7 @@ export function VisionSection() {
         <div className="absolute bottom-32 right-[10%] h-36 w-36 rounded-full bg-[#e0eef4] blur-3xl" />
       </div>
 
-      <div className="relative mx-auto grid max-w-7xl gap-14 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+      <div className="relative mx-auto grid h-full max-w-7xl items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12">
         <SectionReveal className="lg:pr-4">
           <div className="space-y-6">
             <div className="max-w-xl">

@@ -54,7 +54,8 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   const [flow, setFlow] = useState<FlowStep>('home');
   const isHomeFlow = location.pathname === '/';
   const isProvidersRoute = location.pathname === '/providers';
-  const isViewportLockedRoute = isProvidersRoute || location.pathname === '/login';
+  const isAboutRoute = location.pathname === '/about';
+  const isViewportLockedRoute = isProvidersRoute || isAboutRoute || location.pathname === '/login';
 
   const hideNav =
     location.pathname === '/journey' ||
@@ -184,6 +185,7 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
 
         {!hideFooter &&
           location.pathname !== '/' &&
+          location.pathname !== '/about' &&
           location.pathname !== '/providers' &&
           location.pathname !== '/login' &&
           location.pathname !== '/appointment' && <Footer />}
