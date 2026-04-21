@@ -142,6 +142,35 @@ a {
   animation-name: slideFromBottom;
 }
 
+@keyframes disclaimerNudge {
+  0%, 93.75%, 100% {
+    transform: translateX(0);
+  }
+  94.75% {
+    transform: translateX(-0.18rem);
+  }
+  95.75% {
+    transform: translateX(0.18rem);
+  }
+  96.75% {
+    transform: translateX(-0.12rem);
+  }
+  97.75% {
+    transform: translateX(0.12rem);
+  }
+  98.75% {
+    transform: translateX(-0.06rem);
+  }
+  99.5% {
+    transform: translateX(0.06rem);
+  }
+}
+
+.animate-disclaimer-nudge {
+  animation: disclaimerNudge 3.2s ease-in-out infinite;
+  transform-origin: center;
+}
+
 /* CTA wave for hero button */
 @keyframes buttonWave {
   0% { transform: scale(0.95); opacity: 0.8; }

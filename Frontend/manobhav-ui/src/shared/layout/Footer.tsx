@@ -37,6 +37,7 @@ export function Footer() {
           <h4 className="font-bold text-slate-800 mb-6">Company</h4>
           <ul className="space-y-4 text-gray-500">
             <li><a href="/about" className="hover:text-[#D6A2AD]">About Us</a></li>
+            <li><a href="/disclaimer" className="hover:text-[#D6A2AD]">Disclaimer</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">Careers</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">Contact</a></li>
           </ul>
@@ -46,8 +47,9 @@ export function Footer() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center pt-8 border-t border-slate-200 text-sm text-gray-400">
         <p>&copy; 2026 Manobhav Wellbeing. All rights reserved.</p>
         <div className="flex gap-6 mt-4 md:mt-0">
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+          <a href="/disclaimer?panel=privacy" className="hover:text-[#D6A2AD]">Privacy</a>
+          <a href="/disclaimer?panel=terms" className="hover:text-[#D6A2AD]">Terms</a>
+          <a href="/disclaimer?panel=refunds" className="hover:text-[#D6A2AD]">Refunds</a>
         </div>
       </div>
     </footer>

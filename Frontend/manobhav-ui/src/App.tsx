@@ -9,6 +9,7 @@ import { LoginPage } from './pages/LoginPage';
 import { JourneyPage } from './pages/JourneyPage';
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage || m.default })));
 const FAQPage = lazy(() => import('./pages/FAQPage').then((m) => ({ default: m.FAQPage || m.default })));
+const DisclaimerPage = lazy(() => import('./pages/DisclaimerPage').then((m) => ({ default: m.DisclaimerPage || m.default })));
 const ProvidersPage = lazy(() => import('./pages/ProvidersPage').then((m) => ({ default: m.ProvidersPage || m.default })));
 const AppointmentPage = lazy(() => import('./pages/AppointmentPage').then((m) => ({ default: m.AppointmentPage || m.default })));
 const OnboardingProviderPage = lazy(() => import('./pages/onboarding/OnboardingProviderPage').then((m) => ({ default: m.OnboardingProviderPage || m.default })));
@@ -56,7 +57,8 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   const isHomeFlow = location.pathname === '/';
   const isProvidersRoute = location.pathname === '/providers';
   const isAboutRoute = location.pathname === '/about';
-  const isViewportLockedRoute = isProvidersRoute || isAboutRoute || location.pathname === '/login';
+  const isDisclaimerRoute = location.pathname === '/disclaimer';
+  const isViewportLockedRoute = isProvidersRoute || isAboutRoute || isDisclaimerRoute || location.pathname === '/login';
 
   const hideNav =
     location.pathname === '/journey' ||
@@ -143,6 +145,15 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
             />
 
             <Route
+              path="/disclaimer"
+              element={
+                <ErrorBoundary context="route-disclaimer" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
+                  <DisclaimerPage />
+                </ErrorBoundary>
+              }
+            />
+
+            <Route
               path="/providers"
               element={
                 <ErrorBoundary context="route-providers" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
@@ -196,6 +207,7 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
         {!hideFooter &&
           location.pathname !== '/' &&
           location.pathname !== '/about' &&
+          location.pathname !== '/disclaimer' &&
           location.pathname !== '/providers' &&
           location.pathname !== '/login' &&
           location.pathname !== '/appointment' && <Footer />}

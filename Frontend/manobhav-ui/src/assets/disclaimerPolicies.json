@@ -1,0 +1,221 @@
+{
+  "terms": {
+    "label": "Terms",
+    "title": "Terms & Conditions",
+    "summary": "What using Manobhav means, who the services are for, and the rules around privacy, booking, and responsibility.",
+    "sections": [
+      {
+        "title": "Legal disclaimer",
+        "paragraphs": [
+          "Welcome to Manobhav (\"Website\", \"We\", \"Our\", \"Us\"). Please read these Terms & Conditions of Service carefully before using our website, services, or participating in therapy sessions, workshops, and support groups.",
+          "By accessing or using Manobhav, you agree to be bound by these Terms, the Privacy Policy, and other applicable Manobhav policies. If you do not agree, please discontinue use."
+        ]
+      },
+      {
+        "title": "Definitions",
+        "bullets": [
+          "Client / User: any individual accessing or using Manobhav services.",
+          "Registered User: a client who has created an account or booked services through Manobhav.",
+          "Counsellor / Therapist: a mental health professional, expressive arts therapist, or facilitator registered with Manobhav.",
+          "Services: counselling, expressive arts therapy, workshops, support groups, wellness activities, and other offerings by Manobhav.",
+          "Confidential Information: data shared by the client or therapist during sessions, protected under ethical and professional standards.",
+          "Website: www.manobhav.com or any domain operated by Manobhav."
+        ]
+      },
+      {
+        "title": "Scope of services",
+        "bullets": [
+          "Manobhav provides counselling, expressive arts therapy, workshops, and peer-support groups.",
+          "Services are supportive in nature and are not a substitute for psychiatric treatment, medication, or emergency medical services.",
+          "Manobhav does not provide prescriptions, medico-legal documentation, or treatment for psychotic disorders.",
+          "Clients with suicidal thoughts, psychiatric emergencies, or severe mental illness should seek immediate help from a psychiatrist, emergency helpline, or hospital."
+        ]
+      },
+      {
+        "title": "Eligibility and account use",
+        "bullets": [
+          "You must be 18 or older to independently book sessions.",
+          "Clients under 18 require parent or guardian consent.",
+          "You confirm that the information you provide is true, complete, and accurate.",
+          "Registered users must keep login details confidential and must not share them.",
+          "Fraudulent registration, impersonation, or misuse may lead to suspension or termination of access."
+        ]
+      },
+      {
+        "title": "Confidentiality, bookings, and payments",
+        "bullets": [
+          "Therapy sessions are confidential except where disclosure is required by law, including risk of harm, abuse, or court orders.",
+          "Manobhav follows ethical and professional standards to protect personal data, but cannot guarantee absolute digital security.",
+          "Bookings are confirmed only after full payment.",
+          "Session fees may change at any time.",
+          "At least 24 hours notice is required for cancellations or rescheduling.",
+          "Missed sessions without notice are non-refundable.",
+          "Refunds are generally not provided except in exceptional cases at Manobhav's discretion.",
+          "Group programs and workshops are non-refundable once booked, though transfers may be allowed based on availability."
+        ]
+      },
+      {
+        "title": "Responsibilities and limits",
+        "bullets": [
+          "Clients must provide accurate personal and relevant health information, join sessions from a private and safe space, and maintain a stable internet connection for online sessions.",
+          "Clients must not record, share, or misuse session content without written consent.",
+          "Abusive, harassing, or inappropriate behaviour toward therapists, staff, or other clients is not permitted.",
+          "Therapists may refer clients to psychiatrists, doctors, or other professionals where additional care is needed.",
+          "Therapy outcomes are not guaranteed, and results may vary by person."
+        ]
+      },
+      {
+        "title": "Intellectual property, liability, and governing law",
+        "bullets": [
+          "All website content, including blogs, resources, images, logos, and session material, belongs to Manobhav and may not be copied or distributed without written permission.",
+          "Website and session information is for educational and therapeutic purposes and is not a replacement for medical advice, diagnosis, or treatment.",
+          "Manobhav, its therapists, and affiliates are not liable for damages, losses, or claims arising from use of services beyond the amount paid for those services.",
+          "Manobhav may suspend or terminate services if these Terms are breached, services are misused, or unlawful activity occurs.",
+          "These Terms are governed by the laws of India, and disputes fall under the courts of Delhi, with mediation or arbitration preferred before court action.",
+          "Manobhav may update these Terms at any time, and continued use means acceptance of the revised version."
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "label": "Privacy",
+    "title": "Privacy Policy",
+    "summary": "How Manobhav collects, uses, stores, and protects personal and sensitive information shared through the website and services.",
+    "sections": [
+      {
+        "title": "Legal disclaimer",
+        "paragraphs": [
+          "Manobhav (\"Website\", \"We\", \"Our\", \"Us\") is committed to protecting your privacy. This Privacy Policy explains how personal and sensitive information is collected, used, stored, and safeguarded when you access the website, book sessions, or use counselling, therapy, and support services.",
+          "This document is an electronic record under the Information Technology Act, 2000 and does not require physical or digital signatures."
+        ]
+      },
+      {
+        "title": "Objective and definitions",
+        "bullets": [
+          "This Policy explains what information is collected, how it is collected and used, when it may be shared, and the steps taken to keep it secure.",
+          "Personal Information means any information that can identify you, such as name, email, phone number, or address.",
+          "Sensitive Personal Data or Information includes passwords, payment details, physical or mental health information, sexual orientation, medical records, biometric data, and information shared for therapy purposes.",
+          "Information already public, legally accessible, or voluntarily shared by you in public spaces is not treated as SPDI in the same way."
+        ]
+      },
+      {
+        "title": "Privacy principles and consent",
+        "bullets": [
+          "Transparency: Manobhav aims to be clear about what data is collected and why.",
+          "Consent: sensitive data is collected only with your permission.",
+          "Confidentiality: therapy sessions are treated as confidential.",
+          "Security: reasonable safeguards are used to protect information.",
+          "Limited use: information is used only to provide and improve services.",
+          "By using the website or services, you consent to the collection and use practices described here.",
+          "If SPDI is needed, such as medical history or mental health details, explicit consent may be requested.",
+          "Users under 18 require parent or guardian consent."
+        ]
+      },
+      {
+        "title": "Information collected",
+        "bullets": [
+          "Information provided directly: name, contact details, email, address, date of birth, registration details, booking details, payment information, and therapy intake information.",
+          "Health or psychological history disclosed by you for therapy.",
+          "Website usage information such as device and browser details, IP address, approximate location, visited pages, duration, activity logs, cookies, and similar technologies.",
+          "Information created during services such as confidential session notes, feedback, surveys, reviews, and workshop or support-group participation details."
+        ]
+      },
+      {
+        "title": "How information is used and shared",
+        "bullets": [
+          "To provide therapy, counselling, and support group services.",
+          "To verify identity and process bookings.",
+          "To maintain confidential client records.",
+          "To improve services and website functionality.",
+          "To send reminders, notifications, and relevant updates.",
+          "To comply with law, ethics, and internal quality reviews.",
+          "Information is not sold or traded.",
+          "Information may be shared only with therapists or facilitators on a need-to-know basis, trusted service providers such as payment gateways or hosting partners, legal authorities when required, or in emergencies involving risk of harm."
+        ]
+      },
+      {
+        "title": "Cookies, retention, and security",
+        "bullets": [
+          "Cookies and pixel tags may be used to improve user experience, remember preferences, and maintain login sessions.",
+          "You may disable cookies in your browser, though some features may stop working properly.",
+          "Client records are retained only for as long as necessary for therapy or legal compliance and are then securely deleted.",
+          "You may request correction or deletion of records, subject to legal and ethical limits.",
+          "Security measures include encryption, secure storage, restricted staff access, regular reviews of practices, and secure transmission methods.",
+          "No system is completely secure, so transmission of information remains at your own risk."
+        ]
+      },
+      {
+        "title": "Client rights, limitations, and updates",
+        "bullets": [
+          "You may request access to your personal information, correct inaccurate data, withdraw consent, opt out of marketing messages, or request deletion where legally permissible.",
+          "Therapy sessions remain confidential, but disclosure may happen where required by law or to prevent harm.",
+          "If you participate in support groups, information you choose to share may be visible to other members, and Manobhav is not responsible for third-party use of information voluntarily disclosed there.",
+          "If data is stored or transferred outside India, Manobhav states that comparable safeguards will be applied.",
+          "Manobhav is not liable for information loss caused by events beyond its control, including cyberattacks, technical failures, or natural disasters.",
+          "The source page lists grievance officer placeholders rather than final details, so support should be contacted directly through Manobhav for privacy-related complaints.",
+          "This Policy may be updated from time to time, and continued use of services means acceptance of the revised version."
+        ]
+      }
+    ]
+  },
+  "refunds": {
+    "label": "Refunds",
+    "title": "Refund Policy",
+    "summary": "When refunds may be considered, how cancellations and rescheduling work, and what happens after a refund request is made.",
+    "sections": [
+      {
+        "title": "Legal disclaimer",
+        "paragraphs": [
+          "Manobhav aims to provide counselling and therapy services in a professional, compassionate, and client-focused manner. This Refund & Cancellation Policy explains when refunds may be issued and how cancellations and rescheduling are handled."
+        ]
+      },
+      {
+        "title": "Applicability and eligible refund cases",
+        "bullets": [
+          "This Policy applies to registered users who have paid for counselling, therapy, expressive arts therapy, workshops, or support sessions.",
+          "By booking a session or package, you agree to this Policy.",
+          "Refunds are considered only in limited cases, including accounting errors such as incorrect charges or a verified service defect or deficiency after review by Manobhav.",
+          "If an issue can reasonably be fixed, Manobhav may choose to re-perform the service instead of issuing a refund."
+        ]
+      },
+      {
+        "title": "Refund conditions",
+        "bullets": [
+          "Refund requests must be raised within 30 days of purchase.",
+          "Refunds apply only to unused sessions. Completed sessions are non-refundable.",
+          "Discounted packages, promotional offers, self-help programs, group workshops, and resource packages are not refundable.",
+          "If a package is partially used, the refund is calculated on actual usage at the regular per-session slab rate, not the discounted package rate.",
+          "The source policy states that a processing fee of Rs. 500 is deducted toward payment gateway charges and administration."
+        ]
+      },
+      {
+        "title": "Cancellation and rescheduling",
+        "bullets": [
+          "Sessions may be rescheduled up to 24 hours before the scheduled time.",
+          "Each booking may be rescheduled a maximum of two times.",
+          "If a session is cancelled or rescheduled within 24 hours, or if you do not attend, it is treated as a no-show and is non-refundable.",
+          "If Manobhav's therapist cancels the session, the session credit remains in your account without deduction."
+        ]
+      },
+      {
+        "title": "Refund process and timelines",
+        "bullets": [
+          "To request a refund, the source policy asks clients to email support@manobhav.com with their client ID, payment details, and the reason for the request.",
+          "Manobhav may contact you for clarification before deciding.",
+          "If a request is approved, the refund amount and expected timeline are confirmed.",
+          "Refunds are generally processed within 15 working days from approval.",
+          "Refunds are issued through the original payment method used for booking."
+        ]
+      },
+      {
+        "title": "Delayed refunds and grievance redressal",
+        "bullets": [
+          "Refund timelines may vary depending on your bank or payment provider.",
+          "If the refund does not arrive after 15 working days, first re-check your bank account and then contact your bank or payment provider.",
+          "If the issue still continues, the source page directs users to support@manobhav.com.",
+          "The grievance section on the source page includes a support email but leaves the phone number as a placeholder, so the email channel is the reliable contact method currently visible on the source."
+        ]
+      }
+    ]
+  }
+}
