@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
@@ -10,6 +11,7 @@ type NavBarProps = {
 };
 
 export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps) {
+  const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -20,22 +22,13 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
   }, []);
 
   const navItems = [
-    { label: 'About', path: '/about', type: 'route' as const },
-    { label: 'Insights', target: 'insights', type: 'scroll' as const },
-    { label: 'Talk to Us', path: '/providers', type: 'route' as const },
+    {
+      label: location.pathname === '/about' ? 'Home' : 'About',
+      path: location.pathname === '/about' ? '/' : '/about',
+    },
+    { label: 'FAQ', path: '/faq' },
+    { label: 'Talk to Us', path: '/providers' },
   ];
-
-  const scrollToId = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const handleNavigateHomeAndScroll = (id: string) => {
-    onNavigate('/');
-    setTimeout(() => scrollToId(id), 100);
-  };
 
   return (
     <>
@@ -79,14 +72,10 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
             {navItems.map((item) => (
               <a
                 key={item.label}
-                href={item.type === 'scroll' ? `#${item.target}` : item.path}
+                href={item.path}
                 onClick={(e) => {
                   e.preventDefault();
-                  if (item.type === 'route') {
-                    onNavigate(item.path);
-                  } else {
-                    handleNavigateHomeAndScroll(item.target);
-                  }
+                  onNavigate(item.path);
                 }}
                 className="text-sm font-medium text-gray-600 hover:text-[#9CAF88] transition-colors relative group flex items-center gap-1"
               >
@@ -115,15 +104,11 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
             {navItems.map((item) => (
               <a
                 key={item.label}
-                href={item.type === 'scroll' ? `#${item.target}` : item.path}
+                href={item.path}
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileOpen(false);
-                  if (item.type === 'route') {
-                    onNavigate(item.path);
-                  } else {
-                    handleNavigateHomeAndScroll(item.target);
-                  }
+                  onNavigate(item.path);
                 }}
                 className="text-xl font-medium text-gray-800 flex items-center justify-center gap-2"
               >

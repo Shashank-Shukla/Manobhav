@@ -8,6 +8,7 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { JourneyPage } from './pages/JourneyPage';
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage || m.default })));
+const FAQPage = lazy(() => import('./pages/FAQPage').then((m) => ({ default: m.FAQPage || m.default })));
 const ProvidersPage = lazy(() => import('./pages/ProvidersPage').then((m) => ({ default: m.ProvidersPage || m.default })));
 const AppointmentPage = lazy(() => import('./pages/AppointmentPage').then((m) => ({ default: m.AppointmentPage || m.default })));
 const OnboardingProviderPage = lazy(() => import('./pages/onboarding/OnboardingProviderPage').then((m) => ({ default: m.OnboardingProviderPage || m.default })));
@@ -128,6 +129,15 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
               element={
                 <ErrorBoundary context="route-about" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
                   <AboutPage />
+                </ErrorBoundary>
+              }
+            />
+
+            <Route
+              path="/faq"
+              element={
+                <ErrorBoundary context="route-faq" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
+                  <FAQPage />
                 </ErrorBoundary>
               }
             />

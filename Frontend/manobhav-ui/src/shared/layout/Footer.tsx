@@ -27,6 +27,7 @@ export function Footer() {
           <h4 className="font-bold text-slate-800 mb-6">Platform</h4>
           <ul className="space-y-4 text-gray-500">
             <li><a href="/providers" className="hover:text-[#D6A2AD]">Browse Therapists</a></li>
+            <li><a href="/faq" className="hover:text-[#D6A2AD]">FAQ</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">How it Works</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">Pricing</a></li>
           </ul>

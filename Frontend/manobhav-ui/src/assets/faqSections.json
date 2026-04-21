@@ -1,0 +1,65 @@
+[
+  {
+    "title": "Sessions",
+    "items": [
+      {
+        "question": "Are trial or free sessions available?",
+        "answer": "We do not offer trial sessions. Therapy time is reserved and paid so the space remains respectful to both clients and therapists. If you are unsure about beginning, start with a first session and use it to understand fit, pace, and next steps."
+      },
+      {
+        "question": "How can I reschedule a session?",
+        "answer": "If you need to move a session, request the change at least 24 hours in advance. Late cancellations or missed sessions may not be adjustable because the therapist has already blocked that time for you."
+      },
+      {
+        "question": "How many sessions will I need?",
+        "answer": "That depends on your goals, concerns, and pace. Some people come for short-term support, while others benefit from longer work. Your therapist can help you decide a rhythm after the first few conversations."
+      },
+      {
+        "question": "How soon can I get an appointment?",
+        "answer": "Availability depends on the therapist and time slot you want. Once you share your preferences, the closest suitable option can be offered."
+      }
+    ]
+  },
+  {
+    "title": "Therapy",
+    "items": [
+      {
+        "question": "Do I need to prepare anything before the first session?",
+        "answer": "No formal preparation is required. You can come as you are. If it helps, note a few concerns, feelings, or patterns you want to talk through."
+      },
+      {
+        "question": "Can therapy help in one session?",
+        "answer": "Therapy is usually a process rather than a one-session fix. The early sessions focus on understanding your concerns, building trust, and deciding what kind of support will help most."
+      },
+      {
+        "question": "Do you offer chat-based therapy?",
+        "answer": "The platform is designed around structured sessions rather than ongoing text support. That helps keep care thoughtful, clinically grounded, and easier to hold safely."
+      },
+      {
+        "question": "Is therapy confidential?",
+        "answer": "Yes. Confidentiality is a core part of care. If there are any practical or legal limits in a specific case, those should be explained clearly at the beginning of therapy."
+      }
+    ]
+  },
+  {
+    "title": "Care",
+    "items": [
+      {
+        "question": "How do I choose the right therapist?",
+        "answer": "Look at concerns, language, therapeutic style, and whether you want a more structured or more reflective experience. If you are unsure, begin with a therapist who feels approachable and adjust from there."
+      },
+      {
+        "question": "Can care include both clinical psychology and creative expression?",
+        "answer": "Yes. Manobhav is intentionally shaped around both clinical grounding and creative reflection. For some people, expressive methods help open up insight that words alone do not."
+      },
+      {
+        "question": "What if I feel nervous about starting therapy?",
+        "answer": "That is common. You do not need to arrive fully ready or fully sure. The first step can simply be showing up and letting the conversation begin from where you actually are."
+      },
+      {
+        "question": "What kind of environment does Manobhav aim to create?",
+        "answer": "The goal is care that feels accessible, stigma-free, confidential, and judgment-free, while helping people feel seen, supported, and understood."
+      }
+    ]
+  }
+]
