@@ -58,11 +58,14 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   const isProvidersRoute = location.pathname === '/providers';
   const isAboutRoute = location.pathname === '/about';
   const isDisclaimerRoute = location.pathname === '/disclaimer';
-  const isViewportLockedRoute = isProvidersRoute || isAboutRoute || isDisclaimerRoute || location.pathname === '/login';
+  const isAdminDashboardRoute = location.pathname.startsWith('/dashboard/admin');
+  const isViewportLockedRoute =
+    isProvidersRoute || isAboutRoute || isDisclaimerRoute || location.pathname === '/login' || isAdminDashboardRoute;
 
   const hideNav =
     location.pathname === '/journey' ||
     location.pathname === '/appointment' ||
+    isAdminDashboardRoute ||
     (isHomeFlow && flow === 'journey');
 
   const hideFooter =
@@ -199,6 +202,7 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
             <Route path="/dashboard/provider" element={<DashboardProviderPage />} />
             <Route path="/dashboard/patient" element={<DashboardPatientPage />} />
             <Route path="/dashboard/admin" element={<DashboardAdminPage />} />
+            <Route path="/dashboard/admin/:module" element={<DashboardAdminPage />} />
 
             <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
           </Routes>
