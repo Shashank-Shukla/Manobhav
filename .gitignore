@@ -33,3 +33,29 @@ coverage/
 /skills/
 /AGENTS.md
 .codex/
+*.props
+*.targets
+*.cache
+
+# .NET build outputs
+bin/
+obj/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.psess
+*.vsp
+*.pdb
+
+# Rider/VS Code
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Secrets (add your own patterns as needed)
+appsettings.Local.json
+appsettings.Development.Local.json
