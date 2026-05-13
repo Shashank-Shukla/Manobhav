@@ -1,0 +1,124 @@
+name: Backend Deploy
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "Backend/manobhav-api/**"
+      - ".github/workflows/backend-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  SOLUTION_PATH: Backend/manobhav-api/ManobhavAPI.slnx
+  WEBAPI_PROJECT_PATH: Backend/manobhav-api/src/WebApi/WebApi.csproj
+  PUBLISH_DIR: Backend/manobhav-api/.publish
+  BUNDLE_NAME: manobhav-api-${{ github.sha }}-${{ github.run_attempt }}.zip
+  VERSION_LABEL: backend-${{ github.sha }}-${{ github.run_attempt }}
+
+jobs:
+  deploy:
+    name: Build and deploy backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore "$SOLUTION_PATH"
+
+      - name: Build
+        run: dotnet build "$SOLUTION_PATH" --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test "$SOLUTION_PATH" --configuration Release --no-build
+
+      - name: Clean publish output
+        run: rm -rf "$PUBLISH_DIR"
+
+      - name: Publish
+        run: dotnet publish "$WEBAPI_PROJECT_PATH" --configuration Release --output "$PUBLISH_DIR"
+
+      - name: Create Procfile in publish output
+        run: |
+          printf 'web: dotnet WebApi.dll\n' > "$PUBLISH_DIR/Procfile"
+
+      - name: Verify publish output
+        run: |
+          test -f "$PUBLISH_DIR/WebApi.dll"
+          test -f "$PUBLISH_DIR/Procfile"
+          grep -Fxq "web: dotnet WebApi.dll" "$PUBLISH_DIR/Procfile"
+
+      - name: Create deployment bundle
+        run: |
+          cd "$PUBLISH_DIR"
+          zip -r "../../../$BUNDLE_NAME" .
+
+      - name: Verify deployment bundle root
+        run: |
+          unzip -l "$BUNDLE_NAME" | grep -E '(^|[[:space:]])WebApi\.dll$'
+          unzip -l "$BUNDLE_NAME" | grep -E '(^|[[:space:]])Procfile$'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload bundle to Elastic Beanstalk storage
+        id: eb_storage
+        run: |
+          EB_BUCKET="$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)"
+          BUNDLE_KEY="elasticbeanstalk/${{ secrets.EB_APP_NAME }}/$BUNDLE_NAME"
+          aws s3 cp "$BUNDLE_NAME" "s3://$EB_BUCKET/$BUNDLE_KEY"
+          {
+            echo "bucket=$EB_BUCKET"
+            echo "key=$BUNDLE_KEY"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create Elastic Beanstalk application version
+        run: |
+          if aws elasticbeanstalk describe-application-versions \
+            --application-name "${{ secrets.EB_APP_NAME }}" \
+            --version-labels "$VERSION_LABEL" \
+            --query 'ApplicationVersions[0].VersionLabel' \
+            --output text | grep -Fxq "$VERSION_LABEL"; then
+            echo "Application version $VERSION_LABEL already exists; reusing it."
+          else
+            aws elasticbeanstalk create-application-version \
+              --application-name "${{ secrets.EB_APP_NAME }}" \
+              --version-label "$VERSION_LABEL" \
+              --source-bundle S3Bucket="${{ steps.eb_storage.outputs.bucket }}",S3Key="${{ steps.eb_storage.outputs.key }}"
+          fi
+
+      - name: Update Elastic Beanstalk environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "${{ secrets.EB_ENV_NAME }}" \
+            --version-label "$VERSION_LABEL"
+
+      - name: Wait for environment update
+        run: |
+          aws elasticbeanstalk wait environment-updated \
+            --environment-names "${{ secrets.EB_ENV_NAME }}"
+
+      - name: Describe environment health
+        run: |
+          aws elasticbeanstalk describe-environments \
+            --environment-names "${{ secrets.EB_ENV_NAME }}" \
+            --query 'Environments[0].{Status:Status,Health:Health,HealthStatus:HealthStatus,VersionLabel:VersionLabel,EndpointURL:EndpointURL}' \
+            --output table
