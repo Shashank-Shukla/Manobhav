@@ -20,6 +20,7 @@ coverage/
 # Environment and local config
 .env
 .env.*
+Frontend/manobhav-ui/certs/
 
 # IDE/editor
 .idea/
@@ -40,6 +41,13 @@ coverage/
 # .NET build outputs
 bin/
 obj/
+Backend/manobhav-api/src/WebApi/*.deps.json
+Backend/manobhav-api/src/WebApi/*.dll
+Backend/manobhav-api/src/WebApi/*.exe
+Backend/manobhav-api/src/WebApi/*.runtimeconfig.json
+Backend/manobhav-api/src/WebApi/*.staticwebassets.endpoints.json
+Backend/manobhav-api/src/WebApi/publish/
+Backend/manobhav-api/src/WebApi/web.config
 
 # User-specific files
 *.user
