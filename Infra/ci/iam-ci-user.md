@@ -17,7 +17,6 @@ Frontend deployment:
 
 Backend deployment:
 
-- `EB_APP_NAME`
 - `EB_ENV_NAME`
 
 ## Current Permission Model
@@ -38,7 +37,7 @@ Backend permissions:
 
 - Create or read the Elastic Beanstalk storage location.
 - Upload deployment bundles to the EB artifact bucket.
-- Create Elastic Beanstalk application versions for the configured app.
+- Describe the configured Elastic Beanstalk environment and create application versions for the resolved app.
 - Update the configured Elastic Beanstalk environment.
 - Describe EB applications, versions, environments, events, and health.
 
@@ -58,4 +57,4 @@ Recommended future setup:
 4. Update workflows to use `role-to-assume` in `aws-actions/configure-aws-credentials`.
 5. Remove `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from repository secrets.
 
-Keep `AWS_REGION`, `S3_BUCKET`, `CF_DISTRIBUTION_ID`, `EB_APP_NAME`, and `EB_ENV_NAME` as repository secrets or variables.
+Keep `AWS_REGION`, `S3_BUCKET`, `CF_DISTRIBUTION_ID`, and `EB_ENV_NAME` as repository secrets or variables.

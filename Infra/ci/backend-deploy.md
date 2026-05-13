@@ -49,18 +49,18 @@ The workflow:
 
 1. Gets the EB-managed artifact bucket with `aws elasticbeanstalk create-storage-location`.
 2. Uploads the zip bundle to that bucket.
-3. Creates an application version using `backend-${{ github.sha }}-${{ github.run_attempt }}`.
-4. Reuses the version if a manual rerun already created it.
-5. Updates `${{ secrets.EB_ENV_NAME }}` to that version.
-6. Waits for the environment update to finish.
-7. Prints status, health, health status, version label, and endpoint URL.
+3. Resolves the EB application name from `${{ secrets.EB_ENV_NAME }}`.
+4. Creates an application version using `backend-${{ github.sha }}-${{ github.run_attempt }}`.
+5. Reuses the version if a manual rerun already created it.
+6. Updates `${{ secrets.EB_ENV_NAME }}` to that version.
+7. Waits for the environment update to finish.
+8. Prints status, health, health status, version label, and endpoint URL.
 
 ## Required Secrets
 
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_REGION`
-- `EB_APP_NAME`
 - `EB_ENV_NAME`
 
 ## Health Verification
@@ -81,6 +81,7 @@ OK
 
 - Manual reruns use `github.run_attempt` in the version label to avoid most duplicate version collisions.
 - If an application version already exists, the workflow reuses it instead of failing.
+- If the configured EB environment is missing in the selected region, the workflow fails before uploading with a focused error.
 - If `Procfile` is missing or wrong, the workflow fails before uploading.
 - If the zip root is wrong, the workflow fails before deploying.
 - If EB health does not recover, inspect EB events and CloudWatch logs for startup errors.

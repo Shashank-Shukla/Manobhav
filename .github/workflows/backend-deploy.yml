@@ -79,11 +79,30 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Resolve Elastic Beanstalk environment
+        id: eb_environment
+        run: |
+          APP_NAME="$(aws elasticbeanstalk describe-environments \
+            --environment-names "${{ secrets.EB_ENV_NAME }}" \
+            --query 'Environments[0].ApplicationName' \
+            --output text)"
+
+          if [ -z "$APP_NAME" ] || [ "$APP_NAME" = "None" ]; then
+            echo "::error::No Elastic Beanstalk environment named '${{ secrets.EB_ENV_NAME }}' found in region '$AWS_REGION'. Check EB_ENV_NAME and AWS_REGION secrets."
+            aws elasticbeanstalk describe-environments \
+              --query 'Environments[].{EnvironmentName:EnvironmentName,ApplicationName:ApplicationName,Status:Status}' \
+              --output table || true
+            exit 1
+          fi
+
+          echo "application_name=$APP_NAME" >> "$GITHUB_OUTPUT"
+          echo "Resolved Elastic Beanstalk application for the configured environment."
+
       - name: Upload bundle to Elastic Beanstalk storage
         id: eb_storage
         run: |
           EB_BUCKET="$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)"
-          BUNDLE_KEY="elasticbeanstalk/${{ secrets.EB_APP_NAME }}/$BUNDLE_NAME"
+          BUNDLE_KEY="elasticbeanstalk/${{ steps.eb_environment.outputs.application_name }}/$BUNDLE_NAME"
           aws s3 cp "$BUNDLE_NAME" "s3://$EB_BUCKET/$BUNDLE_KEY"
           {
             echo "bucket=$EB_BUCKET"
@@ -93,14 +112,14 @@ jobs:
       - name: Create Elastic Beanstalk application version
         run: |
           if aws elasticbeanstalk describe-application-versions \
-            --application-name "${{ secrets.EB_APP_NAME }}" \
+            --application-name "${{ steps.eb_environment.outputs.application_name }}" \
             --version-labels "$VERSION_LABEL" \
             --query 'ApplicationVersions[0].VersionLabel' \
             --output text | grep -Fxq "$VERSION_LABEL"; then
             echo "Application version $VERSION_LABEL already exists; reusing it."
           else
             aws elasticbeanstalk create-application-version \
-              --application-name "${{ secrets.EB_APP_NAME }}" \
+              --application-name "${{ steps.eb_environment.outputs.application_name }}" \
               --version-label "$VERSION_LABEL" \
               --source-bundle S3Bucket="${{ steps.eb_storage.outputs.bucket }}",S3Key="${{ steps.eb_storage.outputs.key }}"
           fi
