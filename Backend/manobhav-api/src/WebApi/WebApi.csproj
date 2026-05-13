@@ -12,6 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Remove="*.deps.json;*.dll;*.exe;*.pdb;*.runtimeconfig.json;*.staticwebassets.endpoints.json;Procfile;publish\**;web.config" />
+    <None Remove="*.deps.json;*.dll;*.exe;*.pdb;*.runtimeconfig.json;*.staticwebassets.endpoints.json;Procfile;publish\**;web.config" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Application\Application.csproj" />
     <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
   </ItemGroup>
