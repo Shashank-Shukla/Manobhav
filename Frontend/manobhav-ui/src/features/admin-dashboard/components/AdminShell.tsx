@@ -25,7 +25,7 @@ import {
 } from '@chakra-ui/react';
 import { Bell, ChevronDown, Home, Menu as MenuIcon, Search, Settings } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
-import { adminModules } from '../adminData';
+import { adminModules } from '../data';
 import { adminTheme, toneStyles } from '../adminTheme';
 import type { AdminModule } from '../types';
 

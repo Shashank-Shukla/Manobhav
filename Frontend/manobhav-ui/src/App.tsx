@@ -4,9 +4,9 @@ import { Analytics } from '@vercel/analytics/react';
 import { NavBar } from './shared/layout/NavBar';
 import { Footer } from './shared/layout/Footer';
 import { SimpleFooter } from './shared/layout/SimpleFooter';
-import { HomePage } from './pages/HomePage';
-import { LoginPage } from './pages/LoginPage';
-import { JourneyPage } from './pages/JourneyPage';
+const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage || m.default })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage || m.default })));
+const JourneyPage = lazy(() => import('./pages/JourneyPage').then((m) => ({ default: m.JourneyPage || m.default })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage || m.default })));
 const FAQPage = lazy(() => import('./pages/FAQPage').then((m) => ({ default: m.FAQPage || m.default })));
 const DisclaimerPage = lazy(() => import('./pages/DisclaimerPage').then((m) => ({ default: m.DisclaimerPage || m.default })));
@@ -17,10 +17,10 @@ const OnboardingPatientPage = lazy(() => import('./pages/onboarding/OnboardingPa
 const DashboardProviderPage = lazy(() => import('./pages/dashboard/DashboardProviderPage').then((m) => ({ default: m.DashboardProviderPage || m.default })));
 const DashboardPatientPage = lazy(() => import('./pages/dashboard/DashboardPatientPage').then((m) => ({ default: m.DashboardPatientPage || m.default })));
 const DashboardAdminPage = lazy(() => import('./pages/dashboard/DashboardAdminPage').then((m) => ({ default: m.DashboardAdminPage || m.default })));
-import { ErrorPageGeneric } from './components/Error/ErrorPageGeneric';
-import { ErrorPage50x } from './components/Error/ErrorPage50x';
-import { ErrorPage40x } from './components/Error/ErrorPage40x';
-import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { ErrorPageGeneric } from './shared/error/ErrorPageGeneric';
+import { ErrorPage50x } from './shared/error/ErrorPage50x';
+import { ErrorPage40x } from './shared/error/ErrorPage40x';
+import { ErrorBoundary } from './shared/error/ErrorBoundary';
 import { theme } from './utils/theme';
 import { Button } from './shared/primitives/Button';
 
@@ -88,6 +88,7 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
         {!hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} variant={navVariant} />}
 
         <div className={`flex flex-1 flex-col ${isViewportLockedRoute ? 'min-h-0 overflow-hidden' : ''}`}>
+          <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">Loading...</div>}>
           <Routes>
             <Route
               path="/"
@@ -206,6 +207,7 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
 
             <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
           </Routes>
+          </Suspense>
         </div>
 
         {!hideFooter &&

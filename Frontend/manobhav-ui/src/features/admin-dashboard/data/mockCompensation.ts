@@ -1,0 +1,48 @@
+import type { CompensationRecord } from '../types';
+
+export const compensationRecords: CompensationRecord[] = [
+  {
+    id: 'pay-001',
+    providerName: 'Dr. Kavya Rao',
+    fixedSalary: 68000,
+    completedSessions: 46,
+    incentive: 18400,
+    deductions: 0,
+    netPayout: 86400,
+    status: 'Ready for approval',
+    tone: 'sage',
+  },
+  {
+    id: 'pay-002',
+    providerName: 'Mrs. Provider-2',
+    fixedSalary: 62000,
+    completedSessions: 39,
+    incentive: 13200,
+    deductions: 1800,
+    netPayout: 73400,
+    status: 'Review deductions',
+    tone: 'amber',
+  },
+  {
+    id: 'pay-003',
+    providerName: 'Mr. Therapist-1',
+    fixedSalary: 42000,
+    completedSessions: 31,
+    incentive: 15500,
+    deductions: 0,
+    netPayout: 57500,
+    status: 'Approved',
+    tone: 'blue',
+  },
+  {
+    id: 'pay-004',
+    providerName: 'Dr. Provider-1',
+    fixedSalary: 56000,
+    completedSessions: 35,
+    incentive: 10500,
+    deductions: 2500,
+    netPayout: 64000,
+    status: 'Needs approval',
+    tone: 'rose',
+  },
+];

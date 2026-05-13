@@ -20,6 +20,7 @@ coverage/
 # Environment and local config
 .env
 .env.*
+Frontend/manobhav-ui/certs/
 
 # IDE/editor
 .idea/
@@ -33,3 +34,39 @@ coverage/
 /skills/
 /AGENTS.md
 .codex/
+*.props
+*.targets
+*.cache
+
+# .NET build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+Backend/manobhav-api/src/WebApi/*.deps.json
+Backend/manobhav-api/src/WebApi/*.dll
+Backend/manobhav-api/src/WebApi/*.exe
+Backend/manobhav-api/src/WebApi/*.runtimeconfig.json
+Backend/manobhav-api/src/WebApi/*.staticwebassets.endpoints.json
+Backend/manobhav-api/src/WebApi/publish/
+Backend/manobhav-api/src/WebApi/Procfile
+Backend/manobhav-api/src/WebApi/web.config
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.psess
+*.vsp
+*.pdb
+
+# Rider/VS Code
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Secrets (add your own patterns as needed)
+appsettings.Local.json
+appsettings.Development.Local.json
