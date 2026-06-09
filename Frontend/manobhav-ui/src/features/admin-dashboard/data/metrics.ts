@@ -39,8 +39,8 @@ export const insightMetrics: InsightMetric[] = [
 export const opsQueues: QueueItem[] = [
   {
     id: 'risk-followup',
-    title: 'High-risk patient follow-up',
-    meta: 'Aarav Sharma needs same-day clinical review',
+    title: 'Priority care follow-up',
+    meta: 'Same-day review item pending assignment',
     status: 'Urgent',
     tone: 'red',
   },
@@ -54,7 +54,7 @@ export const opsQueues: QueueItem[] = [
   {
     id: 'interview',
     title: 'Provider interview pending',
-    meta: 'Dr. Nisha Patel credential check complete',
+    meta: 'Credential check complete for an applicant',
     status: 'Hiring',
     tone: 'blue',
   },
@@ -71,7 +71,7 @@ export const quickActions: QueueItem[] = [
   {
     id: 'assign-provider',
     title: 'Assign provider',
-    meta: 'Match new intake with open clinical capacity',
+    meta: 'Match new intake with open care capacity',
     status: 'Patients',
     tone: 'sage',
   },
@@ -91,8 +91,8 @@ export const quickActions: QueueItem[] = [
   },
   {
     id: 'review-record',
-    title: 'Review clinical record',
-    meta: 'Open high-risk patient history',
+    title: 'Review restricted record',
+    meta: 'Open restricted history only after authorization',
     status: 'Clinical',
     tone: 'red',
   },

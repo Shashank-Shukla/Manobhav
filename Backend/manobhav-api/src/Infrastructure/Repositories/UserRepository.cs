@@ -16,7 +16,7 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _db.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        return await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)

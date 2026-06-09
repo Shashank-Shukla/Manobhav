@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useBreakpointValue } from '@chakra-ui/react';
 import { theme } from '../../../utils/theme';
-import { providerDirectory } from '../data/providerDirectory';
-import type { ProviderDateOption } from '../types';
+import { getProviders } from '../../public-data';
+import type { ProviderDateOption, ProviderRecord } from '../types';
 
 export function useProviderDirectory() {
   const isMobile = useBreakpointValue({ base: true, lg: false }) ?? false;
   const todayIso = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [providers, setProviders] = useState<ProviderRecord[]>([]);
+  const [providerStatus, setProviderStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -35,15 +37,30 @@ export function useProviderDirectory() {
     }));
   });
 
+  useEffect(() => {
+    const controller = new AbortController();
+    getProviders(controller.signal)
+      .then((items) => {
+        setProviders(items);
+        setProviderStatus(items.length > 0 ? 'ready' : 'empty');
+      })
+      .catch(() => {
+        setProviders([]);
+        setProviderStatus('error');
+      });
+
+    return () => controller.abort();
+  }, []);
+
   const filteredProviders = useMemo(() => {
     const query = search.toLowerCase();
 
-    return providerDirectory.filter(
+    return providers.filter(
       (provider) =>
         provider.name.toLowerCase().includes(query) ||
         provider.specializations.some((specialization) => specialization.toLowerCase().includes(query)),
     );
-  }, [search]);
+  }, [providers, search]);
 
   const selected = useMemo(
     () => filteredProviders.find((provider) => provider.id === selectedId) || filteredProviders[0],
@@ -51,16 +68,7 @@ export function useProviderDirectory() {
   );
 
   const summary = useMemo(() => {
-    const parts: string[] = [];
-    const cleanSearch = search.trim();
-
-    if (cleanSearch) parts.push(`Searching "${cleanSearch}"`);
-    if (dateFrom && dateTo) parts.push(`Filtered by date ranging from ${dateFrom} to ${dateTo}`);
-    else if (dateFrom) parts.push(`Filtered by date starting ${dateFrom}`);
-    if (filter !== 'Any') parts.push(`Filtered by "${filter}"`);
-    if (sort !== 'Availability') parts.push(`Sorted by "${sort}"`);
-
-    return parts.join(' | ');
+    return buildProviderFilterSummary({ dateFrom, dateTo, filter, search, sort });
   }, [dateFrom, dateTo, filter, search, sort]);
 
   const selectProvider = (providerId: string) => {
@@ -115,6 +123,7 @@ export function useProviderDirectory() {
     filteredProviders,
     isMobileDetailsOpen,
     openCalendar,
+    providerStatus,
     search,
     selectProvider,
     selectProviderDate,
@@ -135,4 +144,46 @@ export function useProviderDirectory() {
     tempCalendarIso,
     todayIso,
   };
+}
+
+function buildProviderFilterSummary({
+  dateFrom,
+  dateTo,
+  filter,
+  search,
+  sort,
+}: {
+  dateFrom: string;
+  dateTo: string;
+  filter: string;
+  search: string;
+  sort: string;
+}): string {
+  return [
+    getSearchSummary(search),
+    getDateSummary(dateFrom, dateTo),
+    getFilterSummary(filter),
+    getSortSummary(sort),
+  ].filter(Boolean).join(' | ');
+}
+
+function getSearchSummary(search: string): string {
+  const cleanSearch = search.trim();
+  return cleanSearch ? `Searching "${cleanSearch}"` : '';
+}
+
+function getDateSummary(dateFrom: string, dateTo: string): string {
+  if (dateFrom && dateTo) {
+    return `Filtered by date ranging from ${dateFrom} to ${dateTo}`;
+  }
+
+  return dateFrom ? `Filtered by date starting ${dateFrom}` : '';
+}
+
+function getFilterSummary(filter: string): string {
+  return filter !== 'Any' ? `Filtered by "${filter}"` : '';
+}
+
+function getSortSummary(sort: string): string {
+  return sort !== 'Availability' ? `Sorted by "${sort}"` : '';
 }

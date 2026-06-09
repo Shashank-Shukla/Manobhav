@@ -33,26 +33,64 @@ export function ProviderDetailsPanel({
     return null;
   }
 
-  if (showCalendar) {
-    return (
-      <VStack align="stretch" spacing={3} className="items-center transition-all duration-700 ease-in-out">
-        <Text fontSize="lg" fontWeight="bold" color={theme.colors.textMain} textAlign="center">
-          Choose a date
-        </Text>
-        <Suspense fallback={<Text color="gray.600">Loading calendar...</Text>}>
-          <ProviderDatePicker
-            onCancel={onCalendarCancel}
-            onChoose={onCalendarChoose}
-            onTempDateChange={onTempCalendarChange}
-            selectedDateIso={selectedDateIso}
-            selectedDateLabel={selectedDateLabel}
-            tempCalendarIso={tempCalendarIso}
-          />
-        </Suspense>
-      </VStack>
-    );
-  }
+  return showCalendar ? (
+    <ProviderCalendarPanel
+      onCalendarCancel={onCalendarCancel}
+      onCalendarChoose={onCalendarChoose}
+      onTempCalendarChange={onTempCalendarChange}
+      selectedDateIso={selectedDateIso}
+      selectedDateLabel={selectedDateLabel}
+      tempCalendarIso={tempCalendarIso}
+    />
+  ) : (
+    <ProviderProfilePanel onBook={onBook} selected={selected} selectedDateLabel={selectedDateLabel} />
+  );
+}
 
+function ProviderCalendarPanel({
+  onCalendarCancel,
+  onCalendarChoose,
+  onTempCalendarChange,
+  selectedDateIso,
+  selectedDateLabel,
+  tempCalendarIso,
+}: Pick<
+  ProviderDetailsPanelProps,
+  | 'onCalendarCancel'
+  | 'onCalendarChoose'
+  | 'onTempCalendarChange'
+  | 'selectedDateIso'
+  | 'selectedDateLabel'
+  | 'tempCalendarIso'
+>) {
+  return (
+    <VStack align="stretch" spacing={3} className="items-center transition-all duration-700 ease-in-out">
+      <Text fontSize="lg" fontWeight="bold" color={theme.colors.textMain} textAlign="center">
+        Choose a date
+      </Text>
+      <Suspense fallback={<Text color="gray.600">Loading calendar...</Text>}>
+        <ProviderDatePicker
+          onCancel={onCalendarCancel}
+          onChoose={onCalendarChoose}
+          onTempDateChange={onTempCalendarChange}
+          selectedDateIso={selectedDateIso}
+          selectedDateLabel={selectedDateLabel}
+          tempCalendarIso={tempCalendarIso}
+        />
+      </Suspense>
+    </VStack>
+  );
+}
+
+function ProviderProfilePanel({
+  onBook,
+  selected,
+  selectedDateLabel,
+}: {
+  onBook: () => void;
+  selected: ProviderRecord;
+  selectedDateLabel: string;
+}) {
   return (
     <VStack align="stretch" spacing={3} className="h-full transition-all duration-700 ease-in-out">
       <Flex justify="center">
@@ -79,10 +117,9 @@ export function ProviderDetailsPanel({
         <Text fontWeight="semibold" color="gray.800">
           Rating:
         </Text>
-        {Array.from({ length: 5 }).map((_, index) => {
-          const color = index + 1 <= Math.round(selected.rating) ? theme.colors.dustyRose.DEFAULT : '#E5E7EB';
-          return <Star key={index} size={16} color={color} fill={color} strokeWidth={1.8} />;
-        })}
+        {Array.from({ length: 5 }).map((_, index) => (
+          <RatingStar key={index} index={index} rating={selected.rating} />
+        ))}
         <Text fontSize="sm" color="gray.600">
           {selected.rating.toFixed(1)}
         </Text>
@@ -109,4 +146,13 @@ export function ProviderDetailsPanel({
       </Button>
     </VStack>
   );
+}
+
+function RatingStar({ index, rating }: { index: number; rating: number }) {
+  const color = getRatingStarColor(index, rating);
+  return <Star size={16} color={color} fill={color} strokeWidth={1.8} />;
+}
+
+function getRatingStarColor(index: number, rating: number): string {
+  return index + 1 <= Math.round(rating) ? theme.colors.dustyRose.DEFAULT : '#E5E7EB';
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { useParams } from 'react-router-dom';
 import { adminModules, isAdminModule } from './data';
@@ -15,6 +15,17 @@ import {
   UnknownModuleView,
 } from './views';
 import type { AdminModule } from './types';
+
+const adminModuleViews: Record<AdminModule, (search: string) => ReactElement> = {
+  today: () => <TodayOpsView />,
+  patients: (search) => <PatientsView search={search} />,
+  providers: (search) => <ProvidersView search={search} />,
+  bookings: (search) => <BookingsView search={search} />,
+  hiring: (search) => <HiringView search={search} />,
+  salary: (search) => <SalaryView search={search} />,
+  insights: () => <InsightsView />,
+  'clinical-records': (search) => <ClinicalRecordsView search={search} />,
+};
 
 export function AdminDashboardRoute() {
   return (
@@ -47,24 +58,5 @@ function AdminDashboardContent() {
 }
 
 function AdminModuleContent({ module, search }: { module: AdminModule; search: string }) {
-  switch (module) {
-    case 'today':
-      return <TodayOpsView />;
-    case 'patients':
-      return <PatientsView search={search} />;
-    case 'providers':
-      return <ProvidersView search={search} />;
-    case 'bookings':
-      return <BookingsView search={search} />;
-    case 'hiring':
-      return <HiringView search={search} />;
-    case 'salary':
-      return <SalaryView search={search} />;
-    case 'insights':
-      return <InsightsView />;
-    case 'clinical-records':
-      return <ClinicalRecordsView search={search} />;
-    default:
-      return <UnknownModuleView />;
-  }
+  return adminModuleViews[module]?.(search) ?? <UnknownModuleView />;
 }

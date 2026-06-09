@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AboutPage } from '../pages/AboutPage';
 import { AppointmentPage } from '../pages/AppointmentPage';
 import { DashboardAdminPage } from '../pages/dashboard/DashboardAdminPage';
@@ -16,6 +16,66 @@ import { renderWithRouter } from './renderWithRouter';
 vi.mock('@jitsi/react-sdk', () => ({
   JitsiMeeting: () => <div data-testid="jitsi-meeting" />,
 }));
+
+const apiJson = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const routeApiMocks = [
+  {
+    matches: (url: string) => url.includes('/api/public/landing'),
+    response: () => apiJson({ featuredExperts: [] }),
+  },
+  {
+    matches: (url: string) => url.includes('/api/public/visitor-flow'),
+    response: () => apiJson({
+      flowKey: 'default',
+      questions: [
+        { id: 'q-1', stepOrder: 1, text: 'How would you describe your mood over the past week?' },
+        { id: 'q-2', stepOrder: 2, text: 'Are you experiencing sleep difficulties or fatigue?' },
+      ],
+    }),
+  },
+  {
+    matches: (url: string) => url.includes('/api/public/providers'),
+    response: () => apiJson([
+      {
+        id: 'provider-1',
+        name: 'Clinical Specialist',
+        summary: 'Compassionate clinician',
+        longDescription: 'Compassionate clinician with API-backed availability.',
+        specializations: ['Anxiety'],
+        avatarColor: '#9CAF88',
+        sessions: 12,
+        rating: 4.6,
+        nextDates: [{ display: 'Jun 5', iso: '2026-06-05' }],
+      },
+    ]),
+  },
+  {
+    matches: (url: string) => url.endsWith('/api/visitors'),
+    response: () => apiJson({ visitorId: '00000000-0000-0000-0000-000000000001', fullCaptureEnabled: true, retentionDays: 90 }, 201),
+  },
+  {
+    matches: (url: string) => url.includes('/api/visitors/') && url.includes('/events'),
+    response: () => new Response(null, { status: 202 }),
+  },
+];
+
+beforeEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => getRouteApiMockResponse(String(input))),
+  );
+});
+
+function getRouteApiMockResponse(url: string): Response {
+  return routeApiMocks.find((route) => route.matches(url))?.response() ?? apiJson({ title: 'Not found' }, 404);
+}
 
 describe('route smoke coverage', () => {
   it('renders the home route and calls the journey callback', async () => {
@@ -50,9 +110,9 @@ describe('public route interactions', () => {
 
     renderWithRouter(<JourneyPage onBackHome={vi.fn()} onFinish={vi.fn()} />);
 
-    expect(screen.getByText(/describe your mood over the past week/i)).toBeInTheDocument();
+    expect(await screen.findByText(/describe your mood over the past week/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /next question/i }));
-    expect(screen.getByText(/sleep difficulties or fatigue/i)).toBeInTheDocument();
+    expect(await screen.findByText(/sleep difficulties or fatigue/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /previous question/i }));
     expect(screen.getByText(/describe your mood over the past week/i)).toBeInTheDocument();
   });
@@ -87,8 +147,9 @@ describe('operational routes', () => {
     renderWithRouter(<ProvidersPage onBackHome={vi.fn()} onBook={vi.fn()} />, ['/providers']);
 
     expect(screen.getByPlaceholderText(/search providers/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Clinical Specialist/i)).toBeInTheDocument();
     await user.type(screen.getByPlaceholderText(/search providers/i), 'not-a-provider');
-    expect(screen.getByText(/no providers match this search/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no providers match this search/i)).toBeInTheDocument();
 
     await user.clear(screen.getByPlaceholderText(/search providers/i));
     await user.click(screen.getAllByRole('button', { name: /more dates/i })[0]);
