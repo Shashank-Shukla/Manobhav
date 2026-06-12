@@ -112,7 +112,7 @@ function AppRoutes({
     <Routes>
       <Route path="/" element={<HomeFlowRoute flow={flow} hideFooter={hideFooter} navigate={navigate} setFlow={setFlow} />} />
       <Route path="/login" element={<LoginRouteElement navigate={navigate} />} />
-      <Route path="/auth/callback" element={<AuthCallbackRouteElement navigate={navigate} />} />
+      <Route path="/callback" element={<AuthCallbackRouteElement navigate={navigate} />} />
       <Route path="/journey" element={<JourneyRouteElement navigate={navigate} />} />
       <Route path="/about" element={<BoundedRoute context="route-about" navigate={navigate}><AboutPage /></BoundedRoute>} />
       <Route path="/faq" element={<BoundedRoute context="route-faq" navigate={navigate}><FAQPage /></BoundedRoute>} />

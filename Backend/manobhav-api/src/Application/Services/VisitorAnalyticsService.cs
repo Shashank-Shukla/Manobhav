@@ -24,6 +24,18 @@ public sealed class VisitorAnalyticsValidationException : Exception
 
 public sealed partial class VisitorAnalyticsService : IVisitorAnalyticsService
 {
+    private static readonly string[] ProhibitedExactPropertyKeys =
+    [
+        "answer",
+        "answertext",
+        "answervalue",
+        "fieldvalue",
+        "freetext",
+        "inputvalue",
+        "rawanswer",
+        "response"
+    ];
+
     private static readonly string[] ProhibitedPropertyKeyFragments =
     [
         "authorization",
@@ -198,7 +210,7 @@ public sealed partial class VisitorAnalyticsService : IVisitorAnalyticsService
     private static void ValidatePropertyKey(string key)
     {
         var normalized = NormalizeKey(key);
-        if (ProhibitedPropertyKeyFragments.Any(normalized.Contains))
+        if (ProhibitedExactPropertyKeys.Contains(normalized) || ProhibitedPropertyKeyFragments.Any(normalized.Contains))
         {
             throw new VisitorAnalyticsValidationException($"Analytics property '{key}' is not allowed because it may contain sensitive data.");
         }

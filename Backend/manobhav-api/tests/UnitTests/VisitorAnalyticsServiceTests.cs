@@ -53,6 +53,34 @@ public sealed class VisitorAnalyticsServiceTests
     }
 
     [Fact]
+    public async Task RecordEventAsync_RejectsRawResponseProperty()
+    {
+        var repository = new InMemoryVisitorAnalyticsRepository();
+        var service = new VisitorAnalyticsService(
+            repository,
+            new VisitorAnalyticsOptions
+            {
+                Enabled = true,
+                FullCaptureEnabled = true,
+                FullCaptureLegalApproved = true,
+                RetentionDays = 90
+            });
+        var visitor = await service.CreateVisitorAsync(new CreateVisitorRequest("/"), new ServerVisitorTelemetry("127.0.0.1", "test-agent", null), CancellationToken.None);
+
+        var request = new VisitorEventRequest(
+            "journey.answer.changed",
+            "/journey",
+            "question-1",
+            new Dictionary<string, string?> { ["response"] = "raw visitor answer" },
+            DateTimeOffset.UtcNow);
+
+        var ex = await Assert.ThrowsAsync<VisitorAnalyticsValidationException>(() =>
+            service.RecordEventAsync(visitor.VisitorId, request, CancellationToken.None));
+
+        Assert.Contains("response", ex.Message);
+    }
+
+    [Fact]
     public async Task RecordEventAsync_AllowsNonSensitiveFunnelEvent()
     {
         var repository = new InMemoryVisitorAnalyticsRepository();

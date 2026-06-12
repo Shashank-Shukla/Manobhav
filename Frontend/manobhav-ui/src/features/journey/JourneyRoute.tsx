@@ -572,8 +572,7 @@ async function tryRecordQuestionAnswer(
       properties: {
         questionId: question.id,
         stepOrder: question.stepOrder,
-        response,
-        responseLength: response.length,
+        answered: response.trim().length > 0,
         timeToAnswerMs: getNowMs() - startedAtMs,
         action,
       },

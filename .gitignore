@@ -42,6 +42,7 @@ secrets.json
 /.codex/
 /skills/
 /AGENTS.md
+/docs/
 .codex/
 *.targets
 *.cache

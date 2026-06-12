@@ -25,6 +25,17 @@ const PROHIBITED_KEY_FRAGMENTS = [
   'token',
 ];
 
+const PROHIBITED_EXACT_KEYS = [
+  'answer',
+  'answertext',
+  'answervalue',
+  'fieldvalue',
+  'freetext',
+  'inputvalue',
+  'rawanswer',
+  'response',
+];
+
 export function readVisitorAnalyticsConfig(env: PublicEnv = import.meta.env): VisitorAnalyticsConfig {
   const configuredApiBaseUrl = stripTrailingSlash(String(env.VITE_PUBLIC_API_BASE_URL || '').trim());
   return {
@@ -43,7 +54,7 @@ export function canStartFullCapture(config: VisitorAnalyticsConfig): boolean {
 export function assertSafeAnalyticsProperties(properties: Record<string, string | number | boolean | null | undefined>): void {
   for (const key of Object.keys(properties)) {
     const normalized = key.replace(/[^a-z0-9]/gi, '').toLowerCase();
-    if (PROHIBITED_KEY_FRAGMENTS.some((fragment) => normalized.includes(fragment))) {
+    if (PROHIBITED_EXACT_KEYS.includes(normalized) || PROHIBITED_KEY_FRAGMENTS.some((fragment) => normalized.includes(fragment))) {
       throw new Error(`Analytics property '${key}' is not allowed.`);
     }
   }

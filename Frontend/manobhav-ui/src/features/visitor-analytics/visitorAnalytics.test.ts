@@ -15,6 +15,7 @@ describe('visitor analytics controls', () => {
 
   it('rejects prohibited sensitive analytics property keys', () => {
     expect(() => assertSafeAnalyticsProperties({ authToken: 'not-allowed' })).toThrow(/authToken/i);
+    expect(() => assertSafeAnalyticsProperties({ response: 'raw visitor answer' })).toThrow(/response/i);
     expect(() => assertSafeAnalyticsProperties({ answerLength: '12' })).not.toThrow();
   });
 });
