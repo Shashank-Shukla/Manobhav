@@ -1,6 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { Analytics } from '@vercel/analytics/react';
 import { NavBar } from './shared/layout/NavBar';
 import { Footer } from './shared/layout/Footer';
 import { SimpleFooter } from './shared/layout/SimpleFooter';
@@ -48,11 +47,10 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="font-[Poppins] min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
+      <div className="min-h-screen text-[color:var(--text-color)] selection:bg-[#D6A2AD] selection:text-white">
         <div className="fixed inset-0 bg-[var(--bg-gradient)] -z-50" />
         <AppShell themeMode={themeMode} />
         <style>{`:root { font-family: ${theme.font}; }`}</style>
-        <Analytics />
       </div>
     </BrowserRouter>
   );

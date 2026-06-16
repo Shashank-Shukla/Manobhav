@@ -17,27 +17,30 @@ export function MoodSearchBar({ onReachHuman }: Props) {
   const [mood, setMood] = useState('');
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(getIsWindowScrolled);
+  const [isExpanded, setIsExpanded] = useState(() => !getIsWindowScrolled());
   const [ideaIndex] = useState(() => Math.floor(Math.random() * ideas.length));
   const ideaText = ideas[ideaIndex];
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 60);
-    handleScroll();
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      const nextIsScrolled = window.scrollY > 60;
+      setIsScrolled(nextIsScrolled);
+      setIsExpanded((currentIsExpanded) => {
+        if (nextIsScrolled && currentIsExpanded) {
+          return false;
+        }
+
+        if (!nextIsScrolled && !currentIsExpanded) {
+          return true;
+        }
+
+        return currentIsExpanded;
+      });
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  useEffect(() => {
-    if (isScrolled && isExpanded) {
-      setIsExpanded(false);
-    }
-    if (!isScrolled && !isExpanded) {
-      setIsExpanded(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScrolled]);
 
   const getSuggestion = () => {
     if (!mood.trim()) return;
@@ -211,6 +214,10 @@ function getContainerClassName(isScrolled: boolean): string {
     ? 'bottom-8 right-8 left-auto translate-x-0 w-auto'
     : 'bottom-12 left-1/2 -translate-x-1/2 w-full px-6 max-w-2xl';
   return `fixed z-[100] transition-all duration-700 ease-in-out flex flex-col items-center gap-4 ${positionClass}`;
+}
+
+function getIsWindowScrolled(): boolean {
+  return typeof window !== 'undefined' && window.scrollY > 60;
 }
 
 function getSearchBoxClassName(isExpanded: boolean): string {

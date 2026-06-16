@@ -19,7 +19,6 @@
     "@jitsi/react-sdk": "^1.4.4",
     "@mui/material": "^7.3.9",
     "@mui/x-date-pickers": "^8.27.2",
-    "@vercel/analytics": "^1.6.1",
     "dayjs": "^1.11.19",
     "framer-motion": "^11.13.1",
     "lucide-react": "^0.470.0",
