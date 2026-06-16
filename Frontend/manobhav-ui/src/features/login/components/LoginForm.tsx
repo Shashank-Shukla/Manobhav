@@ -1,12 +1,17 @@
-import { ArrowLeft, Lock, Mail } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '../../../shared/primitives/Button';
-import { Input } from '../../../shared/primitives/Input';
+import { startCognitoLogin } from '../../../shared/auth/cognitoAuth';
 
 type LoginFormProps = {
   onBack: () => void;
+  onShowSignUp: () => void;
 };
 
-export function LoginForm({ onBack }: LoginFormProps) {
+export function LoginForm({ onBack, onShowSignUp }: LoginFormProps) {
+  const signIn = (identityProvider?: string) => {
+    void startCognitoLogin({ identityProvider, returnTo: '/dashboard' });
+  };
+
   return (
     <div className="relative h-full min-h-0 overflow-y-auto p-6 md:p-10 lg:p-16">
       <button onClick={onBack} className="absolute top-8 left-8 p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500">
@@ -16,25 +21,18 @@ export function LoginForm({ onBack }: LoginFormProps) {
       <div className="mt-12 md:mt-0">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Sign In</h1>
-          <p className="text-gray-500">Welcome back! Please enter your details.</p>
+          <p className="text-gray-500">Choose a verified sign-in method to continue.</p>
         </div>
 
-        <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-          <Input type="email" placeholder="Email Address" icon={Mail} />
-          <Input type="password" placeholder="Password" icon={Lock} />
-
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 cursor-pointer text-gray-500">
-              <input type="checkbox" className="rounded border-gray-300 text-[#9CAF88] focus:ring-[#9CAF88]" />
-              <span>Remember me</span>
-            </label>
-            <a href="#" className="text-[#9CAF88] font-medium hover:underline">
-              Forgot password?
-            </a>
-          </div>
-
+        <form
+          className="space-y-6"
+          onSubmit={(e) => {
+            e.preventDefault();
+            signIn();
+          }}
+        >
           <Button variant="primary" className="w-full">
-            Sign In
+            Continue with email OTP
           </Button>
 
           <div className="relative my-8">
@@ -46,21 +44,18 @@ export function LoginForm({ onBack }: LoginFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Button variant="secondary" className="w-full text-sm">
+          <div>
+            <Button type="button" variant="secondary" className="w-full text-sm" onClick={() => signIn('Google')}>
               Google
-            </Button>
-            <Button variant="secondary" className="w-full text-sm">
-              Apple
             </Button>
           </div>
         </form>
 
         <p className="mt-8 text-center text-sm text-gray-500">
-          Don't have an account?{' '}
-          <a href="#" className="text-[#9CAF88] font-bold hover:underline">
-            Sign up
-          </a>
+          New here? Let's get you{' '}
+          <button type="button" onClick={onShowSignUp} className="font-semibold text-[#7A8C6A] underline-offset-4 hover:underline">
+            Registered
+          </button>
         </p>
       </div>
     </div>

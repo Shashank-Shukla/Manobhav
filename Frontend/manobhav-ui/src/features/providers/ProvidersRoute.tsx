@@ -1,4 +1,6 @@
 import { Box, ChakraProvider } from '@chakra-ui/react';
+import { useState } from 'react';
+import { createBookingHoldForProvider } from './bookingFlow';
 import { ProviderDetailsPanel } from './components/ProviderDetailsPanel';
 import { ProviderList } from './components/ProviderList';
 import { ProviderMobileDetailsDrawer } from './components/ProviderMobileDetailsDrawer';
@@ -16,11 +18,65 @@ export function ProvidersPage(props: ProvidersRouteProps) {
 
 function ProvidersDirectory({ onBackHome: _onBackHome, onBook }: ProvidersRouteProps) {
   const directory = useProviderDirectory();
+  const [bookingError, setBookingError] = useState('');
+  const [isCreatingHold, setIsCreatingHold] = useState(false);
   void _onBackHome;
+
+  const bookSelectedProvider = async () => {
+    if (!directory.selected) {
+      return;
+    }
+
+    setBookingError('');
+    setIsCreatingHold(true);
+    try {
+      await createBookingHoldForProvider({
+        providerId: directory.selected.id,
+        selectedDateIso: directory.selectedDateIso,
+        selectedSlotId: directory.selectedSlotId,
+      });
+      onBook();
+    } catch (error: unknown) {
+      setBookingError(error instanceof Error ? error.message : 'Unable to create booking hold.');
+    } finally {
+      setIsCreatingHold(false);
+    }
+  };
+
+  const directoryState = (() => {
+    if (directory.providerStatus === 'loading') {
+      return (
+        <Box rounded="xl" border="1px solid" borderColor="gray.200" bg="white" p={6} textAlign="center">
+          <div className="mx-auto h-5 w-48 animate-pulse rounded bg-gray-200" />
+          <div className="mx-auto mt-3 h-4 w-64 animate-pulse rounded bg-gray-100" />
+        </Box>
+      );
+    }
+
+    if (directory.providerStatus === 'error') {
+      return (
+        <Box rounded="xl" border="1px solid" borderColor="red.200" bg="red.50" p={6} textAlign="center" color="red.800">
+          Unable to load providers from the API.
+        </Box>
+      );
+    }
+
+    if (directory.providerStatus === 'empty') {
+      return (
+        <Box rounded="xl" border="1px solid" borderColor="gray.200" bg="white" p={6} textAlign="center" color="gray.700">
+          No providers are configured yet.
+        </Box>
+      );
+    }
+
+    return null;
+  })();
 
   const details = (
     <ProviderDetailsPanel
-      onBook={onBook}
+      bookingError={bookingError}
+      isBooking={isCreatingHold}
+      onBook={() => void bookSelectedProvider()}
       onCalendarCancel={directory.cancelCalendar}
       onCalendarChoose={directory.chooseCalendarDate}
       onTempCalendarChange={directory.setTempCalendarIso}
@@ -69,13 +125,15 @@ function ProvidersDirectory({ onBackHome: _onBackHome, onBook }: ProvidersRouteP
           className="min-h-0 px-4 backdrop-blur-[8px] md:px-6 lg:h-full"
           sx={{ scrollbarWidth: 'thin' }}
         >
-          <ProviderList
-            onOpenCalendar={directory.openCalendar}
-            onSelectDate={directory.selectProviderDate}
-            onSelectProvider={directory.selectProvider}
-            providers={directory.filteredProviders}
-            selectedId={directory.selected?.id ?? directory.selectedId ?? undefined}
-          />
+          {directoryState ?? (
+            <ProviderList
+              onOpenCalendar={directory.openCalendar}
+              onSelectDate={directory.selectProviderDate}
+              onSelectProvider={directory.selectProvider}
+              providers={directory.filteredProviders}
+              selectedId={directory.selected?.id ?? directory.selectedId ?? undefined}
+            />
+          )}
         </Box>
 
         <Box

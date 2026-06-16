@@ -6,6 +6,7 @@ export type ProvidersRouteProps = {
 export type ProviderDateOption = {
   display: string;
   iso: string;
+  slotId?: string;
 };
 
 export type ProviderRecord = {

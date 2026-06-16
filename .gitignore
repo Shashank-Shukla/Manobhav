@@ -19,8 +19,17 @@ coverage/
 
 # Environment and local config
 .env
+.env.local
 .env.*
+.env.*.local
+.env.production
+.env.staging
+!.env.example
 Frontend/manobhav-ui/certs/
+secrets.json
+*.pem
+*.pfx
+*.key
 
 # IDE/editor
 .idea/
@@ -33,10 +42,19 @@ Frontend/manobhav-ui/certs/
 /.codex/
 /skills/
 /AGENTS.md
+/docs/
+.aws/
+.tools/
 .codex/
-*.props
 *.targets
 *.cache
+
+# Keep planning/audit markdown local-only. README and SECURITY files remain trackable.
+*.md
+!README.md
+!**/README.md
+!SECURITY.md
+!**/SECURITY.md
 
 # .NET build outputs
 bin/
@@ -51,6 +69,9 @@ Backend/manobhav-api/src/WebApi/*.staticwebassets.endpoints.json
 Backend/manobhav-api/src/WebApi/publish/
 Backend/manobhav-api/src/WebApi/Procfile
 Backend/manobhav-api/src/WebApi/web.config
+*.pubxml
+*.pubxml.user
+wwwroot/uploads/
 
 # User-specific files
 *.user
@@ -68,5 +89,10 @@ Backend/manobhav-api/src/WebApi/web.config
 *.log
 
 # Secrets (add your own patterns as needed)
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+!appsettings.Production.example.json
 appsettings.Local.json
 appsettings.Development.Local.json
+appsettings.*.Local.json

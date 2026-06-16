@@ -4,8 +4,13 @@ import { Analytics } from '@vercel/analytics/react';
 import { NavBar } from './shared/layout/NavBar';
 import { Footer } from './shared/layout/Footer';
 import { SimpleFooter } from './shared/layout/SimpleFooter';
+import { AdminRouteGuard } from './shared/auth/AdminRouteGuard';
+import { AuthRouteGuard } from './shared/auth/AuthRouteGuard';
+import { getStoredAuthSession } from './shared/auth/cognitoAuth';
+import { useVisitorAnalytics } from './features/visitor-analytics';
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage || m.default })));
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage || m.default })));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then((m) => ({ default: m.AuthCallbackPage || m.default })));
 const JourneyPage = lazy(() => import('./pages/JourneyPage').then((m) => ({ default: m.JourneyPage || m.default })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage || m.default })));
 const FAQPage = lazy(() => import('./pages/FAQPage').then((m) => ({ default: m.FAQPage || m.default })));
@@ -28,6 +33,9 @@ const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 
 type ThemeMode = 'light' | 'dark';
 type FlowStep = 'home' | 'journey' | 'providers';
+
+const viewportLockedPaths = new Set(['/providers', '/about', '/disclaimer', '/login']);
+const standaloneFooterHiddenPaths = new Set(['/about', '/disclaimer', '/providers', '/login', '/appointment']);
 
 export default function App() {
   const [themeMode] = useState<ThemeMode>('light');
@@ -54,28 +62,11 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [flow, setFlow] = useState<FlowStep>('home');
-  const isHomeFlow = location.pathname === '/';
-  const isProvidersRoute = location.pathname === '/providers';
-  const isAboutRoute = location.pathname === '/about';
-  const isDisclaimerRoute = location.pathname === '/disclaimer';
-  const isAdminDashboardRoute = location.pathname.startsWith('/dashboard/admin');
-  const isViewportLockedRoute =
-    isProvidersRoute || isAboutRoute || isDisclaimerRoute || location.pathname === '/login' || isAdminDashboardRoute;
-
-  const hideNav =
-    location.pathname === '/journey' ||
-    location.pathname === '/appointment' ||
-    isAdminDashboardRoute ||
-    (isHomeFlow && flow === 'journey');
-
-  const hideFooter =
-    hideNav || location.pathname === '/appointment';
-
-  const navVariant = isProvidersRoute ? 'flat' : 'glass';
+  useVisitorAnalytics(location.pathname);
+  const layout = getRouteLayout(location.pathname, flow);
 
   const handleBook = () => {
-    const loggedIn = sessionStorage.getItem('manobhav-logged-in') === 'true';
-    if (!loggedIn) {
+    if (!getStoredAuthSession()) {
       navigate('/login');
     } else {
       navigate('/appointment');
@@ -84,142 +75,227 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
 
   return (
     <>
-      <div className={isViewportLockedRoute ? 'flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden' : 'flex min-h-screen flex-col'}>
-        {!hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} variant={navVariant} />}
+      <div className={layout.containerClassName}>
+        {!layout.hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} variant={layout.navVariant} />}
 
-        <div className={`flex flex-1 flex-col ${isViewportLockedRoute ? 'min-h-0 overflow-hidden' : ''}`}>
+        <div className={`flex flex-1 flex-col ${layout.viewportLocked ? 'min-h-0 overflow-hidden' : ''}`}>
           <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">Loading...</div>}>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <ErrorBoundary context="route-home" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-                  {flow === 'home' && (
-                    <>
-                      <HomePage onStartJourney={() => setFlow('journey')} />
-                      <Suspense fallback={null}>
-                        <MoodSearchBar onReachHuman={() => setFlow('journey')} />
-                      </Suspense>
-                      {!hideFooter && <Footer />}
-                    </>
-                  )}
-                  {flow === 'journey' && (
-                    <JourneyPage onBackHome={() => setFlow('home')} onFinish={() => navigate('/providers')} />
-                  )}
-                </ErrorBoundary>
-              }
+            <AppRoutes
+              flow={flow}
+              hideFooter={layout.hideFooter}
+              navigate={navigate}
+              onBook={handleBook}
+              setFlow={setFlow}
             />
-
-            <Route
-              path="/login"
-              element={
-                <ErrorBoundary context="route-login" fallback={<ErrorPage50x onHome={() => navigate('/')} />}>
-                  <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-                    <LoginPage onBack={() => navigate('/')} />
-                  </div>
-                </ErrorBoundary>
-              }
-            />
-
-            <Route
-              path="/journey"
-              element={
-                <ErrorBoundary context="route-journey" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-                  <JourneyPage onBackHome={() => navigate('/')} onFinish={() => navigate('/providers')} />
-                </ErrorBoundary>
-              }
-            />
-
-            <Route
-              path="/about"
-              element={
-                <ErrorBoundary context="route-about" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-                  <AboutPage />
-                </ErrorBoundary>
-              }
-            />
-
-            <Route
-              path="/faq"
-              element={
-                <ErrorBoundary context="route-faq" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-                  <FAQPage />
-                </ErrorBoundary>
-              }
-            />
-
-            <Route
-              path="/disclaimer"
-              element={
-                <ErrorBoundary context="route-disclaimer" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-                  <DisclaimerPage />
-                </ErrorBoundary>
-              }
-            />
-
-            <Route
-              path="/providers"
-              element={
-                <ErrorBoundary context="route-providers" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-                  <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-                    <ProvidersPage onBackHome={() => navigate('/')} onBook={handleBook} />
-                    <SimpleFooter />
-                  </div>
-                </ErrorBoundary>
-              }
-            />
-
-            <Route
-              path="/appointment"
-              element={
-                <ErrorBoundary context="route-appointment" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
-                  <AppointmentPage />
-                </ErrorBoundary>
-              }
-            />
-
-            <Route
-              path="/onboarding"
-              element={
-                <OnboardingChooser
-                  onProvider={() => navigate('/onboarding/provider')}
-                  onPatient={() => navigate('/onboarding/patient')}
-                />
-              }
-            />
-            <Route path="/onboarding/provider" element={<OnboardingProviderPage onBack={() => navigate('/onboarding')} />} />
-            <Route path="/onboarding/patient" element={<OnboardingPatientPage onBack={() => navigate('/onboarding')} />} />
-
-            <Route
-              path="/dashboard"
-              element={
-                <DashboardChooser
-                  onProvider={() => navigate('/dashboard/provider')}
-                  onPatient={() => navigate('/dashboard/patient')}
-                  onAdmin={() => navigate('/dashboard/admin')}
-                />
-              }
-            />
-            <Route path="/dashboard/provider" element={<DashboardProviderPage />} />
-            <Route path="/dashboard/patient" element={<DashboardPatientPage />} />
-            <Route path="/dashboard/admin" element={<DashboardAdminPage />} />
-            <Route path="/dashboard/admin/:module" element={<DashboardAdminPage />} />
-
-            <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
-          </Routes>
           </Suspense>
         </div>
 
-        {!hideFooter &&
-          location.pathname !== '/' &&
-          location.pathname !== '/about' &&
-          location.pathname !== '/disclaimer' &&
-          location.pathname !== '/providers' &&
-          location.pathname !== '/login' &&
-          location.pathname !== '/appointment' && <Footer />}
+        {shouldShowStandaloneFooter(location.pathname, layout.hideFooter) && <Footer />}
       </div>
     </>
   );
+}
+
+function AppRoutes({
+  flow,
+  hideFooter,
+  navigate,
+  onBook,
+  setFlow,
+}: {
+  flow: FlowStep;
+  hideFooter: boolean;
+  navigate: (path: string, options?: { replace?: boolean }) => void;
+  onBook: () => void;
+  setFlow: (flow: FlowStep) => void;
+}) {
+  return (
+    <Routes>
+      <Route path="/" element={<HomeFlowRoute flow={flow} hideFooter={hideFooter} navigate={navigate} setFlow={setFlow} />} />
+      <Route path="/login" element={<LoginRouteElement navigate={navigate} />} />
+      <Route path="/callback" element={<AuthCallbackRouteElement navigate={navigate} />} />
+      <Route path="/journey" element={<JourneyRouteElement navigate={navigate} />} />
+      <Route path="/about" element={<BoundedRoute context="route-about" navigate={navigate}><AboutPage /></BoundedRoute>} />
+      <Route path="/faq" element={<BoundedRoute context="route-faq" navigate={navigate}><FAQPage /></BoundedRoute>} />
+      <Route path="/disclaimer" element={<BoundedRoute context="route-disclaimer" navigate={navigate}><DisclaimerPage /></BoundedRoute>} />
+      <Route path="/providers" element={<ProvidersRouteElement navigate={navigate} onBook={onBook} />} />
+      <Route path="/appointment" element={<AuthenticatedBoundedRoute context="route-appointment" navigate={navigate} returnTo="/appointment"><AppointmentPage /></AuthenticatedBoundedRoute>} />
+      <Route path="/onboarding" element={<OnboardingChooser onProvider={() => navigate('/onboarding/provider')} onPatient={() => navigate('/onboarding/patient')} />} />
+      <Route path="/onboarding/provider" element={<AuthenticatedBoundedRoute context="route-provider-onboarding" navigate={navigate} returnTo="/onboarding/provider"><OnboardingProviderPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
+      <Route path="/onboarding/patient" element={<AuthenticatedBoundedRoute context="route-patient-onboarding" navigate={navigate} returnTo="/onboarding/patient"><OnboardingPatientPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
+      <Route path="/dashboard" element={<DashboardRouteElement navigate={navigate} />} />
+      <Route path="/dashboard/provider" element={<AuthenticatedBoundedRoute context="route-provider-dashboard" navigate={navigate} returnTo="/dashboard/provider"><DashboardProviderPage /></AuthenticatedBoundedRoute>} />
+      <Route path="/dashboard/patient" element={<AuthenticatedBoundedRoute context="route-patient-dashboard" navigate={navigate} returnTo="/dashboard/patient"><DashboardPatientPage /></AuthenticatedBoundedRoute>} />
+      <Route path="/dashboard/admin" element={<AdminDashboardRouteElement />} />
+      <Route path="/dashboard/admin/:module" element={<AdminDashboardRouteElement />} />
+      <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
+    </Routes>
+  );
+}
+
+function HomeFlowRoute({
+  flow,
+  hideFooter,
+  navigate,
+  setFlow,
+}: {
+  flow: FlowStep;
+  hideFooter: boolean;
+  navigate: (path: string) => void;
+  setFlow: (flow: FlowStep) => void;
+}) {
+  return (
+    <ErrorBoundary context="route-home" fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
+      <HomeFlowContent flow={flow} hideFooter={hideFooter} navigate={navigate} setFlow={setFlow} />
+    </ErrorBoundary>
+  );
+}
+
+function HomeFlowContent({
+  flow,
+  hideFooter,
+  navigate,
+  setFlow,
+}: {
+  flow: FlowStep;
+  hideFooter: boolean;
+  navigate: (path: string) => void;
+  setFlow: (flow: FlowStep) => void;
+}) {
+  if (flow === 'journey') {
+    return <JourneyPage onBackHome={() => setFlow('home')} onFinish={() => navigate('/providers')} />;
+  }
+
+  return (
+    <>
+      <HomePage onStartJourney={() => setFlow('journey')} />
+      <Suspense fallback={null}>
+        <MoodSearchBar onReachHuman={() => setFlow('journey')} />
+      </Suspense>
+      {!hideFooter && <Footer />}
+    </>
+  );
+}
+
+function LoginRouteElement({ navigate }: { navigate: (path: string) => void }) {
+  return (
+    <ErrorBoundary context="route-login" fallback={<ErrorPage50x onHome={() => navigate('/')} />}>
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        <LoginPage onBack={() => navigate('/')} />
+      </div>
+    </ErrorBoundary>
+  );
+}
+
+function AuthCallbackRouteElement({ navigate }: { navigate: (path: string) => void }) {
+  return (
+    <ErrorBoundary context="route-auth-callback" fallback={<ErrorPage50x onHome={() => navigate('/')} />}>
+      <AuthCallbackPage />
+    </ErrorBoundary>
+  );
+}
+
+function JourneyRouteElement({ navigate }: { navigate: (path: string) => void }) {
+  return (
+    <BoundedRoute context="route-journey" navigate={navigate}>
+      <JourneyPage onBackHome={() => navigate('/')} onFinish={() => navigate('/providers')} />
+    </BoundedRoute>
+  );
+}
+
+function ProvidersRouteElement({ navigate, onBook }: { navigate: (path: string) => void; onBook: () => void }) {
+  return (
+    <BoundedRoute context="route-providers" navigate={navigate}>
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        <ProvidersPage onBackHome={() => navigate('/')} onBook={onBook} />
+        <SimpleFooter />
+      </div>
+    </BoundedRoute>
+  );
+}
+
+function DashboardRouteElement({ navigate }: { navigate: (path: string) => void }) {
+  return (
+    <DashboardChooser
+      onProvider={() => navigate('/dashboard/provider')}
+      onPatient={() => navigate('/dashboard/patient')}
+      onAdmin={() => navigate('/dashboard/admin')}
+    />
+  );
+}
+
+function AdminDashboardRouteElement() {
+  return (
+    <AdminRouteGuard>
+      <DashboardAdminPage />
+    </AdminRouteGuard>
+  );
+}
+
+function BoundedRoute({
+  children,
+  context,
+  navigate,
+}: {
+  children: React.ReactNode;
+  context: string;
+  navigate: (path: string) => void;
+}) {
+  return (
+    <ErrorBoundary context={context} fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+function AuthenticatedBoundedRoute({
+  children,
+  context,
+  navigate,
+  returnTo,
+}: {
+  children: React.ReactNode;
+  context: string;
+  navigate: (path: string) => void;
+  returnTo: string;
+}) {
+  return (
+    <BoundedRoute context={context} navigate={navigate}>
+      <AuthRouteGuard returnTo={returnTo}>{children}</AuthRouteGuard>
+    </BoundedRoute>
+  );
+}
+
+function getRouteLayout(pathname: string, flow: FlowStep) {
+  const isAdminRoute = pathname.startsWith('/dashboard/admin');
+  const viewportLocked = viewportLockedPaths.has(pathname) || isAdminRoute;
+  const hideNav = shouldHideNav(pathname, flow, isAdminRoute);
+  return {
+    containerClassName: viewportLocked ? 'flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden' : 'flex min-h-screen flex-col',
+    hideFooter: shouldHideFooter(pathname, hideNav),
+    hideNav,
+    navVariant: getNavVariant(pathname),
+    viewportLocked,
+  };
+}
+
+function shouldHideNav(pathname: string, flow: FlowStep, isAdminRoute: boolean): boolean {
+  if (isAdminRoute) return true;
+  if (pathname === '/journey') return true;
+  if (pathname === '/appointment') return true;
+  return pathname === '/' && flow === 'journey';
+}
+
+function shouldHideFooter(pathname: string, hideNav: boolean): boolean {
+  return hideNav || pathname === '/appointment';
+}
+
+function shouldShowStandaloneFooter(pathname: string, hideFooter: boolean): boolean {
+  return !hideFooter && pathname !== '/' && !standaloneFooterHiddenPaths.has(pathname);
+}
+
+function getNavVariant(pathname: string): 'flat' | 'glass' {
+  return pathname === '/providers' ? 'flat' : 'glass';
 }
 
 function OnboardingChooser({ onProvider, onPatient }: { onProvider: () => void; onPatient: () => void }) {

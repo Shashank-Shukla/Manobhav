@@ -10,6 +10,11 @@ type NavBarProps = {
   variant?: 'glass' | 'flat';
 };
 
+type NavItem = {
+  label: string;
+  path: string;
+};
+
 export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps) {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
@@ -21,70 +26,20 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navItems = [
-    {
-      label: location.pathname === '/about' ? 'Home' : 'About',
-      path: location.pathname === '/about' ? '/' : '/about',
-    },
-    { label: 'FAQ', path: '/faq' },
-    { label: 'Talk to Us', path: '/providers' },
-  ];
+  const navItems = getNavItems(location.pathname);
 
   return (
     <>
       <nav
-        className={
-          variant === 'glass'
-            ? `fixed left-0 right-0 z-50 flex justify-center transition-all duration-500 ${scrolled ? 'top-2' : 'top-6'}`
-            : 'relative w-full z-30 flex justify-center top-0 left-0 right-0'
-        }
+        className={getNavClassName(variant, scrolled)}
       >
         <div
           className="relative flex items-center justify-between px-6 py-3 shadow-lg border transition-all duration-300 w-full max-w-[1200px] gap-4"
-          style={
-            variant === 'glass'
-              ? {
-                  background:
-                    themeMode === 'dark'
-                      ? 'linear-gradient(120deg, rgba(30,41,59,0.82), rgba(17,24,39,0.78))'
-                      : 'linear-gradient(120deg, rgba(230,237,232,0.85), rgba(255,255,255,0.75))',
-                  borderColor: themeMode === 'dark' ? 'rgba(148,163,184,0.35)' : 'rgba(255,255,255,0.5)',
-                  boxShadow: themeMode === 'dark' ? '0 20px 60px rgba(0,0,0,0.25)' : '0 20px 60px rgba(0,0,0,0.06)',
-                  backdropFilter: 'blur(18px) saturate(140%)',
-                  WebkitBackdropFilter: 'blur(18px) saturate(140%)',
-                  width: 'clamp(340px, 95%, 1200px)',
-                  maxWidth: '75%',
-                  borderRadius: '9999px',
-                }
-              : {
-                  background: '#ffffff',
-                  borderColor: '#E5E7EB',
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-                  width: '100%',
-                  maxWidth: '100%',
-                  borderRadius: 0,
-                }
-          }
+          style={getNavStyle(variant, themeMode)}
         >
           <Logo onClick={() => onNavigate('/')} />
 
-          <div className="hidden md:flex flex-1 items-center justify-center gap-4">
-            {navItems.map((item) => (
-              <a
-                key={item.label}
-                href={item.path}
-                onClick={(e) => {
-                  e.preventDefault();
-                  onNavigate(item.path);
-                }}
-                className="text-sm font-medium text-gray-600 hover:text-[#9CAF88] transition-colors relative group flex items-center gap-1"
-              >
-                {item.label}
-                {item.label === 'Talk to Us' && <ArrowUpRight size={14} className="text-[#9CAF88]" />}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#9CAF88] transition-all duration-300 group-hover:w-full" />
-              </a>
-            ))}
-          </div>
+          <DesktopNavLinks items={navItems} onNavigate={onNavigate} />
 
           <div className="hidden md:flex items-center gap-4">
             <Button variant="nav" onClick={() => onNavigate('/login')}>
@@ -93,35 +48,162 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
           </div>
 
           <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-gray-600">
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            <MobileMenuIcon mobileOpen={mobileOpen} />
           </button>
         </div>
       </nav>
 
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl pt-32 px-6 md:hidden animate-in fade-in slide-in-from-top-10 duration-300">
-          <div className="flex flex-col space-y-6 text-center">
-            {navItems.map((item) => (
-              <a
-                key={item.label}
-                href={item.path}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setMobileOpen(false);
-                  onNavigate(item.path);
-                }}
-                className="text-xl font-medium text-gray-800 flex items-center justify-center gap-2"
-              >
-                {item.label}
-                {item.label === 'Talk to Us' && <ArrowUpRight size={18} className="text-[#9CAF88]" />}
-              </a>
-            ))}
-            <Button variant="primary" onClick={() => { setMobileOpen(false); onNavigate('/login'); }}>
-              Login
-            </Button>
-          </div>
-        </div>
-      )}
+      <MobileNavMenu
+        isOpen={mobileOpen}
+        items={navItems}
+        onClose={() => setMobileOpen(false)}
+        onNavigate={onNavigate}
+      />
     </>
   );
+}
+
+function DesktopNavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate: (path: string) => void }) {
+  return (
+    <div className="hidden md:flex flex-1 items-center justify-center gap-4">
+      {items.map((item) => (
+        <NavAnchor key={item.label} iconSize={14} item={item} onNavigate={onNavigate} />
+      ))}
+    </div>
+  );
+}
+
+function MobileNavMenu({
+  isOpen,
+  items,
+  onClose,
+  onNavigate,
+}: {
+  isOpen: boolean;
+  items: NavItem[];
+  onClose: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl pt-32 px-6 md:hidden animate-in fade-in slide-in-from-top-10 duration-300">
+      <div className="flex flex-col space-y-6 text-center">
+        {items.map((item) => (
+          <NavAnchor key={item.label} iconSize={18} item={item} onClose={onClose} onNavigate={onNavigate} />
+        ))}
+        <Button variant="primary" onClick={() => navigateFromMobile('/login', onNavigate, onClose)}>
+          Login
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function NavAnchor({
+  iconSize,
+  item,
+  onClose,
+  onNavigate,
+}: {
+  iconSize: number;
+  item: NavItem;
+  onClose?: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  return (
+    <a
+      href={item.path}
+      onClick={(event) => handleNavClick(event, item.path, onNavigate, onClose)}
+      className="text-sm font-medium text-gray-600 hover:text-[#9CAF88] transition-colors relative group flex items-center justify-center gap-1 md:justify-start"
+    >
+      {item.label}
+      <TalkToUsIcon iconSize={iconSize} label={item.label} />
+      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#9CAF88] transition-all duration-300 group-hover:w-full" />
+    </a>
+  );
+}
+
+function TalkToUsIcon({ iconSize, label }: { iconSize: number; label: string }) {
+  if (label !== 'Talk to Us') {
+    return null;
+  }
+
+  return <ArrowUpRight size={iconSize} className="text-[#9CAF88]" />;
+}
+
+function MobileMenuIcon({ mobileOpen }: { mobileOpen: boolean }) {
+  return mobileOpen ? <X size={24} /> : <Menu size={24} />;
+}
+
+function getNavItems(pathname: string): NavItem[] {
+  return [
+    getAboutNavItem(pathname),
+    { label: 'FAQ', path: '/faq' },
+    { label: 'Talk to Us', path: '/providers' },
+  ];
+}
+
+function getAboutNavItem(pathname: string): NavItem {
+  return pathname === '/about' ? { label: 'Home', path: '/' } : { label: 'About', path: '/about' };
+}
+
+function handleNavClick(
+  event: React.MouseEvent<HTMLAnchorElement>,
+  path: string,
+  onNavigate: (path: string) => void,
+  onClose?: () => void,
+): void {
+  event.preventDefault();
+  onClose?.();
+  onNavigate(path);
+}
+
+function navigateFromMobile(path: string, onNavigate: (path: string) => void, onClose: () => void): void {
+  onClose();
+  onNavigate(path);
+}
+
+function getNavClassName(variant: 'glass' | 'flat', scrolled: boolean): string {
+  if (variant === 'flat') {
+    return 'relative w-full z-30 flex justify-center top-0 left-0 right-0';
+  }
+
+  return `fixed left-0 right-0 z-50 flex justify-center transition-all duration-500 ${scrolled ? 'top-2' : 'top-6'}`;
+}
+
+function getNavStyle(variant: 'glass' | 'flat', themeMode: 'light' | 'dark') {
+  if (variant === 'flat') {
+    return {
+      background: '#ffffff',
+      borderColor: '#E5E7EB',
+      boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+      width: '100%',
+      maxWidth: '100%',
+      borderRadius: 0,
+    };
+  }
+
+  return getGlassNavStyle(themeMode);
+}
+
+function getGlassNavStyle(themeMode: 'light' | 'dark') {
+  return {
+    background: getGlassBackground(themeMode),
+    borderColor: themeMode === 'dark' ? 'rgba(148,163,184,0.35)' : 'rgba(255,255,255,0.5)',
+    boxShadow: themeMode === 'dark' ? '0 20px 60px rgba(0,0,0,0.25)' : '0 20px 60px rgba(0,0,0,0.06)',
+    backdropFilter: 'blur(18px) saturate(140%)',
+    WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+    width: 'clamp(340px, 95%, 1200px)',
+    maxWidth: '75%',
+    borderRadius: '9999px',
+  };
+}
+
+function getGlassBackground(themeMode: 'light' | 'dark'): string {
+  return themeMode === 'dark'
+    ? 'linear-gradient(120deg, rgba(30,41,59,0.82), rgba(17,24,39,0.78))'
+    : 'linear-gradient(120deg, rgba(230,237,232,0.85), rgba(255,255,255,0.75))';
 }

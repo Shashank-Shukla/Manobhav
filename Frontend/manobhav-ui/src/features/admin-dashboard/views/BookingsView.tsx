@@ -1,18 +1,19 @@
 import { useMemo } from 'react';
 import { Box, Grid, GridItem, Stack, Text } from '@chakra-ui/react';
-import { bookings, slots } from '../data';
 import { adminTheme } from '../adminTheme';
 import { AdminDataTable, type AdminDataTableColumn } from '../components/AdminDataTable';
 import { StatusBadge } from '../components/StatusBadge';
-import type { BookingRecord } from '../types';
+import type { BookingRecord, SlotRecord } from '../types';
 import { SectionCard, SlotCapacityCard } from './shared';
 import { includesSearch } from './viewUtils';
 
 type SearchableViewProps = {
+  bookings: BookingRecord[];
   search: string;
+  slots: SlotRecord[];
 };
 
-export function BookingsView({ search }: SearchableViewProps) {
+export function BookingsView({ bookings, search, slots }: SearchableViewProps) {
   const filteredBookings = useMemo(
     () =>
       bookings.filter((booking) =>
@@ -21,7 +22,7 @@ export function BookingsView({ search }: SearchableViewProps) {
           search,
         ),
       ),
-    [search],
+    [bookings, search],
   );
   const columns: AdminDataTableColumn<BookingRecord>[] = [
     {

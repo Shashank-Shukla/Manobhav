@@ -4,17 +4,27 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: mydb
+      POSTGRES_USER: ${POSTGRES_USER:-manobhav}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in a local .env file}
+      POSTGRES_DB: ${POSTGRES_DB:-manobhav}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-manobhav} -d ${POSTGRES_DB:-manobhav}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   webapi:
-    build: ./src/WebApi
+    build:
+      context: .
+      dockerfile: src/WebApi/Dockerfile
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=mydb;Username=postgres;Password=secret"
+      ASPNETCORE_ENVIRONMENT: Development
+      Cors__AllowedOrigins__0: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:-manobhav};Username=${POSTGRES_USER:-manobhav};Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in a local .env file};Timeout=15;Command Timeout=30"
     ports:
-      - "5000:80"
+      - "${API_PORT:-5000}:8080"

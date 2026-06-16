@@ -30,18 +30,28 @@ export function Button({
   type = 'button',
   ...rest
 }: ButtonProps) {
-  const customStyle = variant === 'primary' ? { backgroundColor: theme.colors.sage.DEFAULT } : undefined;
-
   return (
     <button
       type={type}
       onClick={onClick}
       className={`${baseStyle} ${variants[variant]} ${className}`}
-      style={customStyle}
+      style={getButtonStyle(variant)}
       {...rest}
     >
       {children}
-      {Icon && <Icon className="ml-2 w-4 h-4" />}
+      <ButtonIcon Icon={Icon} />
     </button>
   );
+}
+
+function getButtonStyle(variant: ButtonVariant) {
+  return variant === 'primary' ? { backgroundColor: theme.colors.sage.DEFAULT } : undefined;
+}
+
+function ButtonIcon({ Icon }: { Icon?: React.ComponentType<{ className?: string }> }) {
+  if (!Icon) {
+    return null;
+  }
+
+  return <Icon className="ml-2 w-4 h-4" />;
 }

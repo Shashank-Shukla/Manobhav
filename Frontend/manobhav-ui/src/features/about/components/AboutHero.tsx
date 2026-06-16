@@ -13,14 +13,9 @@ function SpeechBubble({
   tone?: 'blue' | 'mint';
   tailSide?: 'left' | 'right';
 }) {
-  const bubbleTone =
-    tone === 'blue'
-      ? 'bg-[#b7d3e8] text-white shadow-[0_18px_35px_rgba(90,122,149,0.18)]'
-      : 'bg-[#c6decd] text-[#6c8a70] shadow-[0_18px_35px_rgba(108,138,112,0.12)]';
-
   return (
     <div
-      className={`absolute hidden rounded-[1.8rem] px-6 py-5 md:block ${bubbleTone} ${className ?? ''}`}
+      className={`absolute hidden rounded-[1.8rem] px-6 py-5 md:block ${getBubbleTone(tone)} ${className ?? ''}`}
       aria-hidden="true"
     >
       <div className="flex items-center gap-3">
@@ -30,12 +25,24 @@ function SpeechBubble({
         <span className="h-2.5 w-2.5 rounded-full bg-current opacity-80" />
       </div>
       <span
-        className={`absolute -bottom-1 h-5 w-5 rotate-45 ${tailSide === 'left' ? 'left-8' : 'right-8'} ${
-          tone === 'blue' ? 'bg-[#b7d3e8]' : 'bg-[#c6decd]'
-        }`}
+        className={`absolute -bottom-1 h-5 w-5 rotate-45 ${getBubbleTailSide(tailSide)} ${getBubbleTailTone(tone)}`}
       />
     </div>
   );
+}
+
+function getBubbleTone(tone: 'blue' | 'mint'): string {
+  return tone === 'blue'
+    ? 'bg-[#b7d3e8] text-white shadow-[0_18px_35px_rgba(90,122,149,0.18)]'
+    : 'bg-[#c6decd] text-[#6c8a70] shadow-[0_18px_35px_rgba(108,138,112,0.12)]';
+}
+
+function getBubbleTailSide(tailSide: 'left' | 'right'): string {
+  return tailSide === 'left' ? 'left-8' : 'right-8';
+}
+
+function getBubbleTailTone(tone: 'blue' | 'mint'): string {
+  return tone === 'blue' ? 'bg-[#b7d3e8]' : 'bg-[#c6decd]';
 }
 
 function ScrollIndicator({ onClick }: { onClick: () => void }) {

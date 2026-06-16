@@ -39,7 +39,7 @@ export function AboutPage() {
   }, []);
 
   const goToSection = useCallback((nextIndex: number) => {
-    if (nextIndex < 0 || nextIndex >= TOTAL_SECTIONS || nextIndex === currentIndex || transitionLockRef.current) {
+    if (cannotChangeSection(nextIndex, currentIndex, transitionLockRef.current)) {
       return;
     }
 
@@ -72,21 +72,7 @@ export function AboutPage() {
   }, [clearTransitionTimers]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
-        return;
-      }
-
-      if (event.key === 'ArrowDown' || event.key === 'PageDown') {
-        event.preventDefault();
-        goNext();
-      }
-
-      if (event.key === 'ArrowUp' || event.key === 'PageUp') {
-        event.preventDefault();
-        goPrevious();
-      }
-    };
+    const handleKeyDown = (event: KeyboardEvent) => handleAboutKeyDown(event, goNext, goPrevious);
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -95,15 +81,11 @@ export function AboutPage() {
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
     event.preventDefault();
 
-    if (Math.abs(event.deltaY) < WHEEL_THRESHOLD) {
+    if (!isWheelNavigation(event.deltaY)) {
       return;
     }
 
-    if (event.deltaY > 0) {
-      goNext();
-    } else {
-      goPrevious();
-    }
+    moveByDelta(event.deltaY, goNext, goPrevious);
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
@@ -119,43 +101,15 @@ export function AboutPage() {
 
     const delta = touchStartY.current - touchEndY.current;
 
-    if (Math.abs(delta) >= SWIPE_THRESHOLD) {
-      if (delta > 0) {
-        goNext();
-      } else {
-        goPrevious();
-      }
+    if (isSwipeNavigation(delta)) {
+      moveByDelta(delta, goNext, goPrevious);
     }
 
     touchStartY.current = null;
     touchEndY.current = null;
   };
 
-  const activeSection =
-    currentIndex === 0 ? (
-      <AboutHero onAdvanceSection={goNext} />
-    ) : currentIndex === 1 ? (
-      <VisionSection />
-    ) : currentIndex === 2 ? (
-      <OriginStory />
-    ) : currentIndex === 3 ? (
-      <FounderSection />
-    ) : currentIndex === 4 ? (
-      <CarePhilosophy />
-    ) : (
-      <TeamIntro onExploreProviders={() => navigate('/providers')} />
-    );
-
-  const transitionClass =
-    transitionPhase === 'exiting'
-      ? direction > 0
-        ? 'animate-about-section-exit-up'
-        : 'animate-about-section-exit-down'
-      : transitionPhase === 'entering'
-        ? direction > 0
-          ? 'animate-about-section-enter-up'
-          : 'animate-about-section-enter-down'
-        : '';
+  const transitionClass = getTransitionClass(transitionPhase, direction);
 
   return (
     <div
@@ -164,9 +118,102 @@ export function AboutPage() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <div className={`h-full min-h-0 overflow-hidden ${transitionClass}`}>{activeSection}</div>
+      <div className={`h-full min-h-0 overflow-hidden ${transitionClass}`}>
+        <AboutSection currentIndex={currentIndex} onAdvanceSection={goNext} onExploreProviders={() => navigate('/providers')} />
+      </div>
     </div>
   );
+}
+
+function cannotChangeSection(nextIndex: number, currentIndex: number, locked: boolean): boolean {
+  if (locked) return true;
+  if (nextIndex < 0) return true;
+  if (nextIndex >= TOTAL_SECTIONS) return true;
+  return nextIndex === currentIndex;
+}
+
+function handleAboutKeyDown(event: KeyboardEvent, goNext: () => void, goPrevious: () => void): void {
+  if (shouldIgnoreKey(event)) {
+    return;
+  }
+
+  moveByKey(event, goNext, goPrevious);
+}
+
+function shouldIgnoreKey(event: KeyboardEvent): boolean {
+  return event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey;
+}
+
+function moveByKey(event: KeyboardEvent, goNext: () => void, goPrevious: () => void): void {
+  const direction = getKeyboardDirection(event.key);
+  if (direction === 0) {
+    return;
+  }
+
+  event.preventDefault();
+  moveByDirection(direction, goNext, goPrevious);
+}
+
+function getKeyboardDirection(key: string): Direction | 0 {
+  if (key === 'ArrowDown' || key === 'PageDown') return 1;
+  if (key === 'ArrowUp' || key === 'PageUp') return -1;
+  return 0;
+}
+
+function isWheelNavigation(deltaY: number): boolean {
+  return Math.abs(deltaY) >= WHEEL_THRESHOLD;
+}
+
+function isSwipeNavigation(deltaY: number): boolean {
+  return Math.abs(deltaY) >= SWIPE_THRESHOLD;
+}
+
+function moveByDelta(deltaY: number, goNext: () => void, goPrevious: () => void): void {
+  const direction = deltaY > 0 ? 1 : -1;
+  moveByDirection(direction, goNext, goPrevious);
+}
+
+function moveByDirection(direction: Direction, goNext: () => void, goPrevious: () => void): void {
+  if (direction > 0) {
+    goNext();
+    return;
+  }
+
+  goPrevious();
+}
+
+function AboutSection({
+  currentIndex,
+  onAdvanceSection,
+  onExploreProviders,
+}: {
+  currentIndex: number;
+  onAdvanceSection: () => void;
+  onExploreProviders: () => void;
+}) {
+  const sections = [
+    <AboutHero key="hero" onAdvanceSection={onAdvanceSection} />,
+    <VisionSection key="vision" />,
+    <OriginStory key="origin" />,
+    <FounderSection key="founder" />,
+    <CarePhilosophy key="care" />,
+    <TeamIntro key="team" onExploreProviders={onExploreProviders} />,
+  ];
+
+  return sections[currentIndex] ?? sections[0];
+}
+
+function getTransitionClass(phase: TransitionPhase, direction: Direction): string {
+  if (phase === 'idle') {
+    return '';
+  }
+
+  return getDirectionalTransitionClass(phase, direction);
+}
+
+function getDirectionalTransitionClass(phase: Exclude<TransitionPhase, 'idle'>, direction: Direction): string {
+  const suffix = direction > 0 ? 'up' : 'down';
+  return `animate-about-section-${phase === 'exiting' ? 'exit' : 'enter'}-${suffix}`;
 }
 
 export default AboutPage;

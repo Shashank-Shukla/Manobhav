@@ -20,6 +20,15 @@ export type AdminModuleConfig = {
   icon: LucideIcon;
 };
 
+export type AdminDashboardData = {
+  insightMetrics: InsightMetric[];
+  opsQueues: QueueItem[];
+  quickActions: QueueItem[];
+  providers: ProviderRecord[];
+  bookings: BookingRecord[];
+  slots: SlotRecord[];
+};
+
 export type InsightMetric = {
   id: string;
   label: string;

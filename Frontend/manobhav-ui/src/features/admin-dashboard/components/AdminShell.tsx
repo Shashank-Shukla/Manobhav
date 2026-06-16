@@ -214,49 +214,14 @@ function AdminSidebar({ activeModule, onNavigate }: AdminSidebarProps) {
       <Divider borderColor={adminTheme.border} />
 
       <Stack spacing={1.5} mt={5} flex="1" overflowY="auto" pr={1}>
-        {adminModules.map((module) => {
-          const isActive = activeModule === module.id;
-          const IconComponent = module.icon;
-
-          return (
-            <Button
-              key={module.id}
-              as={RouterLink}
-              to={module.path}
-              onClick={onNavigate}
-              variant="ghost"
-              justifyContent="flex-start"
-              h="58px"
-              borderRadius="14px"
-              px={3}
-              bg={isActive ? adminTheme.sage.light : 'transparent'}
-              color={isActive ? adminTheme.sage.dark : adminTheme.muted}
-              _hover={{ bg: isActive ? adminTheme.sage.light : adminTheme.grey.light }}
-              leftIcon={
-                <Flex
-                  h="34px"
-                  w="34px"
-                  align="center"
-                  justify="center"
-                  borderRadius="10px"
-                  bg={isActive ? 'white' : adminTheme.grey.light}
-                  color={isActive ? adminTheme.sage.dark : adminTheme.muted}
-                >
-                  <Icon as={IconComponent} boxSize={4} />
-                </Flex>
-              }
-            >
-              <Box textAlign="left" minW={0}>
-                <Text fontSize="sm" fontWeight="800" lineHeight="1.1">
-                  {module.label}
-                </Text>
-                <Text fontSize="xs" fontWeight="500" opacity={0.75} noOfLines={1}>
-                  {module.helper}
-                </Text>
-              </Box>
-            </Button>
-          );
-        })}
+        {adminModules.map((module) => (
+          <AdminSidebarButton
+            key={module.id}
+            isActive={activeModule === module.id}
+            module={module}
+            onNavigate={onNavigate}
+          />
+        ))}
       </Stack>
 
       <Box mt={5} border="1px solid" borderColor={toneStyles.blue.border} bg={toneStyles.blue.bg} borderRadius="16px" p={4}>
@@ -269,4 +234,70 @@ function AdminSidebar({ activeModule, onNavigate }: AdminSidebarProps) {
       </Box>
     </Flex>
   );
+}
+
+function AdminSidebarButton({
+  isActive,
+  module,
+  onNavigate,
+}: {
+  isActive: boolean;
+  module: (typeof adminModules)[number];
+  onNavigate?: () => void;
+}) {
+  const IconComponent = module.icon;
+
+  return (
+    <Button
+      as={RouterLink}
+      to={module.path}
+      onClick={onNavigate}
+      variant="ghost"
+      justifyContent="flex-start"
+      h="58px"
+      borderRadius="14px"
+      px={3}
+      bg={getSidebarButtonBg(isActive)}
+      color={getSidebarButtonColor(isActive)}
+      _hover={{ bg: getSidebarButtonHoverBg(isActive) }}
+      leftIcon={<SidebarButtonIcon IconComponent={IconComponent} isActive={isActive} />}
+    >
+      <Box textAlign="left" minW={0}>
+        <Text fontSize="sm" fontWeight="800" lineHeight="1.1">
+          {module.label}
+        </Text>
+        <Text fontSize="xs" fontWeight="500" opacity={0.75} noOfLines={1}>
+          {module.helper}
+        </Text>
+      </Box>
+    </Button>
+  );
+}
+
+function SidebarButtonIcon({ IconComponent, isActive }: { IconComponent: (typeof adminModules)[number]['icon']; isActive: boolean }) {
+  return (
+    <Flex
+      h="34px"
+      w="34px"
+      align="center"
+      justify="center"
+      borderRadius="10px"
+      bg={isActive ? 'white' : adminTheme.grey.light}
+      color={getSidebarButtonColor(isActive)}
+    >
+      <Icon as={IconComponent} boxSize={4} />
+    </Flex>
+  );
+}
+
+function getSidebarButtonBg(isActive: boolean): string {
+  return isActive ? adminTheme.sage.light : 'transparent';
+}
+
+function getSidebarButtonColor(isActive: boolean): string {
+  return isActive ? adminTheme.sage.dark : adminTheme.muted;
+}
+
+function getSidebarButtonHoverBg(isActive: boolean): string {
+  return isActive ? adminTheme.sage.light : adminTheme.grey.light;
 }

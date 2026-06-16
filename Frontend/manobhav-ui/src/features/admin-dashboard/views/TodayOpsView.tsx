@@ -1,18 +1,18 @@
 import { Box, Flex, Grid, GridItem, SimpleGrid, Stack, Text } from '@chakra-ui/react';
 import { LineChart } from 'lucide-react';
-import { bookings, insightMetrics, opsQueues, providers, quickActions } from '../data';
 import { adminTheme, toneStyles } from '../adminTheme';
 import { MetricCard } from '../components/MetricCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { WorkQueue } from '../components/WorkQueue';
+import type { AdminDashboardData } from '../types';
 import { MiniProgress, SectionCard } from './shared';
 import { metricIcons } from './viewUtils';
 
-export function TodayOpsView() {
+export function TodayOpsView({ data }: { data: AdminDashboardData }) {
   return (
     <Stack spacing={6}>
       <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={4}>
-        {insightMetrics.map((metric) => (
+        {data.insightMetrics.map((metric) => (
           <MetricCard
             key={metric.id}
             label={metric.label}
@@ -27,17 +27,17 @@ export function TodayOpsView() {
 
       <Grid templateColumns={{ base: '1fr', xl: '1.4fr 0.9fr' }} gap={5}>
         <GridItem>
-          <WorkQueue title="Urgent work queue" subtitle="Items that need admin attention today" items={opsQueues} />
+          <WorkQueue title="Urgent work queue" subtitle="Items that need admin attention today" items={data.opsQueues} />
         </GridItem>
         <GridItem>
-          <WorkQueue title="Quick actions" subtitle="Common operations from the command center" items={quickActions} actionLabel="Start" />
+          <WorkQueue title="Quick actions" subtitle="Common operations from the command center" items={data.quickActions} actionLabel="Start" />
         </GridItem>
       </Grid>
 
       <Grid templateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={5}>
         <SectionCard title="Provider capacity" helper="Live view of workload and next openings">
           <Stack spacing={4}>
-            {providers.map((provider) => (
+            {data.providers.map((provider) => (
               <Box key={provider.id} border="1px solid" borderColor={toneStyles[provider.tone].border} bg="white" borderRadius="14px" p={4}>
                 <Flex justify="space-between" gap={4} mb={3}>
                   <Box>
@@ -61,7 +61,7 @@ export function TodayOpsView() {
 
         <SectionCard title="Upcoming bookings" helper="Session flow for the next operational window">
           <Stack spacing={3}>
-            {bookings.map((booking) => (
+            {data.bookings.map((booking) => (
               <Flex
                 key={booking.id}
                 justify="space-between"

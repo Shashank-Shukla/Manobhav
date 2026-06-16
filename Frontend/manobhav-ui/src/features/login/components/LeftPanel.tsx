@@ -1,9 +1,27 @@
 import { Smile } from 'lucide-react';
 import { AbstractShape } from '../../../shared/primitives/AbstractShape';
 
-export function LeftPanel() {
+type LeftPanelProps = {
+  mode?: 'sign-in' | 'sign-up';
+  className?: string;
+};
+
+const panelCopy = {
+  'sign-in': {
+    title: 'Welcome Back',
+    body: 'Your journey to mindfulness continues here. Log in to access your dashboard.',
+  },
+  'sign-up': {
+    title: 'Begin With Care',
+    body: 'Create your Manobhav account and continue into the next step when your sign-in method is verified.',
+  },
+};
+
+export function LeftPanel({ mode = 'sign-in', className = '' }: LeftPanelProps) {
+  const copy = panelCopy[mode];
+
   return (
-    <div className="relative hidden min-h-0 overflow-hidden bg-[#E6EDE8] p-12 md:flex md:items-center md:justify-center">
+    <div className={`relative hidden min-h-0 overflow-hidden bg-[#E6EDE8] p-12 md:flex md:items-center md:justify-center ${className}`}>
       <AbstractShape color="#9CAF88" className="top-10 left-10 w-64 h-64 animate-blob opacity-20" />
       <AbstractShape color="#D6A2AD" className="bottom-10 right-10 w-48 h-48 animate-blob animation-delay-2000 opacity-20" />
 
@@ -13,9 +31,9 @@ export function LeftPanel() {
             <Smile size={48} strokeWidth={1.5} />
           </div>
         </div>
-        <h2 className="text-3xl font-bold text-[#7A8C6A] mb-4">Welcome Back</h2>
+        <h2 className="text-3xl font-bold text-[#7A8C6A] mb-4">{copy.title}</h2>
         <p className="text-[#7A8C6A]/80 max-w-xs mx-auto">
-          Your journey to mindfulness continues here. Log in to access your dashboard.
+          {copy.body}
         </p>
       </div>
     </div>

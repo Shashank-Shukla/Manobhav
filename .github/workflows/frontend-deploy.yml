@@ -24,6 +24,18 @@ jobs:
     defaults:
       run:
         working-directory: Frontend/manobhav-ui
+    env:
+      VITE_PUBLIC_API_BASE_URL: ${{ vars.VITE_PUBLIC_API_BASE_URL }}
+      VITE_PUBLIC_ENABLE_VISITOR_ANALYTICS: ${{ vars.VITE_PUBLIC_ENABLE_VISITOR_ANALYTICS }}
+      VITE_PUBLIC_ENABLE_FULL_VISITOR_CAPTURE: ${{ vars.VITE_PUBLIC_ENABLE_FULL_VISITOR_CAPTURE }}
+      VITE_PUBLIC_ANALYTICS_LEGAL_APPROVED: ${{ vars.VITE_PUBLIC_ANALYTICS_LEGAL_APPROVED }}
+      VITE_PUBLIC_ANALYTICS_PRECISE_LOCATION: ${{ vars.VITE_PUBLIC_ANALYTICS_PRECISE_LOCATION }}
+      VITE_PUBLIC_COGNITO_DOMAIN: ${{ vars.VITE_PUBLIC_COGNITO_DOMAIN }}
+      VITE_PUBLIC_COGNITO_CLIENT_ID: ${{ vars.VITE_PUBLIC_COGNITO_CLIENT_ID }}
+      VITE_PUBLIC_COGNITO_REDIRECT_URI: ${{ vars.VITE_PUBLIC_COGNITO_REDIRECT_URI }}
+      VITE_PUBLIC_COGNITO_LOGOUT_URI: ${{ vars.VITE_PUBLIC_COGNITO_LOGOUT_URI }}
+      VITE_PUBLIC_COGNITO_SCOPES: ${{ vars.VITE_PUBLIC_COGNITO_SCOPES }}
+      VITE_PUBLIC_ADMIN_GROUP: ${{ vars.VITE_PUBLIC_ADMIN_GROUP }}
 
     steps:
       - name: Checkout
@@ -44,6 +56,35 @@ jobs:
 
       - name: Test
         run: npm run test:run
+
+      - name: Validate public frontend environment
+        shell: bash
+        run: |
+          required_vars=(
+            VITE_PUBLIC_API_BASE_URL
+            VITE_PUBLIC_ENABLE_VISITOR_ANALYTICS
+            VITE_PUBLIC_ENABLE_FULL_VISITOR_CAPTURE
+            VITE_PUBLIC_ANALYTICS_LEGAL_APPROVED
+            VITE_PUBLIC_ANALYTICS_PRECISE_LOCATION
+            VITE_PUBLIC_COGNITO_DOMAIN
+            VITE_PUBLIC_COGNITO_CLIENT_ID
+            VITE_PUBLIC_COGNITO_REDIRECT_URI
+            VITE_PUBLIC_COGNITO_LOGOUT_URI
+            VITE_PUBLIC_COGNITO_SCOPES
+            VITE_PUBLIC_ADMIN_GROUP
+          )
+
+          missing=()
+          for key in "${required_vars[@]}"; do
+            if [ -z "${!key}" ]; then
+              missing+=("$key")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing required public frontend env vars: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
 
       - name: Build
         run: npm run build

@@ -13,6 +13,9 @@ public static class DependencyInjection
         // services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         // services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IVisitorAnalyticsService, VisitorAnalyticsService>();
+        services.AddScoped<IntakeWorkflowService>();
+        services.AddScoped<ProviderOnboardingSectionService>();
         return services;
     }
 }

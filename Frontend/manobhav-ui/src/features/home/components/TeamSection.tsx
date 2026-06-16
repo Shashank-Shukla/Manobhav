@@ -1,16 +1,29 @@
+import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Text } from '../../../shared/primitives/Text';
 import { Button } from '../../../shared/primitives/Button';
 import { TherapistCard } from '../../../shared/cards/TherapistCard';
-
-const therapists = [
-  { name: 'Dr. Ananya Rao', role: 'Clinical Psychologist', availability: 'Available Today' },
-  { name: 'Sarah Jenkins', role: 'Wellness Coach', availability: 'Next slot: 2 PM' },
-  { name: 'David Chen', role: 'Psychiatrist', availability: 'Available Tomorrow' },
-  { name: 'Dr. Alisha K.', role: 'Child Specialist', availability: 'Available Today' },
-];
+import { getLandingContent, type FeaturedExpert } from '../../public-data';
 
 export function TeamSection() {
+  const [therapists, setTherapists] = useState<FeaturedExpert[]>([]);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getLandingContent(controller.signal)
+      .then((content) => {
+        setTherapists(content.featuredExperts);
+        setStatus(content.featuredExperts.length > 0 ? 'ready' : 'empty');
+      })
+      .catch(() => {
+        setTherapists([]);
+        setStatus('error');
+      });
+
+    return () => controller.abort();
+  }, []);
+
   return (
     <section className="py-24 bg-white/50 px-6 relative overflow-hidden backdrop-blur-sm">
       <div className="absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-[#F5F5F5] to-transparent" />
@@ -29,11 +42,33 @@ export function TeamSection() {
           </Button>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-6">
-          {therapists.map((therapist) => (
-            <TherapistCard key={therapist.name} {...therapist} />
-          ))}
-        </div>
+        {status === 'loading' && (
+          <div className="grid md:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="h-56 animate-pulse rounded-3xl border border-gray-100 bg-white/70" />
+            ))}
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-800">
+            Unable to load specialists from the API.
+          </div>
+        )}
+
+        {status === 'empty' && (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-medium text-gray-600">
+            No specialists are configured yet.
+          </div>
+        )}
+
+        {status === 'ready' && (
+          <div className="grid md:grid-cols-4 gap-6">
+            {therapists.map((therapist) => (
+              <TherapistCard key={therapist.id} {...therapist} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
