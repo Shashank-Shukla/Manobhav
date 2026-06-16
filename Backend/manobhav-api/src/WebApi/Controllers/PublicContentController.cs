@@ -24,11 +24,15 @@ public sealed class PublicContentController : ControllerBase
     {
         var experts = await _db.ProviderProfiles
             .AsNoTracking()
-            .Where(provider => provider.IsActive && provider.IsFeatured)
+            .Where(provider => provider.IsActive && provider.IsFeatured && provider.VisibilityStatus == "Published")
             .OrderBy(provider => provider.DisplayOrder)
-            .ThenBy(provider => provider.Name)
+            .ThenBy(provider => provider.DisplayName ?? provider.Name)
             .Take(4)
-            .Select(provider => new FeaturedExpertDto(provider.Id, provider.Name, provider.Role, "Availability managed by API"))
+            .Select(provider => new FeaturedExpertDto(
+                provider.Id,
+                provider.DisplayName ?? provider.Name,
+                provider.ProfessionalTitle ?? provider.Role,
+                "Availability managed by API"))
             .ToListAsync(cancellationToken);
 
         return Ok(new LandingContentResponse(experts));
@@ -51,32 +55,37 @@ public sealed class PublicContentController : ControllerBase
 
     [HttpGet("providers")]
     [ProducesResponseType(typeof(IReadOnlyList<ProviderDirectoryItemDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ProviderDirectoryItemDto>>> GetProviders(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<ProviderDirectoryItemDto>>> GetProviders(
+        [FromQuery] bool featured = false,
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default)
     {
+        limit = Math.Clamp(limit, 1, 100);
         var providers = await _db.ProviderProfiles
             .AsNoTracking()
-            .Where(provider => provider.IsActive)
+            .Where(provider => provider.IsActive && provider.VisibilityStatus == "Published")
+            .Where(provider => !featured || provider.IsFeatured)
             .OrderBy(provider => provider.DisplayOrder)
-            .ThenBy(provider => provider.Name)
-            .Include(provider => provider.Availabilities.Where(availability => availability.IsAvailable && availability.StartsAtUtc >= DateTimeOffset.UtcNow))
-            .Take(50)
+            .ThenBy(provider => provider.DisplayName ?? provider.Name)
+            .Include(provider => provider.AvailabilitySlots.Where(slot => slot.Status == "Available" && slot.StartsAtUtc >= DateTimeOffset.UtcNow))
+            .Take(limit)
             .ToListAsync(cancellationToken);
 
         var response = providers.Select(provider => new ProviderDirectoryItemDto(
             provider.Id,
-            provider.Name,
+            provider.DisplayName ?? provider.Name,
             provider.Summary,
-            provider.LongDescription,
+            provider.Bio ?? provider.LongDescription,
             ReadSpecializations(provider.SpecializationsJson),
             provider.AvatarColor,
             provider.Sessions,
-            provider.Rating,
-            provider.Availabilities
-                .OrderBy(availability => availability.StartsAtUtc)
+            provider.RatingAverage > 0 ? provider.RatingAverage : provider.Rating,
+            provider.AvailabilitySlots
+                .OrderBy(slot => slot.StartsAtUtc)
                 .Take(10)
-                .Select(availability => new ProviderDateDto(
-                    availability.StartsAtUtc.ToString("MMM d"),
-                    availability.StartsAtUtc.ToString("yyyy-MM-dd")))
+                .Select(slot => new ProviderDateDto(
+                    slot.StartsAtUtc.ToString("MMM d"),
+                    slot.StartsAtUtc.ToString("yyyy-MM-dd")))
                 .ToList())).ToList();
 
         return Ok(response);

@@ -4,7 +4,14 @@ import { ArrowDown, ArrowLeft, ArrowUp } from 'lucide-react';
 import { Text } from '../../shared/primitives/Text';
 import { Button } from '../../shared/primitives/Button';
 import { Logo } from '../../shared/Logo';
-import { getVisitorFlow, type VisitorFlowQuestion } from '../public-data';
+import {
+  createIntakeSubmission,
+  getVisitorFlow,
+  saveIntakeAnswer,
+  submitPartialIntake,
+  type IntakeAnswerValue,
+  type VisitorFlowQuestion,
+} from '../public-data';
 import { recordVisitorEvent } from '../visitor-analytics';
 
 type JourneyPageProps = {
@@ -13,14 +20,17 @@ type JourneyPageProps = {
 };
 
 type FlowStatus = 'loading' | 'ready' | 'empty' | 'error';
+type JourneyAnswer = IntakeAnswerValue;
 
 export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
   const [questions, setQuestions] = useState<VisitorFlowQuestion[]>([]);
   const [flowStatus, setFlowStatus] = useState<FlowStatus>('loading');
   const [current, setCurrent] = useState(0); // includes submit step
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, JourneyAnswer>>({});
   const [saveError, setSaveError] = useState('');
   const [isSavingStep, setIsSavingStep] = useState(false);
+  const [submissionId, setSubmissionId] = useState('');
+  const [policyAcknowledged, setPolicyAcknowledged] = useState(false);
   const currentStartedAtRef = useRef(0);
   const lastScrollTs = useRef(0);
 
@@ -53,25 +63,26 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
     if (!saved) return;
 
     try {
+      await submitPartialIntake({ submissionId, policyAcknowledged });
       await recordVisitorEvent({
         eventType: 'journey.submitted',
         route: '/journey',
         targetKey: 'submit',
         properties: {
           questionCount: questions.length,
-          answeredCount: questions.filter((question) => answers[question.id]?.trim()).length,
+          answeredCount: questions.filter((question) => hasJourneyAnswer(answers[question.id], question.responseType)).length,
         },
       });
       onFinish();
     } catch (error: unknown) {
-      setSaveError(error instanceof Error ? error.message : 'Unable to submit journey metrics.');
+      setSaveError(error instanceof Error ? error.message : 'Unable to submit intake.');
     }
   };
 
   const touchStartY = useRef<number | null>(null);
   const touchEndY = useRef<number | null>(null);
 
-  const onChange = (val: string) => {
+  const onChange = (val: JourneyAnswer) => {
     if (!isQuestionStep(current, questions.length)) return;
     const question = questions[current];
     setAnswers((items) => ({ ...items, [question.id]: val }));
@@ -79,13 +90,15 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
 
   useEffect(() => {
     const controller = new AbortController();
-    getVisitorFlow(controller.signal)
-      .then((flow) => {
-        setQuestions(flow.questions);
-        setFlowStatus(flow.questions.length > 0 ? 'ready' : 'empty');
+    loadVisitorFlowSession(controller.signal)
+      .then((flowSession) => {
+        setQuestions(flowSession.questions);
+        setSubmissionId(flowSession.submissionId);
+        setFlowStatus(flowSession.questions.length > 0 ? 'ready' : 'empty');
       })
       .catch(() => {
         setQuestions([]);
+        setSubmissionId('');
         setFlowStatus('error');
       });
 
@@ -115,10 +128,25 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
   const saveQuestionAnswer = async (action: string): Promise<boolean> => {
     const question = getCurrentQuestion(questions, current);
     if (!question) return true;
+    if (!submissionId) {
+      setSaveError('Unable to store journey response because the intake session is not ready.');
+      return false;
+    }
+    const answer = getAnswerForSave(answers, question);
+    if (question.isRequired && !hasJourneyAnswer(answer, question.responseType)) {
+      setSaveError('Please answer this question before continuing.');
+      return false;
+    }
 
     setIsSavingStep(true);
     setSaveError('');
-    const result = await tryRecordQuestionAnswer(question, answers[question.id] ?? '', action, currentStartedAtRef.current);
+    const result = await tryRecordQuestionAnswer(
+      submissionId,
+      question,
+      answer,
+      action,
+      currentStartedAtRef.current,
+    );
     setIsSavingStep(false);
     setSaveError(result.errorMessage);
     return result.saved;
@@ -208,7 +236,9 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
           onChange={onChange}
           onNext={goNext}
           onPrevious={goPrev}
+          onPolicyChange={setPolicyAcknowledged}
           onSubmit={submitJourney}
+          policyAcknowledged={policyAcknowledged}
           questions={questions}
           saveError={saveError}
           totalSteps={totalSteps}
@@ -246,21 +276,25 @@ function JourneyContent({
   onChange,
   onNext,
   onPrevious,
+  onPolicyChange,
   onSubmit,
+  policyAcknowledged,
   questions,
   saveError,
   totalSteps,
 }: {
-  answers: Record<string, string>;
+  answers: Record<string, JourneyAnswer>;
   atFirst: boolean;
   atLast: boolean;
   current: number;
   flowStatus: FlowStatus;
   isSavingStep: boolean;
-  onChange: (value: string) => void;
+  onChange: (value: JourneyAnswer) => void;
   onNext: () => Promise<void>;
   onPrevious: () => void;
+  onPolicyChange: (checked: boolean) => void;
   onSubmit: () => Promise<void>;
+  policyAcknowledged: boolean;
   questions: VisitorFlowQuestion[];
   saveError: string;
   totalSteps: number;
@@ -279,7 +313,9 @@ function JourneyContent({
           isSavingStep={isSavingStep}
           onChange={onChange}
           onNext={onNext}
+          onPolicyChange={onPolicyChange}
           onSubmit={onSubmit}
+          policyAcknowledged={policyAcknowledged}
           questions={questions}
           saveError={saveError}
         />
@@ -378,16 +414,20 @@ function JourneyStepCard({
   isSavingStep,
   onChange,
   onNext,
+  onPolicyChange,
   onSubmit,
+  policyAcknowledged,
   questions,
   saveError,
 }: {
-  answers: Record<string, string>;
+  answers: Record<string, JourneyAnswer>;
   current: number;
   isSavingStep: boolean;
-  onChange: (value: string) => void;
+  onChange: (value: JourneyAnswer) => void;
   onNext: () => Promise<void>;
+  onPolicyChange: (checked: boolean) => void;
   onSubmit: () => Promise<void>;
+  policyAcknowledged: boolean;
   questions: VisitorFlowQuestion[];
   saveError: string;
 }) {
@@ -402,7 +442,9 @@ function JourneyStepCard({
         isSavingStep={isSavingStep}
         onChange={onChange}
         onNext={onNext}
+        onPolicyChange={onPolicyChange}
         onSubmit={onSubmit}
+        policyAcknowledged={policyAcknowledged}
         questions={questions}
         saveError={saveError}
       />
@@ -416,27 +458,39 @@ function JourneyStepCardBody({
   isSavingStep,
   onChange,
   onNext,
+  onPolicyChange,
   onSubmit,
+  policyAcknowledged,
   questions,
   saveError,
 }: {
-  answers: Record<string, string>;
+  answers: Record<string, JourneyAnswer>;
   current: number;
   isSavingStep: boolean;
-  onChange: (value: string) => void;
+  onChange: (value: JourneyAnswer) => void;
   onNext: () => Promise<void>;
+  onPolicyChange: (checked: boolean) => void;
   onSubmit: () => Promise<void>;
+  policyAcknowledged: boolean;
   questions: VisitorFlowQuestion[];
   saveError: string;
 }) {
   const question = getCurrentQuestion(questions, current);
   if (!question) {
-    return <SubmitStep isSavingStep={isSavingStep} onSubmit={onSubmit} saveError={saveError} />;
+    return (
+      <SubmitStep
+        isSavingStep={isSavingStep}
+        onPolicyChange={onPolicyChange}
+        onSubmit={onSubmit}
+        policyAcknowledged={policyAcknowledged}
+        saveError={saveError}
+      />
+    );
   }
 
   return (
     <QuestionStep
-      answer={answers[question.id] ?? ''}
+      answer={getAnswerForSave(answers, question)}
       onChange={onChange}
       onNext={onNext}
       question={question}
@@ -452,8 +506,8 @@ function QuestionStep({
   question,
   saveError,
 }: {
-  answer: string;
-  onChange: (value: string) => void;
+  answer: JourneyAnswer;
+  onChange: (value: JourneyAnswer) => void;
   onNext: () => Promise<void>;
   question: VisitorFlowQuestion;
   saveError: string;
@@ -461,33 +515,156 @@ function QuestionStep({
   return (
     <div key={question.id} className="w-full space-y-4 animate-fade-slide">
       <Text variant="h3" className="text-left">{question.text}</Text>
-      <input
-        className="w-full bg-transparent border-0 border-b-2 border-b-[#9CAF88] rounded-none px-1 pb-3 text-lg outline-none focus:ring-0 focus:border-b-[#7A8C6A]"
-        value={answer}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="How do you feel about that?"
-        autoFocus
-        onKeyDown={(event) => handleQuestionInputKeyDown(event, onNext)}
-      />
+      <QuestionInput answer={answer} onChange={onChange} onNext={onNext} question={question} />
       <SaveErrorMessage message={saveError} />
     </div>
   );
 }
 
+type QuestionInputProps = {
+  answer: JourneyAnswer;
+  onChange: (value: JourneyAnswer) => void;
+  onNext: () => Promise<void>;
+  question: VisitorFlowQuestion;
+};
+
+const questionInputRenderers: Record<string, (props: QuestionInputProps) => ReturnType<typeof renderTextInput>> = {
+  acknowledgement: renderAcknowledgementInput,
+  multichoice: renderMultiChoiceInput,
+  scale: renderScaleInput,
+  singlechoice: renderSingleChoiceInput,
+  text: renderTextInput,
+  textarea: renderTextareaInput,
+};
+
+function QuestionInput(props: QuestionInputProps) {
+  const renderInput = questionInputRenderers[normalizeInputType(props.question.responseType)] ?? renderTextInput;
+  return renderInput(props);
+}
+
+function renderTextInput({ answer, onChange, onNext, question }: QuestionInputProps) {
+  return (
+    <input
+      aria-label={question.text}
+      autoFocus
+      className={getTextInputClassName()}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => handleQuestionInputKeyDown(event, onNext)}
+      placeholder="How do you feel about that?"
+      value={toTextAnswer(answer)}
+    />
+  );
+}
+
+function renderTextareaInput({ answer, onChange, question }: QuestionInputProps) {
+  return (
+    <textarea
+      aria-label={question.text}
+      autoFocus
+      className={`${getTextInputClassName()} min-h-28 resize-none`}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder="Share what feels relevant."
+      value={toTextAnswer(answer)}
+    />
+  );
+}
+
+function renderSingleChoiceInput({ answer, onChange, question }: QuestionInputProps) {
+  return (
+    <div aria-label={question.text} className="grid gap-3 sm:grid-cols-2" role="radiogroup">
+      {question.options.map((option) => (
+        <label className={getOptionClassName()} key={option.value}>
+          <input
+            checked={answer === option.value}
+            className="h-4 w-4 accent-[#9CAF88]"
+            name={question.id}
+            onChange={() => onChange(option.value)}
+            type="radio"
+          />
+          <span>{option.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function renderMultiChoiceInput({ answer, onChange, question }: QuestionInputProps) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {question.options.map((option) => (
+        <label className={getOptionClassName()} key={option.value}>
+          <input
+            checked={toMultiChoiceAnswer(answer).includes(option.value)}
+            className="h-4 w-4 accent-[#9CAF88]"
+            onChange={() => onChange(toggleMultiChoiceAnswer(answer, option.value))}
+            type="checkbox"
+          />
+          <span>{option.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function renderScaleInput({ answer, onChange, question }: QuestionInputProps) {
+  const value = toScaleAnswer(answer);
+  return (
+    <div className="space-y-3">
+      <input
+        aria-label={question.text}
+        className="w-full accent-[#9CAF88]"
+        max={5}
+        min={1}
+        onChange={(event) => onChange(Number(event.target.value))}
+        type="range"
+        value={value}
+      />
+      <div className="text-sm font-medium text-gray-700">{value}</div>
+    </div>
+  );
+}
+
+function renderAcknowledgementInput({ answer, onChange }: QuestionInputProps) {
+  return (
+    <label className={getOptionClassName()}>
+      <input
+        checked={answer === true}
+        className="h-4 w-4 accent-[#9CAF88]"
+        onChange={(event) => onChange(event.target.checked)}
+        type="checkbox"
+      />
+      <span>I acknowledge</span>
+    </label>
+  );
+}
+
 function SubmitStep({
   isSavingStep,
+  onPolicyChange,
   onSubmit,
+  policyAcknowledged,
   saveError,
 }: {
   isSavingStep: boolean;
+  onPolicyChange: (checked: boolean) => void;
   onSubmit: () => Promise<void>;
+  policyAcknowledged: boolean;
   saveError: string;
 }) {
   return (
     <div className="w-full flex flex-col items-center gap-4">
       <Text variant="h3" className="text-center">Ready to share?</Text>
+      <label className="flex max-w-xl items-start gap-3 text-sm text-gray-700">
+        <input
+          className="mt-1 h-4 w-4 accent-[#9CAF88]"
+          checked={policyAcknowledged}
+          onChange={(event) => onPolicyChange(event.target.checked)}
+          type="checkbox"
+        />
+        <span>I acknowledge the intake policies and consent to save this partial intake before provider matching.</span>
+      </label>
       <SaveErrorMessage message={saveError} />
-      <Button variant="primary" onClick={() => void onSubmit()}>
+      <Button variant="primary" disabled={!policyAcknowledged || isSavingStep} onClick={() => void onSubmit()}>
         {isSavingStep ? 'Saving...' : 'Submit'}
       </Button>
     </div>
@@ -559,12 +736,22 @@ function handleQuestionInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>
 }
 
 async function tryRecordQuestionAnswer(
+  submissionId: string,
   question: VisitorFlowQuestion,
-  response: string,
+  response: JourneyAnswer,
   action: string,
   startedAtMs: number,
 ): Promise<{ saved: boolean; errorMessage: string }> {
   try {
+    const timeToAnswerMs = getNowMs() - startedAtMs;
+    await saveIntakeAnswer({
+      submissionId,
+      questionKey: question.questionKey,
+      answer: response,
+      currentStep: question.questionKey,
+      isAdvancing: true,
+      timeToAnswerMs,
+    });
     await recordVisitorEvent({
       eventType: 'journey.question.answered',
       route: '/journey',
@@ -572,8 +759,8 @@ async function tryRecordQuestionAnswer(
       properties: {
         questionId: question.id,
         stepOrder: question.stepOrder,
-        answered: response.trim().length > 0,
-        timeToAnswerMs: getNowMs() - startedAtMs,
+        answered: hasJourneyAnswer(response, question.responseType),
+        timeToAnswerMs,
         action,
       },
     });
@@ -589,4 +776,91 @@ function getJourneySaveErrorMessage(error: unknown): string {
 
 function getNowMs(): number {
   return Date.now();
+}
+
+async function loadVisitorFlowSession(signal: AbortSignal): Promise<{ questions: VisitorFlowQuestion[]; submissionId: string }> {
+  const flow = await getVisitorFlow(signal);
+  if (flow.questions.length === 0) {
+    return { questions: [], submissionId: '' };
+  }
+
+  const submission = await createIntakeSubmission({
+    submissionKind: 'PatientIntake',
+    formDefinitionId: flow.formDefinitionId,
+    currentStep: flow.questions[0]?.questionKey ?? null,
+    signal,
+  });
+  rememberActiveIntakeSubmission(submission.id);
+
+  return { questions: flow.questions, submissionId: submission.id };
+}
+
+const defaultAnswerByType: Record<string, JourneyAnswer> = {
+  acknowledgement: false,
+  multichoice: [],
+  scale: 3,
+  singlechoice: '',
+  text: '',
+  textarea: '',
+};
+
+const answerPresenceByType: Record<string, (answer: JourneyAnswer | undefined) => boolean> = {
+  acknowledgement: (answer) => answer === true,
+  multichoice: (answer) => Array.isArray(answer) && answer.length > 0,
+  scale: (answer) => typeof answer === 'number' && Number.isFinite(answer),
+  singlechoice: hasAnyJourneyAnswer,
+  text: hasAnyJourneyAnswer,
+  textarea: hasAnyJourneyAnswer,
+};
+
+function getAnswerForSave(answers: Record<string, JourneyAnswer>, question: VisitorFlowQuestion): JourneyAnswer {
+  return answers[question.id] ?? getDefaultAnswer(question);
+}
+
+function getDefaultAnswer(question: VisitorFlowQuestion): JourneyAnswer {
+  return defaultAnswerByType[normalizeInputType(question.responseType)] ?? '';
+}
+
+function hasJourneyAnswer(answer: JourneyAnswer | undefined, responseType: string): boolean {
+  const hasAnswer = answerPresenceByType[normalizeInputType(responseType)] ?? hasAnyJourneyAnswer;
+  return hasAnswer(answer);
+}
+
+function hasAnyJourneyAnswer(answer: JourneyAnswer | undefined): boolean {
+  if (Array.isArray(answer)) return answer.length > 0;
+  if (typeof answer === 'string') return answer.trim().length > 0;
+  return typeof answer === 'number' || answer === true;
+}
+
+function toTextAnswer(answer: JourneyAnswer): string {
+  return typeof answer === 'string' ? answer : '';
+}
+
+function toMultiChoiceAnswer(answer: JourneyAnswer): string[] {
+  return Array.isArray(answer) ? answer : [];
+}
+
+function toggleMultiChoiceAnswer(answer: JourneyAnswer, value: string): string[] {
+  const values = toMultiChoiceAnswer(answer);
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function toScaleAnswer(answer: JourneyAnswer): number {
+  return typeof answer === 'number' ? answer : 3;
+}
+
+function normalizeInputType(inputType: string): string {
+  return inputType.replace(/[-_\s]/g, '').toLowerCase();
+}
+
+function getTextInputClassName(): string {
+  return 'w-full bg-transparent border-0 border-b-2 border-b-[#9CAF88] rounded-none px-1 pb-3 text-lg outline-none focus:ring-0 focus:border-b-[#7A8C6A]';
+}
+
+function getOptionClassName(): string {
+  return 'flex items-center gap-3 rounded-lg border border-white/50 bg-white/40 px-4 py-3 text-sm font-medium text-gray-700';
+}
+
+function rememberActiveIntakeSubmission(submissionId: string): void {
+  window.sessionStorage.setItem('manobhav-active-intake-submission-id', submissionId);
 }

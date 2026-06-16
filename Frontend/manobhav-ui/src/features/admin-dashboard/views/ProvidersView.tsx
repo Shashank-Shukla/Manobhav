@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Box, Button, HStack, Stack, Text } from '@chakra-ui/react';
-import { providers } from '../data';
 import { adminTheme } from '../adminTheme';
 import { AdminDataTable, type AdminDataTableColumn } from '../components/AdminDataTable';
 import { RecordDrawer } from '../components/RecordDrawer';
@@ -11,10 +10,11 @@ import { DetailRow, MiniProgress, SectionCard } from './shared';
 import { includesSearch } from './viewUtils';
 
 type SearchableViewProps = {
+  providers: ProviderRecord[];
   search: string;
 };
 
-export function ProvidersView({ search }: SearchableViewProps) {
+export function ProvidersView({ providers, search }: SearchableViewProps) {
   const [selectedProvider, setSelectedProvider] = useState<ProviderRecord | null>(null);
   const filteredProviders = useMemo(
     () =>
@@ -30,7 +30,7 @@ export function ProvidersView({ search }: SearchableViewProps) {
           search,
         ),
       ),
-    [search],
+    [providers, search],
   );
   const columns: AdminDataTableColumn<ProviderRecord>[] = [
     {

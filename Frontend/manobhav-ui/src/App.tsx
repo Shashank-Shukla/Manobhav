@@ -5,6 +5,8 @@ import { NavBar } from './shared/layout/NavBar';
 import { Footer } from './shared/layout/Footer';
 import { SimpleFooter } from './shared/layout/SimpleFooter';
 import { AdminRouteGuard } from './shared/auth/AdminRouteGuard';
+import { AuthRouteGuard } from './shared/auth/AuthRouteGuard';
+import { getStoredAuthSession } from './shared/auth/cognitoAuth';
 import { useVisitorAnalytics } from './features/visitor-analytics';
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage || m.default })));
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage || m.default })));
@@ -64,8 +66,7 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   const layout = getRouteLayout(location.pathname, flow);
 
   const handleBook = () => {
-    const loggedIn = sessionStorage.getItem('manobhav-logged-in') === 'true';
-    if (!loggedIn) {
+    if (!getStoredAuthSession()) {
       navigate('/login');
     } else {
       navigate('/appointment');
@@ -118,13 +119,13 @@ function AppRoutes({
       <Route path="/faq" element={<BoundedRoute context="route-faq" navigate={navigate}><FAQPage /></BoundedRoute>} />
       <Route path="/disclaimer" element={<BoundedRoute context="route-disclaimer" navigate={navigate}><DisclaimerPage /></BoundedRoute>} />
       <Route path="/providers" element={<ProvidersRouteElement navigate={navigate} onBook={onBook} />} />
-      <Route path="/appointment" element={<BoundedRoute context="route-appointment" navigate={navigate}><AppointmentPage /></BoundedRoute>} />
+      <Route path="/appointment" element={<AuthenticatedBoundedRoute context="route-appointment" navigate={navigate} returnTo="/appointment"><AppointmentPage /></AuthenticatedBoundedRoute>} />
       <Route path="/onboarding" element={<OnboardingChooser onProvider={() => navigate('/onboarding/provider')} onPatient={() => navigate('/onboarding/patient')} />} />
-      <Route path="/onboarding/provider" element={<OnboardingProviderPage onBack={() => navigate('/onboarding')} />} />
-      <Route path="/onboarding/patient" element={<OnboardingPatientPage onBack={() => navigate('/onboarding')} />} />
+      <Route path="/onboarding/provider" element={<AuthenticatedBoundedRoute context="route-provider-onboarding" navigate={navigate} returnTo="/onboarding/provider"><OnboardingProviderPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
+      <Route path="/onboarding/patient" element={<AuthenticatedBoundedRoute context="route-patient-onboarding" navigate={navigate} returnTo="/onboarding/patient"><OnboardingPatientPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
       <Route path="/dashboard" element={<DashboardRouteElement navigate={navigate} />} />
-      <Route path="/dashboard/provider" element={<DashboardProviderPage />} />
-      <Route path="/dashboard/patient" element={<DashboardPatientPage />} />
+      <Route path="/dashboard/provider" element={<AuthenticatedBoundedRoute context="route-provider-dashboard" navigate={navigate} returnTo="/dashboard/provider"><DashboardProviderPage /></AuthenticatedBoundedRoute>} />
+      <Route path="/dashboard/patient" element={<AuthenticatedBoundedRoute context="route-patient-dashboard" navigate={navigate} returnTo="/dashboard/patient"><DashboardPatientPage /></AuthenticatedBoundedRoute>} />
       <Route path="/dashboard/admin" element={<AdminDashboardRouteElement />} />
       <Route path="/dashboard/admin/:module" element={<AdminDashboardRouteElement />} />
       <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
@@ -244,6 +245,24 @@ function BoundedRoute({
     <ErrorBoundary context={context} fallback={<ErrorPageGeneric onHome={() => navigate('/')} />}>
       {children}
     </ErrorBoundary>
+  );
+}
+
+function AuthenticatedBoundedRoute({
+  children,
+  context,
+  navigate,
+  returnTo,
+}: {
+  children: React.ReactNode;
+  context: string;
+  navigate: (path: string) => void;
+  returnTo: string;
+}) {
+  return (
+    <BoundedRoute context={context} navigate={navigate}>
+      <AuthRouteGuard returnTo={returnTo}>{children}</AuthRouteGuard>
+    </BoundedRoute>
   );
 }
 

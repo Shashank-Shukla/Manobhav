@@ -1,5 +1,3 @@
-import { getAccessToken } from '../auth/cognitoAuth';
-
 type PublicEnv = Record<string, string | boolean | undefined>;
 
 function getLocalDevApiBaseUrl(): string {
@@ -27,7 +25,6 @@ export async function apiRequest<T>(
     method?: string;
     body?: unknown;
     signal?: AbortSignal;
-    includeAuth?: boolean;
   } = {},
 ): Promise<T> {
   const baseUrl = getApiBaseUrl();
@@ -39,6 +36,8 @@ export async function apiRequest<T>(
     method: options.method ?? 'GET',
     headers: buildHeaders(options),
     body: getRequestBody(options.body),
+    // Auth, CSRF, and visitor state are cookie-backed for all API requests.
+    credentials: 'include',
     signal: options.signal,
   });
 
@@ -46,10 +45,10 @@ export async function apiRequest<T>(
   return parseJsonResponse<T>(response);
 }
 
-function buildHeaders(options: { body?: unknown; includeAuth?: boolean }): Headers {
+function buildHeaders(options: { method?: string; body?: unknown }): Headers {
   const headers = new Headers({ Accept: 'application/json' });
   setBodyHeader(headers, options.body);
-  setAuthHeader(headers, options.includeAuth);
+  setCsrfHeader(headers, options.method);
   return headers;
 }
 
@@ -59,15 +58,27 @@ function setBodyHeader(headers: Headers, body: unknown): void {
   }
 }
 
-function setAuthHeader(headers: Headers, includeAuth?: boolean): void {
-  if (includeAuth === false) {
+function setCsrfHeader(headers: Headers, method?: string): void {
+  if (!isUnsafeMethod(method)) {
     return;
   }
 
-  const token = getAccessToken();
+  const token = readCookie('mbv_csrf');
   if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+    headers.set('X-CSRF-Token', token);
   }
+}
+
+function isUnsafeMethod(method?: string): boolean {
+  return !['GET', 'HEAD', 'OPTIONS'].includes((method ?? 'GET').toUpperCase());
+}
+
+function readCookie(name: string): string {
+  return document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1) ?? '';
 }
 
 function getRequestBody(body: unknown): BodyInit | undefined {

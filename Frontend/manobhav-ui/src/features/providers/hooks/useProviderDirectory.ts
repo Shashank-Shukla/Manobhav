@@ -17,6 +17,7 @@ export function useProviderDirectory() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedDateLabel, setSelectedDateLabel] = useState('');
   const [selectedDateIso, setSelectedDateIso] = useState('');
+  const [selectedSlotId, setSelectedSlotId] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
   const [tempCalendarIso, setTempCalendarIso] = useState('');
   const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
@@ -78,9 +79,10 @@ export function useProviderDirectory() {
     }
   };
 
-  const selectProviderDate = ({ display, iso }: ProviderDateOption) => {
+  const selectProviderDate = ({ display, iso, slotId }: ProviderDateOption) => {
     setSelectedDateLabel(display);
     setSelectedDateIso(iso);
+    setSelectedSlotId(slotId ?? '');
     setShowCalendar(false);
   };
 
@@ -96,6 +98,7 @@ export function useProviderDirectory() {
   const chooseCalendarDate = (iso: string, label: string) => {
     setSelectedDateIso(iso);
     setSelectedDateLabel(label);
+    setSelectedSlotId('');
     setDateFrom(iso);
     setDateTo(iso);
     setShowCalendar(false);
@@ -131,6 +134,7 @@ export function useProviderDirectory() {
     selectedDateIso,
     selectedDateLabel,
     selectedId,
+    selectedSlotId,
     setDateFrom,
     setDateTo,
     setFilter,

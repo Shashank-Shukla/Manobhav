@@ -1,4 +1,6 @@
 import { Box, ChakraProvider } from '@chakra-ui/react';
+import { useState } from 'react';
+import { createBookingHoldForProvider } from './bookingFlow';
 import { ProviderDetailsPanel } from './components/ProviderDetailsPanel';
 import { ProviderList } from './components/ProviderList';
 import { ProviderMobileDetailsDrawer } from './components/ProviderMobileDetailsDrawer';
@@ -16,7 +18,30 @@ export function ProvidersPage(props: ProvidersRouteProps) {
 
 function ProvidersDirectory({ onBackHome: _onBackHome, onBook }: ProvidersRouteProps) {
   const directory = useProviderDirectory();
+  const [bookingError, setBookingError] = useState('');
+  const [isCreatingHold, setIsCreatingHold] = useState(false);
   void _onBackHome;
+
+  const bookSelectedProvider = async () => {
+    if (!directory.selected) {
+      return;
+    }
+
+    setBookingError('');
+    setIsCreatingHold(true);
+    try {
+      await createBookingHoldForProvider({
+        providerId: directory.selected.id,
+        selectedDateIso: directory.selectedDateIso,
+        selectedSlotId: directory.selectedSlotId,
+      });
+      onBook();
+    } catch (error: unknown) {
+      setBookingError(error instanceof Error ? error.message : 'Unable to create booking hold.');
+    } finally {
+      setIsCreatingHold(false);
+    }
+  };
 
   const directoryState = (() => {
     if (directory.providerStatus === 'loading') {
@@ -49,7 +74,9 @@ function ProvidersDirectory({ onBackHome: _onBackHome, onBook }: ProvidersRouteP
 
   const details = (
     <ProviderDetailsPanel
-      onBook={onBook}
+      bookingError={bookingError}
+      isBooking={isCreatingHold}
+      onBook={() => void bookSelectedProvider()}
       onCalendarCancel={directory.cancelCalendar}
       onCalendarChoose={directory.chooseCalendarDate}
       onTempCalendarChange={directory.setTempCalendarIso}

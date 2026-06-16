@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { completeCognitoRedirect } from '../../shared/auth/cognitoAuth';
 import { apiRequest } from '../../shared/api/apiClient';
 import { Button } from '../../shared/primitives/Button';
-import { VISITOR_ID_KEY } from '../visitor-analytics';
 
 export function AuthCallbackRoute() {
   const navigate = useNavigate();
@@ -13,12 +12,9 @@ export function AuthCallbackRoute() {
     let active = true;
     completeCognitoRedirect()
       .then(async (returnTo) => {
-        const visitorId = window.localStorage.getItem(VISITOR_ID_KEY);
-        if (visitorId) {
-          await apiRequest<void>(`/api/visitors/${visitorId}/conversion`, { method: 'POST' }).catch(() => {
-            // Visitor linking must not block a successful sign-in redirect.
-          });
-        }
+        await apiRequest<void>('/api/visitors/session/conversion', { method: 'POST' }).catch(() => {
+          // Visitor linking must not block a successful sign-in redirect.
+        });
 
         if (active) navigate(returnTo, { replace: true });
       })

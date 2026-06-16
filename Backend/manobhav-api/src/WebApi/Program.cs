@@ -1,6 +1,8 @@
 using WebApi.Middleware;
 using WebApi.Security;
 using WebApi.Configuration;
+using WebApi.Auditing;
+using WebApi.Health;
 using Application;
 using Application.Services;
 using Infrastructure;
@@ -37,9 +39,11 @@ if (!builder.Environment.IsDevelopment() && !authOptions.Enabled)
 }
 
 if (authOptions.Enabled &&
-    (string.IsNullOrWhiteSpace(authOptions.CognitoAuthority) || string.IsNullOrWhiteSpace(authOptions.Audience)))
+    (string.IsNullOrWhiteSpace(authOptions.CognitoAuthority) ||
+     string.IsNullOrWhiteSpace(authOptions.CognitoDomain) ||
+     string.IsNullOrWhiteSpace(authOptions.Audience)))
 {
-    throw new InvalidOperationException("Auth:CognitoAuthority and Auth:Audience are required when authentication is enabled.");
+    throw new InvalidOperationException("Auth:CognitoAuthority, Auth:CognitoDomain, and Auth:Audience are required when authentication is enabled.");
 }
 
 if (!builder.Environment.IsDevelopment() &&
@@ -59,6 +63,12 @@ if (!builder.Environment.IsDevelopment() &&
 builder.Services.AddApplicationServices();      // register MediatR, validators, etc.
 builder.Services.AddInfrastructureServices(builder.Configuration); // DbContext, repos
 builder.Services.AddSingleton(visitorAnalyticsOptions);
+builder.Services.AddSingleton(authOptions);
+builder.Services.AddSingleton<AuthCookieManager>();
+builder.Services.AddHttpClient<ICognitoTokenExchange, CognitoTokenExchangeService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuditContextAccessor, HttpAuditContextAccessor>();
+builder.Services.AddScoped<IDatabaseReadinessProbe, EfCoreDatabaseReadinessProbe>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -86,6 +96,20 @@ if (authOptions.Enabled)
             };
             options.Events = new JwtBearerEvents
             {
+                OnMessageReceived = context =>
+                {
+                    var tokenResult = CookieAuthTokenResolver.Resolve(context.Request, authOptions);
+                    if (!string.IsNullOrWhiteSpace(tokenResult.Token))
+                    {
+                        context.Token = tokenResult.Token;
+                    }
+                    else if (tokenResult.ShouldRejectBearer)
+                    {
+                        context.Fail("Authorization bearer tokens are not accepted.");
+                    }
+
+                    return Task.CompletedTask;
+                },
                 OnTokenValidated = context =>
                 {
                     var tokenUse = context.Principal?.FindFirst("token_use")?.Value;
@@ -139,7 +163,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -226,18 +251,23 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("ProductionPolicy");
 app.UseRateLimiter();
+app.UseMiddleware<CsrfProtectionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseResponseCompression();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" })).AllowAnonymous();
-app.MapGet("/health/ready", async (ApplicationDbContext db, CancellationToken cancellationToken) =>
+app.MapGet("/health/ready", async (IDatabaseReadinessProbe readinessProbe, CancellationToken cancellationToken) =>
 {
-    var canConnect = await db.Database.CanConnectAsync(cancellationToken);
-    return canConnect
+    var readiness = await readinessProbe.CheckAsync(cancellationToken);
+    return readiness.IsReady
         ? Results.Ok(new { status = "ready" })
-        : Results.Problem(title: "Database is not reachable.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        : Results.Problem(title: readiness.FailureTitle, statusCode: StatusCodes.Status503ServiceUnavailable);
 }).AllowAnonymous();
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapControllers();
 app.Run();
+
+public partial class Program
+{
+}

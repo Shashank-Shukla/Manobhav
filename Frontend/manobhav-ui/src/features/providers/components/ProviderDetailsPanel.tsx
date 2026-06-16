@@ -7,6 +7,8 @@ import type { ProviderRecord } from '../types';
 const ProviderDatePicker = lazy(() => import('./ProviderDatePicker'));
 
 type ProviderDetailsPanelProps = {
+  bookingError: string;
+  isBooking: boolean;
   onBook: () => void;
   onCalendarCancel: () => void;
   onCalendarChoose: (iso: string, label: string) => void;
@@ -19,6 +21,8 @@ type ProviderDetailsPanelProps = {
 };
 
 export function ProviderDetailsPanel({
+  bookingError,
+  isBooking,
   onBook,
   onCalendarCancel,
   onCalendarChoose,
@@ -43,7 +47,13 @@ export function ProviderDetailsPanel({
       tempCalendarIso={tempCalendarIso}
     />
   ) : (
-    <ProviderProfilePanel onBook={onBook} selected={selected} selectedDateLabel={selectedDateLabel} />
+    <ProviderProfilePanel
+      bookingError={bookingError}
+      isBooking={isBooking}
+      onBook={onBook}
+      selected={selected}
+      selectedDateLabel={selectedDateLabel}
+    />
   );
 }
 
@@ -83,10 +93,14 @@ function ProviderCalendarPanel({
 }
 
 function ProviderProfilePanel({
+  bookingError,
+  isBooking,
   onBook,
   selected,
   selectedDateLabel,
 }: {
+  bookingError: string;
+  isBooking: boolean;
   onBook: () => void;
   selected: ProviderRecord;
   selectedDateLabel: string;
@@ -125,27 +139,63 @@ function ProviderProfilePanel({
         </Text>
       </HStack>
       <Box h="0.8rem" />
-      <Button
-        px="1.25em"
-        py="0.5em"
-        borderRadius="8px"
-        bg={theme.colors.sage.DEFAULT}
-        _hover={{ bg: theme.colors.sage.dark }}
-        color="white"
-        onClick={onBook}
-        isDisabled={!selectedDateLabel}
-        opacity={selectedDateLabel ? 1 : 0.6}
-        cursor={selectedDateLabel ? 'pointer' : 'not-allowed'}
-        _disabled={{
-          bg: theme.colors.grey.DEFAULT,
-          color: '#FFFFFF',
-          borderColor: theme.colors.grey.dark,
-        }}
-      >
-        Book appointment {selectedDateLabel ? `(${selectedDateLabel})` : ''}
-      </Button>
+      <BookingButton isBooking={isBooking} onBook={onBook} selectedDateLabel={selectedDateLabel} />
+      <BookingErrorMessage message={bookingError} />
     </VStack>
   );
+}
+
+function BookingButton({
+  isBooking,
+  onBook,
+  selectedDateLabel,
+}: {
+  isBooking: boolean;
+  onBook: () => void;
+  selectedDateLabel: string;
+}) {
+  const isDisabled = !selectedDateLabel || isBooking;
+  return (
+    <Button
+      px="1.25em"
+      py="0.5em"
+      borderRadius="8px"
+      bg={theme.colors.sage.DEFAULT}
+      _hover={{ bg: theme.colors.sage.dark }}
+      color="white"
+      onClick={onBook}
+      isDisabled={isDisabled}
+      opacity={isDisabled ? 0.6 : 1}
+      cursor={isDisabled ? 'not-allowed' : 'pointer'}
+      _disabled={{
+        bg: theme.colors.grey.DEFAULT,
+        color: '#FFFFFF',
+        borderColor: theme.colors.grey.dark,
+      }}
+    >
+      {getBookingButtonLabel(isBooking, selectedDateLabel)}
+    </Button>
+  );
+}
+
+function BookingErrorMessage({ message }: { message: string }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <Text color="red.700" fontSize="sm" fontWeight="semibold">
+      {message}
+    </Text>
+  );
+}
+
+function getBookingButtonLabel(isBooking: boolean, selectedDateLabel: string): string {
+  if (isBooking) {
+    return 'Creating hold...';
+  }
+
+  return selectedDateLabel ? `Book appointment (${selectedDateLabel})` : 'Book appointment';
 }
 
 function RatingStar({ index, rating }: { index: number; rating: number }) {

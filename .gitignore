@@ -43,9 +43,18 @@ secrets.json
 /skills/
 /AGENTS.md
 /docs/
+.aws/
+.tools/
 .codex/
 *.targets
 *.cache
+
+# Keep planning/audit markdown local-only. README and SECURITY files remain trackable.
+*.md
+!README.md
+!**/README.md
+!SECURITY.md
+!**/SECURITY.md
 
 # .NET build outputs
 bin/

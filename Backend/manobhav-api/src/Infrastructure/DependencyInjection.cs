@@ -18,6 +18,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IVisitorAnalyticsRepository, VisitorAnalyticsRepository>();
+        services.AddScoped<IIntakeRepository, IntakeRepository>();
 
         // add other infrastructure services as needed
 

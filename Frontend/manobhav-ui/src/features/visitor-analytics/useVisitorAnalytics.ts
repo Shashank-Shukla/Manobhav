@@ -15,9 +15,10 @@ type CreateVisitorResponse = {
 
 export const VISITOR_ID_KEY = 'manobhav-visitor-id';
 let pendingVisitorPromise: Promise<string | null> | null = null;
+let currentVisitorId: string | null = null;
 
 export function useVisitorAnalytics(pathname: string) {
-  const visitorIdRef = useRef<string | null>(window.localStorage.getItem(VISITOR_ID_KEY));
+  const visitorIdRef = useRef<string | null>(currentVisitorId);
   const lastPathRef = useRef('');
 
   useEffect(() => {
@@ -28,6 +29,10 @@ export function useVisitorAnalytics(pathname: string) {
     const controller = new AbortController();
     ensureVisitorSession(controller.signal)
       .then((visitorId) => {
+        if (!visitorId) {
+          return;
+        }
+
         visitorIdRef.current = visitorId;
         const config = readVisitorAnalyticsConfig();
         if (config.capturePreciseLocation && canStartFullCapture(config) && navigator.geolocation) {
@@ -37,9 +42,9 @@ export function useVisitorAnalytics(pathname: string) {
               route: pathname,
               targetKey: 'browser-geolocation',
               properties: {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy,
               },
             });
           });
@@ -70,13 +75,12 @@ export function useVisitorAnalytics(pathname: string) {
 }
 
 export function getStoredVisitorId(): string | null {
-  return window.localStorage.getItem(VISITOR_ID_KEY);
+  return null;
 }
 
 export async function ensureVisitorSession(signal?: AbortSignal): Promise<string | null> {
-  const existingVisitorId = getStoredVisitorId();
-  if (existingVisitorId) {
-    return existingVisitorId;
+  if (currentVisitorId) {
+    return currentVisitorId;
   }
 
   const config = readVisitorAnalyticsConfig();
@@ -110,9 +114,10 @@ export async function recordVisitorEvent(input: {
 
   const properties = toStringProperties(input.properties);
   assertSafeAnalyticsProperties(properties);
-  const response = await fetch(`${config.apiBaseUrl}/api/visitors/${visitorId}/events`, {
+  const response = await fetch(`${config.apiBaseUrl}/api/visitors/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({
       eventType: input.eventType,
       route: input.route,
@@ -139,9 +144,10 @@ async function createVisitorSession(apiBaseUrl: string, signal?: AbortSignal): P
     utmCampaign: new URLSearchParams(window.location.search).get('utm_campaign'),
   };
 
-  const response = await fetch(`${apiBaseUrl}/api/visitors`, {
+  const response = await fetch(`${apiBaseUrl}/api/visitors/session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(payload),
     signal,
   });
@@ -151,7 +157,7 @@ async function createVisitorSession(apiBaseUrl: string, signal?: AbortSignal): P
   }
 
   const result = (await response.json()) as CreateVisitorResponse;
-  window.localStorage.setItem(VISITOR_ID_KEY, result.visitorId);
+  currentVisitorId = result.visitorId;
   return result.visitorId;
 }
 

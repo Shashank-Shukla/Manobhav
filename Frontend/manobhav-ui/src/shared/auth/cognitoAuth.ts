@@ -1,9 +1,10 @@
+import { ApiError, apiRequest } from '../api/apiClient';
+
 type PublicEnv = Record<string, string | boolean | undefined>;
 
 export type AuthSession = {
-  accessToken: string;
-  idToken?: string;
-  expiresAt: number;
+  isAuthenticated: boolean;
+  expiresAtUtc: string | null;
   groups: string[];
 };
 
@@ -16,9 +17,11 @@ type CognitoAuthConfig = {
   adminGroup: string;
 };
 
-const SESSION_KEY = 'manobhav-auth-session';
 const STATE_KEY = 'manobhav-auth-state';
 const VERIFIER_KEY = 'manobhav-auth-code-verifier';
+const RETURN_TO_KEY = 'manobhav-auth-return-to';
+
+let cachedSession: AuthSession | null = null;
 
 export function readAuthConfig(env: PublicEnv = import.meta.env): CognitoAuthConfig {
   return {
@@ -31,31 +34,25 @@ export function readAuthConfig(env: PublicEnv = import.meta.env): CognitoAuthCon
   };
 }
 
-export function getStoredAuthSession(storage: Storage = window.sessionStorage): AuthSession | null {
-  const raw = storage.getItem(SESSION_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const session = JSON.parse(raw) as AuthSession;
-    return getValidSession(session, storage);
-  } catch {
-    storage.removeItem(SESSION_KEY);
-    return null;
-  }
-}
-
-export function getAccessToken(): string | null {
-  return getStoredAuthSession()?.accessToken ?? null;
+export function getStoredAuthSession(): AuthSession | null {
+  return cachedSession;
 }
 
 export function isAdminSession(session: AuthSession | null, adminGroup = readAuthConfig().adminGroup): boolean {
-  if (!session || session.expiresAt <= Date.now()) {
-    return false;
-  }
+  return isActiveSession(session) && session.groups.some((group) => group === adminGroup);
+}
 
-  return session.groups.some((group) => group === adminGroup);
+export async function fetchAuthSession(signal?: AbortSignal): Promise<AuthSession | null> {
+  try {
+    cachedSession = normalizeSession(await apiRequest<AuthSession>('/api/auth/session', { signal }));
+    return cachedSession;
+  } catch (err) {
+    if (isAnonymousSessionError(err)) {
+      cachedSession = null;
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function startCognitoLogin(options: { identityProvider?: string; returnTo?: string } = {}): Promise<void> {
@@ -68,7 +65,7 @@ export async function startCognitoLogin(options: { identityProvider?: string; re
   window.sessionStorage.setItem(STATE_KEY, state);
   window.sessionStorage.setItem(VERIFIER_KEY, verifier);
   if (options.returnTo) {
-    window.sessionStorage.setItem('manobhav-auth-return-to', options.returnTo);
+    window.sessionStorage.setItem(RETURN_TO_KEY, options.returnTo);
   }
 
   window.location.assign(buildAuthorizeUrl(config, state, challenge, options.identityProvider).toString());
@@ -79,21 +76,29 @@ export async function completeCognitoRedirect(url = window.location.href): Promi
   assertConfigured(config);
 
   const callback = readCallbackParams(url);
-  const tokenResponse = await exchangeAuthorizationCode(config, callback);
-  storeAuthSession(tokenResponse);
+  cachedSession = normalizeSession(await createBackendSession(callback, config.redirectUri));
   clearTransientAuthState();
   return readAndClearReturnTo();
 }
 
-export function logout(): void {
-  const config = readAuthConfig();
-  window.sessionStorage.removeItem(SESSION_KEY);
-  if (config.domain && config.clientId && config.logoutUri) {
-    const url = new URL(`${config.domain}/logout`);
-    url.searchParams.set('client_id', config.clientId);
-    url.searchParams.set('logout_uri', config.logoutUri);
-    window.location.assign(url.toString());
-  }
+export async function logout(): Promise<void> {
+  await apiRequest<void>('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+  cachedSession = null;
+  redirectToCognitoLogout(readAuthConfig());
+}
+
+function createBackendSession(
+  callback: { code: string; verifier: string },
+  redirectUri: string,
+): Promise<AuthSession> {
+  return apiRequest<AuthSession>('/api/auth/callback', {
+    method: 'POST',
+    body: {
+      code: callback.code,
+      codeVerifier: callback.verifier,
+      redirectUri,
+    },
+  });
 }
 
 function buildAuthorizeUrl(config: CognitoAuthConfig, state: string, challenge: string, identityProvider?: string): URL {
@@ -111,6 +116,17 @@ function buildAuthorizeUrl(config: CognitoAuthConfig, state: string, challenge: 
   return url;
 }
 
+function redirectToCognitoLogout(config: CognitoAuthConfig): void {
+  if (!config.domain || !config.clientId || !config.logoutUri) {
+    return;
+  }
+
+  const url = new URL(`${config.domain}/logout`);
+  url.searchParams.set('client_id', config.clientId);
+  url.searchParams.set('logout_uri', config.logoutUri);
+  window.location.assign(url.toString());
+}
+
 function assertConfigured(config: CognitoAuthConfig): void {
   if (!config.domain || !config.clientId || !config.redirectUri) {
     throw new Error('Cognito public configuration is incomplete.');
@@ -121,13 +137,24 @@ function readEnvString(value: string | boolean | undefined, fallback = ''): stri
   return String(value || fallback).trim() || fallback;
 }
 
-function getValidSession(session: AuthSession, storage: Storage): AuthSession | null {
-  if (!session.accessToken || session.expiresAt <= Date.now()) {
-    storage.removeItem(SESSION_KEY);
-    return null;
-  }
+function normalizeSession(session: AuthSession): AuthSession {
+  return {
+    isAuthenticated: session.isAuthenticated === true,
+    expiresAtUtc: session.expiresAtUtc ?? null,
+    groups: Array.isArray(session.groups) ? session.groups : [],
+  };
+}
 
-  return session;
+function isActiveSession(session: AuthSession | null): session is AuthSession {
+  return session?.isAuthenticated === true && !isExpired(session.expiresAtUtc);
+}
+
+function isExpired(expiresAtUtc: string | null): boolean {
+  return Boolean(expiresAtUtc && Date.parse(expiresAtUtc) <= Date.now());
+}
+
+function isAnonymousSessionError(err: unknown): boolean {
+  return err instanceof ApiError && (err.status === 401 || err.status === 403);
 }
 
 function readCallbackParams(url: string): { code: string; verifier: string } {
@@ -153,52 +180,7 @@ function isInvalidCallbackState(
   expectedState: string | null,
   verifier: string | null,
 ): boolean {
-  if (!code || !state || !expectedState || !verifier) {
-    return true;
-  }
-
-  return state !== expectedState;
-}
-
-async function exchangeAuthorizationCode(
-  config: CognitoAuthConfig,
-  callback: { code: string; verifier: string },
-): Promise<{ access_token: string; id_token?: string; expires_in: number }> {
-  const response = await fetch(`${config.domain}/oauth2/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: buildTokenRequestBody(config, callback),
-  });
-
-  if (!response.ok) {
-    throw new Error('Cognito token exchange failed.');
-  }
-
-  return (await response.json()) as { access_token: string; id_token?: string; expires_in: number };
-}
-
-function buildTokenRequestBody(
-  config: CognitoAuthConfig,
-  callback: { code: string; verifier: string },
-): URLSearchParams {
-  return new URLSearchParams({
-    grant_type: 'authorization_code',
-    client_id: config.clientId,
-    code: callback.code,
-    redirect_uri: config.redirectUri,
-    code_verifier: callback.verifier,
-  });
-}
-
-function storeAuthSession(tokenResponse: { access_token: string; id_token?: string; expires_in: number }): void {
-  const session: AuthSession = {
-    accessToken: tokenResponse.access_token,
-    idToken: tokenResponse.id_token,
-    expiresAt: Date.now() + tokenResponse.expires_in * 1000,
-    groups: readJwtGroups(tokenResponse.access_token),
-  };
-
-  window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  return !code || !state || !expectedState || !verifier || state !== expectedState;
 }
 
 function clearTransientAuthState(): void {
@@ -207,23 +189,9 @@ function clearTransientAuthState(): void {
 }
 
 function readAndClearReturnTo(): string {
-  const returnTo = window.sessionStorage.getItem('manobhav-auth-return-to') || '/dashboard';
-  window.sessionStorage.removeItem('manobhav-auth-return-to');
+  const returnTo = window.sessionStorage.getItem(RETURN_TO_KEY) || '/dashboard';
+  window.sessionStorage.removeItem(RETURN_TO_KEY);
   return returnTo;
-}
-
-function readJwtGroups(token: string): string[] {
-  const payload = decodeJwtPayload(token);
-  const groups = payload['cognito:groups'];
-  return Array.isArray(groups) ? groups.filter((group): group is string => typeof group === 'string') : [];
-}
-
-function decodeJwtPayload(token: string): Record<string, unknown> {
-  const [, payload] = token.split('.');
-  if (!payload) return {};
-  const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  return JSON.parse(atob(padded)) as Record<string, unknown>;
 }
 
 function createRandomString(length = 32): string {
