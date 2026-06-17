@@ -7,6 +7,8 @@ export type AuthSession = {
   groups: string[];
 };
 
+export type EmailOtpFlow = 'sign-in' | 'sign-up';
+
 type CognitoAuthConfig = {
   domain: string;
   clientId: string;
@@ -19,6 +21,7 @@ type CognitoAuthConfig = {
 const STATE_KEY = 'manobhav-auth-state';
 const VERIFIER_KEY = 'manobhav-auth-code-verifier';
 const RETURN_TO_KEY = 'manobhav-auth-return-to';
+const DEFAULT_POST_LOGIN_RETURN_TO = '/dashboard/patient';
 
 let cachedSession: AuthSession | null = null;
 
@@ -69,6 +72,30 @@ export async function startCognitoLogin(options: { identityProvider?: string; re
   }
 
   window.location.assign(buildAuthorizeUrl(config, state, challenge, options.identityProvider).toString());
+}
+
+export async function requestEmailOtp(input: { email: string; flow: EmailOtpFlow }): Promise<void> {
+  await apiRequest<void>('/api/auth/email-otp/request', {
+    method: 'POST',
+    body: {
+      email: input.email,
+      flow: input.flow,
+    },
+  });
+}
+
+export async function verifyEmailOtp(input: { email: string; flow: EmailOtpFlow; otp: string }): Promise<AuthSession> {
+  cachedSession = normalizeSession(
+    await apiRequest<AuthSession>('/api/auth/email-otp/verify', {
+      method: 'POST',
+      body: {
+        email: input.email,
+        flow: input.flow,
+        otp: input.otp,
+      },
+    }),
+  );
+  return cachedSession;
 }
 
 export async function completeCognitoRedirect(url = window.location.href): Promise<string> {
@@ -190,8 +217,16 @@ function clearTransientAuthState(): void {
 }
 
 function readAndClearReturnTo(): string {
-  const returnTo = window.sessionStorage.getItem(RETURN_TO_KEY) || '/dashboard';
+  const returnTo = window.sessionStorage.getItem(RETURN_TO_KEY);
   window.sessionStorage.removeItem(RETURN_TO_KEY);
+  return normalizePostLoginReturnTo(returnTo);
+}
+
+function normalizePostLoginReturnTo(returnTo: string | null): string {
+  if (!returnTo || returnTo === '/dashboard') {
+    return DEFAULT_POST_LOGIN_RETURN_TO;
+  }
+
   return returnTo;
 }
 

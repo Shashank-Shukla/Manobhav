@@ -17,7 +17,8 @@ public sealed class AuthCookieSecurityTests
         var accessToken = CreateJwt("""{"cognito:groups":["Admin","Provider"]}""");
         var controller = new AuthController(
             new StubCognitoTokenExchange(new CognitoTokenSet(accessToken, "id-token", "refresh-token", 900)),
-            new AuthCookieManager(options))
+            new AuthCookieManager(options),
+            new StubCognitoEmailOtpAuth())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -42,7 +43,7 @@ public sealed class AuthCookieSecurityTests
     [Fact]
     public async Task Session_ReturnsClaimsWithoutTokens()
     {
-        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()))
+        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubCognitoEmailOtpAuth())
         {
             ControllerContext = new ControllerContext
             {
@@ -65,6 +66,49 @@ public sealed class AuthCookieSecurityTests
         Assert.True(session.IsAuthenticated);
         Assert.Contains("Admin", session.Groups);
         Assert.DoesNotContain(session.GetType().GetProperties(), property => property.Name.Contains("Token", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void CsrfToken_ReturnsCookieBackedToken()
+    {
+        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubCognitoEmailOtpAuth())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = controller.CsrfToken();
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var body = Assert.IsType<CsrfTokenResponse>(ok.Value);
+        Assert.False(string.IsNullOrWhiteSpace(body.CsrfToken));
+        Assert.Contains(controller.Response.Headers.SetCookie, value => value?.StartsWith($"mbv_csrf={body.CsrfToken}", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public async Task EmailOtpRequestAndVerify_StoreChallengeThenSetAuthCookies()
+    {
+        var emailOtpAuth = new StubCognitoEmailOtpAuth(new CognitoTokenSet(CreateJwt("""{"cognito:groups":["Patient"]}"""), null, null, 900));
+        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), emailOtpAuth)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var requestResult = await controller.RequestEmailOtp(new EmailOtpAuthRequest("Patient@Example.com", "sign-in"), CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(requestResult);
+        var otpCookie = Assert.Single(controller.Response.Headers.SetCookie, value => value?.StartsWith("mbv_email_otp=", StringComparison.Ordinal) == true);
+        Assert.NotNull(otpCookie);
+        var otpCookieValue = otpCookie!;
+        Assert.Contains("httponly", otpCookieValue, StringComparison.OrdinalIgnoreCase);
+
+        controller.Request.Headers.Cookie = otpCookieValue.Split(';', 2)[0];
+        var verifyResult = await controller.VerifyEmailOtp(new EmailOtpVerifyRequest("patient@example.com", "sign-in", "123456"), CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(verifyResult.Result);
+        var session = Assert.IsType<AuthSessionResponse>(ok.Value);
+        Assert.True(session.IsAuthenticated);
+        Assert.Contains("Patient", session.Groups);
+        Assert.Equal("challenge-session", emailOtpAuth.VerifiedSession);
     }
 
     [Fact]
@@ -151,6 +195,24 @@ public sealed class AuthCookieSecurityTests
         Assert.DoesNotContain("client_secret", body);
     }
 
+    [Fact]
+    public async Task CognitoEmailOtpAuthService_StartsUserAuthEmailOtpChallenge()
+    {
+        var handler = new RecordingHandler("""{"ChallengeName":"EMAIL_OTP","Session":"challenge-session"}""");
+        var service = new CognitoEmailOtpAuthService(new HttpClient(handler), CreateOptions());
+
+        var challenge = await service.RequestAsync(new EmailOtpAuthRequest("person@example.com", "sign-in"), CancellationToken.None);
+
+        Assert.Equal("challenge-session", challenge.Session);
+        Assert.Equal(new Uri("https://issuer.example.com/"), handler.Request?.RequestUri);
+        Assert.Equal("AWSCognitoIdentityProviderService.InitiateAuth", handler.Request?.Headers.GetValues("X-Amz-Target").Single());
+        var body = await handler.ReadBodyAsync();
+        Assert.Contains("\"AuthFlow\":\"USER_AUTH\"", body);
+        Assert.Contains("\"ClientId\":\"client-id\"", body);
+        Assert.Contains("\"PREFERRED_CHALLENGE\":\"EMAIL_OTP\"", body);
+        Assert.DoesNotContain("\"clientId\"", body);
+    }
+
     private static AuthOptions CreateOptions()
     {
         return new AuthOptions
@@ -196,22 +258,43 @@ public sealed class AuthCookieSecurityTests
         }
     }
 
+    private sealed class StubCognitoEmailOtpAuth(CognitoTokenSet? tokens = null) : ICognitoEmailOtpAuth
+    {
+        private readonly CognitoTokenSet _tokens = tokens ?? new CognitoTokenSet("access-token", null, null, 900);
+
+        public string? VerifiedSession { get; private set; }
+
+        public Task<EmailOtpChallenge> RequestAsync(EmailOtpAuthRequest request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new EmailOtpChallenge("challenge-session", request.Flow));
+        }
+
+        public Task<CognitoTokenSet> VerifyAsync(EmailOtpVerifyRequest request, string session, CancellationToken cancellationToken)
+        {
+            VerifiedSession = session;
+            return Task.FromResult(_tokens);
+        }
+    }
+
     private sealed class RecordingHandler(string responseJson) : HttpMessageHandler
     {
         public HttpRequestMessage? Request { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        public string Body { get; private set; } = "";
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Request = request;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            Body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseJson)
-            });
+            };
         }
 
-        public async Task<string> ReadBodyAsync()
+        public Task<string> ReadBodyAsync()
         {
-            return Request?.Content is null ? "" : await Request.Content.ReadAsStringAsync();
+            return Task.FromResult(Body);
         }
     }
 }

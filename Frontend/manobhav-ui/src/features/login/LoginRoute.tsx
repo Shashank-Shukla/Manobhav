@@ -22,12 +22,12 @@ export function LoginPage({ onBack, returnTo }: LoginPageProps) {
   return (
     <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden px-4 pb-4 pt-24 md:px-6 md:pb-6 md:pt-28 animate-in slide-in-from-right-10 duration-500">
       <div className="flex h-full max-h-full w-full items-center justify-center overflow-hidden">
-        <div className="w-full max-w-5xl">
+        <div className="relative w-full max-w-5xl">
           <button
             type="button"
             aria-label="Back to home"
             onClick={onBack}
-            className="mb-3 ml-2 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-600 shadow-lg shadow-slate-900/10 backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#9CAF88]/40"
+            className="absolute bottom-full left-0 z-10 mb-3 hidden h-12 w-12 items-center justify-center rounded-full border border-white/75 bg-white/75 text-gray-600 shadow-xl shadow-slate-900/15 backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#9CAF88]/40 md:inline-flex"
           >
             <ArrowLeft size={22} />
           </button>
@@ -50,10 +50,14 @@ export function LoginPage({ onBack, returnTo }: LoginPageProps) {
 }
 
 function sanitizeReturnTo(value: string | null | undefined): string {
-  const fallback = '/dashboard';
+  const fallback = '/dashboard/patient';
   if (!value?.startsWith('/')) {
     return fallback;
   }
 
-  return value.startsWith('//') ? fallback : value;
+  if (value.startsWith('//') || value === '/dashboard') {
+    return fallback;
+  }
+
+  return value;
 }

@@ -8,12 +8,41 @@ namespace WebApi.Security;
 
 public sealed class AuthCookieManager(AuthOptions options)
 {
+    private const string EmailOtpSessionCookieName = "mbv_email_otp";
+
     public AuthSessionResponse SignIn(HttpResponse response, CognitoTokenSet tokens)
     {
         var expiresAtUtc = DateTimeOffset.UtcNow.AddSeconds(Math.Max(1, tokens.ExpiresIn));
         response.Cookies.Append(options.AccessTokenCookieName, tokens.AccessToken, BuildCookieOptions(httpOnly: true, expiresAtUtc));
         response.Cookies.Append(options.CsrfCookieName, CreateCsrfToken(), BuildCookieOptions(httpOnly: false, expiresAtUtc));
         return new AuthSessionResponse(true, expiresAtUtc, ReadGroupsFromAccessToken(tokens.AccessToken));
+    }
+
+    public string ReadOrCreateCsrfToken(HttpRequest request, HttpResponse response)
+    {
+        if (request.Cookies.TryGetValue(options.CsrfCookieName, out var token) && !string.IsNullOrWhiteSpace(token))
+        {
+            return token;
+        }
+
+        token = CreateCsrfToken();
+        response.Cookies.Append(options.CsrfCookieName, token, BuildCookieOptions(httpOnly: false, DateTimeOffset.UtcNow.AddMinutes(15)));
+        return token;
+    }
+
+    public void StoreEmailOtpSession(HttpResponse response, string value)
+    {
+        response.Cookies.Append(EmailOtpSessionCookieName, value, BuildCookieOptions(httpOnly: true, DateTimeOffset.UtcNow.AddMinutes(10)));
+    }
+
+    public string? ReadEmailOtpSession(HttpRequest request)
+    {
+        return request.Cookies.TryGetValue(EmailOtpSessionCookieName, out var value) ? value : null;
+    }
+
+    public void ClearEmailOtpSession(HttpResponse response)
+    {
+        response.Cookies.Delete(EmailOtpSessionCookieName, BuildDeleteOptions());
     }
 
     public AuthSessionResponse CreateSession(ClaimsPrincipal user)
@@ -25,6 +54,7 @@ public sealed class AuthCookieManager(AuthOptions options)
     {
         response.Cookies.Delete(options.AccessTokenCookieName, BuildDeleteOptions());
         response.Cookies.Delete(options.CsrfCookieName, BuildDeleteOptions());
+        ClearEmailOtpSession(response);
     }
 
     private CookieOptions BuildCookieOptions(bool httpOnly, DateTimeOffset expiresAtUtc)

@@ -65,4 +65,20 @@ describe('api client configuration', () => {
     const init = (fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit | undefined])[1];
     expect(new Headers(init?.headers).get('X-CSRF-Token')).toBe('csrf-token');
   });
+
+  it('retries unsafe requests with a server-issued csrf token when the cookie is not readable', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ title: 'CSRF token validation failed.' }, { status: 400 }))
+      .mockResolvedValueOnce(Response.json({ csrfToken: 'server-token' }))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiRequest<{ ok: boolean }>('/api/provider-onboarding/applications', { method: 'POST' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1][0]).toBe('https://api.example.com/api/auth/csrf-token');
+    const retryInit = (fetchMock.mock.calls[2] as unknown as [RequestInfo | URL, RequestInit | undefined])[1];
+    expect(new Headers(retryInit?.headers).get('X-CSRF-Token')).toBe('server-token');
+  });
 });

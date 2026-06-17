@@ -1,14 +1,81 @@
+import { useState, type FormEvent } from 'react';
+import TextField from '@mui/material/TextField';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../shared/primitives/Button';
-import { startCognitoLogin } from '../../../shared/auth/cognitoAuth';
+import * as cognitoAuth from '../../../shared/auth/cognitoAuth';
 
 type LoginFormProps = {
   onShowSignUp: () => void;
   returnTo?: string;
 };
 
+type EmailOtpStep = 'choice' | 'email' | 'otp';
+
 export function LoginForm({ onShowSignUp, returnTo = '/dashboard' }: LoginFormProps) {
+  const navigate = useNavigate();
+  const [emailOtpStep, setEmailOtpStep] = useState<EmailOtpStep>('choice');
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmittingOtp, setIsSubmittingOtp] = useState(false);
+
   const signIn = (identityProvider?: string) => {
-    void startCognitoLogin({ identityProvider, returnTo });
+    void cognitoAuth.startCognitoLogin({ identityProvider, returnTo });
+  };
+
+  const handleEmailOtpSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+
+    if (emailOtpStep === 'choice') {
+      setEmailOtpStep('email');
+      return;
+    }
+
+    if (emailOtpStep === 'email') {
+      await requestOtp();
+      return;
+    }
+
+    await verifyOtp();
+  };
+
+  const requestOtp = async () => {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setError('Email is required.');
+      return;
+    }
+
+    setIsSubmittingOtp(true);
+    try {
+      await cognitoAuth.requestEmailOtp({ email: normalizedEmail, flow: 'sign-in' });
+      setEmail(normalizedEmail);
+      setOtp('');
+      setEmailOtpStep('otp');
+    } catch {
+      setError('Unable to send OTP. Please try again.');
+    } finally {
+      setIsSubmittingOtp(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    const normalizedOtp = otp.trim();
+    if (!normalizedOtp) {
+      setError('OTP is required.');
+      return;
+    }
+
+    setIsSubmittingOtp(true);
+    try {
+      await cognitoAuth.verifyEmailOtp({ email, flow: 'sign-in', otp: normalizedOtp });
+      setIsSubmittingOtp(false);
+      navigate(returnTo, { replace: true });
+    } catch {
+      setError('Unable to verify OTP. Please try again.');
+      setIsSubmittingOtp(false);
+    }
   };
 
   return (
@@ -21,14 +88,18 @@ export function LoginForm({ onShowSignUp, returnTo = '/dashboard' }: LoginFormPr
 
         <form
           className="space-y-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            signIn();
-          }}
+          noValidate
+          onSubmit={handleEmailOtpSubmit}
         >
-          <Button type="submit" variant="primary" className="w-full">
-            Continue with email OTP
-          </Button>
+          <EmailOtpArea
+            email={email}
+            error={error}
+            isSubmitting={isSubmittingOtp}
+            onEmailChange={setEmail}
+            onOtpChange={setOtp}
+            otp={otp}
+            step={emailOtpStep}
+          />
 
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
@@ -54,5 +125,106 @@ export function LoginForm({ onShowSignUp, returnTo = '/dashboard' }: LoginFormPr
         </p>
       </div>
     </div>
+  );
+}
+
+function EmailOtpArea({
+  email,
+  error,
+  isSubmitting,
+  onEmailChange,
+  onOtpChange,
+  otp,
+  step,
+}: {
+  email: string;
+  error: string;
+  isSubmitting: boolean;
+  onEmailChange: (value: string) => void;
+  onOtpChange: (value: string) => void;
+  otp: string;
+  step: EmailOtpStep;
+}) {
+  if (step === 'choice') {
+    return (
+      <Button type="submit" variant="primary" className="w-full">
+        Continue with email OTP
+      </Button>
+    );
+  }
+
+  if (step === 'email') {
+    return (
+      <AuthTextField
+        autoComplete="email"
+        autoFocus
+        disabled={isSubmitting}
+        error={error}
+        label="Email address"
+        onChange={onEmailChange}
+        type="email"
+        value={email}
+      />
+    );
+  }
+
+  return (
+    <AuthTextField
+      autoComplete="one-time-code"
+      autoFocus
+      disabled={isSubmitting}
+      error={error}
+      helperText={error || `Code sent to ${email}`}
+      label="One-time code"
+      onChange={onOtpChange}
+      value={otp}
+    />
+  );
+}
+
+function AuthTextField({
+  autoComplete,
+  autoFocus,
+  disabled,
+  error,
+  helperText,
+  label,
+  onChange,
+  type = 'text',
+  value,
+}: {
+  autoComplete: string;
+  autoFocus?: boolean;
+  disabled: boolean;
+  error: string;
+  helperText?: string;
+  label: string;
+  onChange: (value: string) => void;
+  type?: string;
+  value: string;
+}) {
+  return (
+    <TextField
+      autoComplete={autoComplete}
+      autoFocus={autoFocus}
+      disabled={disabled}
+      error={Boolean(error)}
+      fullWidth
+      helperText={helperText ?? error}
+      label={label}
+      onChange={(event) => onChange(event.target.value)}
+      type={type}
+      value={value}
+      variant="outlined"
+      sx={{
+        '& .MuiInputLabel-root.Mui-focused': { color: '#7A8C6A' },
+        '& .MuiOutlinedInput-root': {
+          backgroundColor: '#F9FAFB',
+          borderRadius: '16px',
+          '&.Mui-focused fieldset': { borderColor: '#9CAF88' },
+        },
+        '& .MuiFormHelperText-root': { marginLeft: 0 },
+      }}
+    />
   );
 }

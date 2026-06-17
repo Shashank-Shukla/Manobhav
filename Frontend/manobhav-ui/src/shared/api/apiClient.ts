@@ -26,23 +26,40 @@ export async function apiRequest<T>(
     throw new ApiError('API base URL is not configured.', 0);
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: options.method ?? 'GET',
-    headers: buildHeaders(options),
-    body: getRequestBody(options.body),
-    // Auth, CSRF, and visitor state are cookie-backed for all API requests.
-    credentials: 'include',
-    signal: options.signal,
-  });
+  let response = await sendApiRequest(baseUrl, path, options);
+  if (await shouldRetryWithServerCsrfToken(response, options)) {
+    const csrfToken = await fetchServerCsrfToken(baseUrl, options.signal);
+    response = await sendApiRequest(baseUrl, path, options, csrfToken);
+  }
 
   assertSuccessfulResponse(response);
   return parseJsonResponse<T>(response);
 }
 
-function buildHeaders(options: { method?: string; body?: unknown }): Headers {
+async function sendApiRequest(
+  baseUrl: string,
+  path: string,
+  options: {
+    method?: string;
+    body?: unknown;
+    signal?: AbortSignal;
+  },
+  csrfToken?: string,
+): Promise<Response> {
+  return fetch(`${baseUrl}${path}`, {
+    method: options.method ?? 'GET',
+    headers: buildHeaders(options, csrfToken),
+    body: getRequestBody(options.body),
+    // Auth, CSRF, and visitor state are cookie-backed for all API requests.
+    credentials: 'include',
+    signal: options.signal,
+  });
+}
+
+function buildHeaders(options: { method?: string; body?: unknown }, csrfToken?: string): Headers {
   const headers = new Headers({ Accept: 'application/json' });
   setBodyHeader(headers, options.body);
-  setCsrfHeader(headers, options.method);
+  setCsrfHeader(headers, options.method, csrfToken);
   return headers;
 }
 
@@ -52,12 +69,12 @@ function setBodyHeader(headers: Headers, body: unknown): void {
   }
 }
 
-function setCsrfHeader(headers: Headers, method?: string): void {
+function setCsrfHeader(headers: Headers, method?: string, csrfToken?: string): void {
   if (!isUnsafeMethod(method)) {
     return;
   }
 
-  const token = readCookie('mbv_csrf');
+  const token = csrfToken || readCookie('mbv_csrf');
   if (token) {
     headers.set('X-CSRF-Token', token);
   }
@@ -77,6 +94,33 @@ function readCookie(name: string): string {
 
 function getRequestBody(body: unknown): BodyInit | undefined {
   return body === undefined ? undefined : JSON.stringify(body);
+}
+
+async function shouldRetryWithServerCsrfToken(
+  response: Response,
+  options: { method?: string; body?: unknown; signal?: AbortSignal },
+): Promise<boolean> {
+  if (!isUnsafeMethod(options.method) || response.status !== 400 || readCookie('mbv_csrf')) {
+    return false;
+  }
+
+  try {
+    const body = (await response.clone().json()) as { title?: string };
+    return body.title === 'CSRF token validation failed.';
+  } catch {
+    return false;
+  }
+}
+
+async function fetchServerCsrfToken(baseUrl: string, signal?: AbortSignal): Promise<string> {
+  const response = await fetch(`${baseUrl}/api/auth/csrf-token`, {
+    headers: { Accept: 'application/json' },
+    credentials: 'include',
+    signal,
+  });
+  assertSuccessfulResponse(response);
+  const body = (await response.json()) as { csrfToken?: string };
+  return body.csrfToken ?? '';
 }
 
 function assertSuccessfulResponse(response: Response): void {

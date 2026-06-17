@@ -68,6 +68,7 @@ builder.Services.AddSingleton(visitorAnalyticsOptions);
 builder.Services.AddSingleton(authOptions);
 builder.Services.AddSingleton<AuthCookieManager>();
 builder.Services.AddHttpClient<ICognitoTokenExchange, CognitoTokenExchangeService>();
+builder.Services.AddHttpClient<ICognitoEmailOtpAuth, CognitoEmailOtpAuthService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditContextAccessor, HttpAuditContextAccessor>();
 builder.Services.AddScoped<IDatabaseReadinessProbe, EfCoreDatabaseReadinessProbe>();
@@ -84,6 +85,7 @@ if (authOptions.Enabled)
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
+            options.MapInboundClaims = false;
             options.Authority = authOptions.CognitoAuthority;
             options.Audience = authOptions.Audience;
             options.RequireHttpsMetadata = authOptions.RequireHttpsMetadata;

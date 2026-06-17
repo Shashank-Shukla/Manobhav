@@ -28,7 +28,21 @@ describe('LoginRoute', () => {
     expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/appointment' });
   });
 
-  it('falls back to the dashboard for unsafe return targets', async () => {
+  it('defaults Google login to the patient dashboard when no return target is provided', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <LoginPage onBack={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /google/i }));
+
+    expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/dashboard/patient' });
+  });
+
+  it('falls back to the patient dashboard for unsafe return targets', async () => {
     const user = userEvent.setup();
 
     render(
@@ -39,6 +53,22 @@ describe('LoginRoute', () => {
 
     await user.click(screen.getByRole('button', { name: /google/i }));
 
-    expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/dashboard' });
+    expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/dashboard/patient' });
+  });
+
+  it('anchors the desktop back button just above the auth container', () => {
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <LoginPage onBack={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    const backButton = screen.getByRole('button', { name: /back to home/i });
+
+    expect(backButton.parentElement).toHaveClass('relative', 'w-full', 'max-w-5xl');
+    expect(backButton.nextElementSibling).toHaveClass('relative', 'grid', 'w-full');
+    expect(backButton).toHaveClass('absolute', 'bottom-full', 'left-0', 'mb-3', 'hidden', 'md:inline-flex');
+    expect(backButton).toHaveClass('shadow-xl');
+    expect(backButton).not.toHaveClass('ml-2');
   });
 });

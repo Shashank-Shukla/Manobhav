@@ -1,4 +1,4 @@
-import { apiRequest } from '../../shared/api/apiClient';
+import { ApiError, apiRequest } from '../../shared/api/apiClient';
 
 export type ProviderApplication = {
   id: string;
@@ -32,6 +32,23 @@ export type SaveProviderSectionBody = {
 );
 
 export async function startOrResumeProviderApplication(signal?: AbortSignal): Promise<ProviderApplication> {
+  try {
+    const application = await apiRequest<ProviderApplication>('/api/provider-onboarding/applications/me', {
+      signal,
+    });
+    if (application.status !== 'Rejected') {
+      return application;
+    }
+  } catch (error: unknown) {
+    if (!isNotFoundError(error)) {
+      throw error;
+    }
+  }
+
+  return createProviderApplication(signal);
+}
+
+function createProviderApplication(signal?: AbortSignal): Promise<ProviderApplication> {
   return apiRequest<ProviderApplication>('/api/provider-onboarding/applications', {
     method: 'POST',
     signal,
@@ -60,4 +77,8 @@ export async function submitProviderApplication(applicationId: string, signal?: 
     method: 'POST',
     signal,
   });
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
 }
