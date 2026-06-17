@@ -40,6 +40,21 @@ describe('NavBar auth action', () => {
 
     expect(onNavigate).toHaveBeenCalledWith('/dashboard/patient');
   });
+
+  it('routes provider applicants from the profile avatar to the provider dashboard', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    vi.mocked(useAuthSession).mockReturnValue({
+      session: { isAuthenticated: true, expiresAtUtc: null, groups: ['ProviderApplicant'] },
+      loading: false,
+    });
+
+    renderNavBar(onNavigate);
+
+    await user.click(screen.getByRole('button', { name: /open profile/i }));
+
+    expect(onNavigate).toHaveBeenCalledWith('/dashboard/provider');
+  });
 });
 
 function renderNavBar(onNavigate = vi.fn()) {

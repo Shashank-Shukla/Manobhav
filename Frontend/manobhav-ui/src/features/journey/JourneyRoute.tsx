@@ -9,6 +9,7 @@ import {
   createIntakeSubmission,
   getVisitorFlow,
   saveIntakeAnswer,
+  signIntakeConsent,
   submitPartialIntake,
   type IntakeConsentSection,
   type IntakeAnswerValue,
@@ -33,6 +34,7 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
   const [saveError, setSaveError] = useState('');
   const [isSavingStep, setIsSavingStep] = useState(false);
   const [submissionId, setSubmissionId] = useState('');
+  const [consentPolicyVersion, setConsentPolicyVersion] = useState(1);
   const [policyAcknowledged, setPolicyAcknowledged] = useState(false);
   const currentStartedAtRef = useRef(0);
   const lastScrollTs = useRef(0);
@@ -79,8 +81,8 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
         },
       });
       onFinish();
-    } catch (error: unknown) {
-      setSaveError(error instanceof Error ? error.message : 'Unable to submit intake.');
+    } catch {
+      setSaveError('We could not submit your intake just now. Please try again.');
     }
   };
 
@@ -112,12 +114,14 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
         setQuestions(flowSession.questions);
         setConsentSections(flowSession.consentSections);
         setSubmissionId(flowSession.submissionId);
+        setConsentPolicyVersion(flowSession.policyVersion);
         setFlowStatus(flowSession.questions.length > 0 ? 'ready' : 'empty');
       })
       .catch(() => {
         setQuestions([]);
         setConsentSections([]);
         setSubmissionId('');
+        setConsentPolicyVersion(1);
         setFlowStatus('error');
       });
 
@@ -270,6 +274,8 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
           onSingleChoiceSelect={onSingleChoiceSelect}
           onSubmit={submitJourney}
           policyAcknowledged={policyAcknowledged}
+          policyVersion={consentPolicyVersion}
+          submissionId={submissionId}
           consentSections={consentSections}
           questions={questions}
           saveError={saveError}
@@ -312,6 +318,8 @@ function JourneyContent({
   onSingleChoiceSelect,
   onSubmit,
   policyAcknowledged,
+  policyVersion,
+  submissionId,
   consentSections,
   questions,
   saveError,
@@ -330,6 +338,8 @@ function JourneyContent({
   onSingleChoiceSelect: (value: JourneyAnswer) => Promise<void>;
   onSubmit: () => Promise<void>;
   policyAcknowledged: boolean;
+  policyVersion: number;
+  submissionId: string;
   consentSections: IntakeConsentSection[];
   questions: VisitorFlowQuestion[];
   saveError: string;
@@ -353,6 +363,8 @@ function JourneyContent({
           onSingleChoiceSelect={onSingleChoiceSelect}
           onSubmit={onSubmit}
           policyAcknowledged={policyAcknowledged}
+          policyVersion={policyVersion}
+          submissionId={submissionId}
           consentSections={consentSections}
           questions={questions}
           saveError={saveError}
@@ -456,6 +468,8 @@ function JourneyStepCard({
   onSingleChoiceSelect,
   onSubmit,
   policyAcknowledged,
+  policyVersion,
+  submissionId,
   consentSections,
   questions,
   saveError,
@@ -469,6 +483,8 @@ function JourneyStepCard({
   onSingleChoiceSelect: (value: JourneyAnswer) => Promise<void>;
   onSubmit: () => Promise<void>;
   policyAcknowledged: boolean;
+  policyVersion: number;
+  submissionId: string;
   consentSections: IntakeConsentSection[];
   questions: VisitorFlowQuestion[];
   saveError: string;
@@ -488,6 +504,8 @@ function JourneyStepCard({
         onSingleChoiceSelect={onSingleChoiceSelect}
         onSubmit={onSubmit}
         policyAcknowledged={policyAcknowledged}
+        policyVersion={policyVersion}
+        submissionId={submissionId}
         consentSections={consentSections}
         questions={questions}
         saveError={saveError}
@@ -506,6 +524,8 @@ function JourneyStepCardBody({
   onSingleChoiceSelect,
   onSubmit,
   policyAcknowledged,
+  policyVersion,
+  submissionId,
   consentSections,
   questions,
   saveError,
@@ -519,6 +539,8 @@ function JourneyStepCardBody({
   onSingleChoiceSelect: (value: JourneyAnswer) => Promise<void>;
   onSubmit: () => Promise<void>;
   policyAcknowledged: boolean;
+  policyVersion: number;
+  submissionId: string;
   consentSections: IntakeConsentSection[];
   questions: VisitorFlowQuestion[];
   saveError: string;
@@ -532,7 +554,9 @@ function JourneyStepCardBody({
         consentSections={consentSections}
         onSubmit={onSubmit}
         policyAcknowledged={policyAcknowledged}
+        policyVersion={policyVersion}
         saveError={saveError}
+        submissionId={submissionId}
       />
     );
   }
@@ -724,16 +748,38 @@ function SubmitStep({
   onConsentComplete,
   onSubmit,
   policyAcknowledged,
+  policyVersion,
   saveError,
+  submissionId,
 }: {
   consentSections: IntakeConsentSection[];
   isSavingStep: boolean;
   onConsentComplete: (checked: boolean) => void;
   onSubmit: () => Promise<void>;
   policyAcknowledged: boolean;
+  policyVersion: number;
   saveError: string;
+  submissionId: string;
 }) {
   const [consentDialogOpen, setConsentDialogOpen] = useState(false);
+  const [consentError, setConsentError] = useState('');
+
+  const handleConsentComplete = async (typedName: string) => {
+    if (!submissionId) {
+      throw new Error('Intake session unavailable.');
+    }
+
+    await signIntakeConsent({
+      submissionId,
+      consentType: 'PatientIntake',
+      policyVersion: policyVersion || 1,
+      accepted: true,
+      typedName,
+    });
+    setConsentError('');
+    onConsentComplete(true);
+    setConsentDialogOpen(false);
+  };
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
@@ -752,19 +798,64 @@ function SubmitStep({
       {consentDialogOpen && (
         <ConsentDialog
           onClose={() => setConsentDialogOpen(false)}
-          onComplete={() => {
-            onConsentComplete(true);
-            setConsentDialogOpen(false);
+          onComplete={async (typedName) => {
+            try {
+              await handleConsentComplete(typedName);
+            } catch {
+              setConsentError('We could not save your consent just now. Please try again.');
+              throw new Error('Consent save failed.');
+            }
           }}
           open={consentDialogOpen}
           sections={consentSections}
         />
       )}
+      <SaveErrorMessage message={consentError} />
       <SaveErrorMessage message={saveError} />
-      <Button variant="primary" disabled={!policyAcknowledged || isSavingStep} onClick={() => void onSubmit()}>
+      <SubmitButton
+        isSavingStep={isSavingStep}
+        onSubmit={onSubmit}
+        policyAcknowledged={policyAcknowledged}
+      />
+    </div>
+  );
+}
+
+function SubmitButton({
+  isSavingStep,
+  onSubmit,
+  policyAcknowledged,
+}: {
+  isSavingStep: boolean;
+  onSubmit: () => Promise<void>;
+  policyAcknowledged: boolean;
+}) {
+  const isConsentIncomplete = !policyAcknowledged;
+  const isDisabled = isConsentIncomplete || isSavingStep;
+  const tooltipId = 'journey-submit-consent-tooltip';
+  const wrapperClassName = isConsentIncomplete ? 'group relative inline-flex cursor-not-allowed' : 'group relative inline-flex';
+
+  return (
+    <span className={wrapperClassName} data-testid={isConsentIncomplete ? 'disabled-consent-submit' : undefined}>
+      <Button
+        aria-describedby={isConsentIncomplete ? tooltipId : undefined}
+        className="disabled:pointer-events-none disabled:opacity-60"
+        disabled={isDisabled}
+        onClick={() => void onSubmit()}
+        variant="primary"
+      >
         {isSavingStep ? 'Saving...' : 'Submit'}
       </Button>
-    </div>
+      {isConsentIncomplete && (
+        <span
+          className="absolute bottom-full left-1/2 mb-2 w-64 -translate-x-1/2 rounded-md bg-white px-3 py-2 text-center text-xs font-medium text-slate-700 opacity-0 shadow-lg ring-1 ring-slate-200 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+          id={tooltipId}
+          role="tooltip"
+        >
+          Please read and agree using the link above.
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -885,14 +976,19 @@ function stableAnswerKey(answer: JourneyAnswer): string {
   return JSON.stringify(Array.isArray(answer) ? [...answer].sort() : answer);
 }
 
+function getConsentPolicyVersion(formVersion: number): number {
+  return Number.isFinite(formVersion) && formVersion > 0 ? Math.trunc(formVersion) : 1;
+}
+
 async function loadVisitorFlowSession(signal: AbortSignal): Promise<{
   consentSections: IntakeConsentSection[];
+  policyVersion: number;
   questions: VisitorFlowQuestion[];
   submissionId: string;
 }> {
   const flow = await getVisitorFlow(signal);
   if (flow.questions.length === 0) {
-    return { consentSections: flow.consentSections, questions: [], submissionId: '' };
+    return { consentSections: flow.consentSections, policyVersion: getConsentPolicyVersion(flow.formVersion), questions: [], submissionId: '' };
   }
 
   const submission = await createIntakeSubmission({
@@ -903,7 +999,12 @@ async function loadVisitorFlowSession(signal: AbortSignal): Promise<{
   });
   rememberActiveIntakeSubmission(submission.id);
 
-  return { consentSections: flow.consentSections, questions: flow.questions, submissionId: submission.id };
+  return {
+    consentSections: flow.consentSections,
+    policyVersion: getConsentPolicyVersion(flow.formVersion),
+    questions: flow.questions,
+    submissionId: submission.id,
+  };
 }
 
 const defaultAnswerByType: Record<string, JourneyAnswer> = {

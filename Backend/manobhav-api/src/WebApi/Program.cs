@@ -3,6 +3,9 @@ using WebApi.Security;
 using WebApi.Configuration;
 using WebApi.Auditing;
 using WebApi.Health;
+using WebApi.Notifications;
+using Amazon;
+using Amazon.SimpleEmailV2;
 using Application;
 using Application.Services;
 using Infrastructure;
@@ -66,12 +69,29 @@ builder.Services.AddApplicationServices();      // register MediatR, validators,
 builder.Services.AddInfrastructureServices(builder.Configuration); // DbContext, repos
 builder.Services.AddSingleton(visitorAnalyticsOptions);
 builder.Services.AddSingleton(authOptions);
+builder.Services.Configure<ProviderOnboardingNotificationOptions>(
+    builder.Configuration.GetSection("ProviderOnboarding:AdminNotifications"));
 builder.Services.AddSingleton<AuthCookieManager>();
 builder.Services.AddHttpClient<ICognitoTokenExchange, CognitoTokenExchangeService>();
 builder.Services.AddHttpClient<ICognitoEmailOtpAuth, CognitoEmailOtpAuthService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditContextAccessor, HttpAuditContextAccessor>();
 builder.Services.AddScoped<IDatabaseReadinessProbe, EfCoreDatabaseReadinessProbe>();
+builder.Services.AddSingleton<IAmazonSimpleEmailServiceV2>(_ =>
+{
+    var notificationOptions = builder.Configuration
+        .GetSection("ProviderOnboarding:AdminNotifications")
+        .Get<ProviderOnboardingNotificationOptions>() ?? new ProviderOnboardingNotificationOptions();
+    var region = string.IsNullOrWhiteSpace(notificationOptions.AwsRegion)
+        ? ProviderOnboardingNotificationOptions.DefaultAwsRegion
+        : notificationOptions.AwsRegion;
+    return new AmazonSimpleEmailServiceV2Client(new AmazonSimpleEmailServiceV2Config
+    {
+        RegionEndpoint = RegionEndpoint.GetBySystemName(region)
+    });
+});
+builder.Services.AddSingleton<IProviderOnboardingSesClient, AwsProviderOnboardingSesClient>();
+builder.Services.AddScoped<IProviderOnboardingAdminNotifier, SesProviderOnboardingAdminNotifier>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

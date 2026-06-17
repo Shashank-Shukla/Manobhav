@@ -41,6 +41,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProviderReview> ProviderReviews => Set<ProviderReview>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<VisitorFlowQuestion> VisitorFlowQuestions => Set<VisitorFlowQuestion>();
+    public DbSet<AdminNotification> AdminNotifications => Set<AdminNotification>();
 
     public override int SaveChanges()
     {
@@ -543,6 +544,21 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(question => new { question.FlowKey, question.IsActive, question.StepOrder });
             entity.Property(question => question.FlowKey).HasMaxLength(80).IsRequired();
             entity.Property(question => question.Text).HasMaxLength(600).IsRequired();
+        });
+
+        modelBuilder.Entity<AdminNotification>(entity =>
+        {
+            entity.HasKey(notification => notification.Id);
+            entity.HasIndex(notification => notification.NotificationKey).IsUnique();
+            entity.HasIndex(notification => notification.ReadAtUtc);
+            entity.HasIndex(notification => notification.CreatedAtUtc);
+            entity.Property(notification => notification.NotificationKey).HasMaxLength(180).IsRequired();
+            entity.Property(notification => notification.Type).HasMaxLength(80).IsRequired();
+            entity.Property(notification => notification.Title).HasMaxLength(200).IsRequired();
+            entity.Property(notification => notification.Body).HasMaxLength(1000).IsRequired();
+            entity.Property(notification => notification.LinkPath).HasMaxLength(300).IsRequired();
+            entity.Property(notification => notification.SourceEntityType).HasMaxLength(120);
+            entity.Property(notification => notification.SourceEntityId).HasMaxLength(120);
         });
     }
 

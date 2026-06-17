@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { ChakraProvider } from '@chakra-ui/react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { adminModules, isAdminModule } from './data';
 import { emptyAdminDashboardData, getAdminDashboardData } from './adminDashboardApi';
 import { AdminShell } from './components/AdminShell';
@@ -10,6 +10,7 @@ import {
   HiringView,
   InsightsView,
   PatientsView,
+  ProviderApplicationsView,
   ProvidersView,
   SalaryView,
   TodayOpsView,
@@ -17,15 +18,23 @@ import {
 } from './views';
 import type { AdminDashboardData, AdminModule } from './types';
 
-const adminModuleViews: Record<AdminModule, (search: string, data: AdminDashboardData) => ReactElement> = {
-  today: (_search, data) => <TodayOpsView data={data} />,
+const adminModuleViews: Record<AdminModule, (search: string, data: AdminDashboardData, params: AdminModuleViewParams) => ReactElement> = {
+  today: (_search, data, params) => <TodayOpsView data={data} onOpenProviderApplications={params.onOpenProviderApplications} />,
   patients: (search) => <PatientsView search={search} />,
   providers: (search, data) => <ProvidersView providers={data.providers} search={search} />,
+  'provider-applications': (search, _data, params) => (
+    <ProviderApplicationsView applicationId={params.applicationId} search={search} />
+  ),
   bookings: (search, data) => <BookingsView bookings={data.bookings} search={search} slots={data.slots} />,
   hiring: (search) => <HiringView search={search} />,
   salary: (search) => <SalaryView search={search} />,
   insights: () => <InsightsView />,
   'clinical-records': (search) => <ClinicalRecordsView search={search} />,
+};
+
+type AdminModuleViewParams = {
+  applicationId?: string;
+  onOpenProviderApplications: () => void;
 };
 
 export function AdminDashboardRoute() {
@@ -77,7 +86,13 @@ function AdminDashboardContent() {
 }
 
 function AdminModuleContent({ data, module, search }: { data: AdminDashboardData; module: AdminModule; search: string }) {
-  return adminModuleViews[module]?.(search, data) ?? <UnknownModuleView />;
+  const { applicationId } = useParams();
+  const navigate = useNavigate();
+
+  return adminModuleViews[module]?.(search, data, {
+    applicationId,
+    onOpenProviderApplications: () => navigate('/dashboard/admin/provider-applications'),
+  }) ?? <UnknownModuleView />;
 }
 
 function AdminDataStatus({ status }: { status: 'loading' | 'ready' | 'error' }) {

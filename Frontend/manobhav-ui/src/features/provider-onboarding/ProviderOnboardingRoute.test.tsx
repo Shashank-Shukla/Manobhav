@@ -1,9 +1,11 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnboardingProviderPage } from './ProviderOnboardingRoute';
+import type { ProviderApplication } from './providerOnboardingApi';
 
-const application = {
+const application: ProviderApplication = {
   id: 'application-1',
   userId: 'user-1',
   status: 'Draft',
@@ -31,7 +33,7 @@ const taxonomy = {
 const taxonomyCacheKey = 'manobhav-provider-onboarding-taxonomy';
 const draftStoragePrefix = 'manobhav-provider-onboarding-draft';
 const draftStorageKey = `${draftStoragePrefix}:application-1`;
-let applicationResponse: typeof application & { sections?: unknown };
+let applicationResponse: ProviderApplication;
 let saveHandler: (sectionKey: string, body: unknown) => Response;
 
 describe('provider onboarding route', () => {
@@ -44,17 +46,25 @@ describe('provider onboarding route', () => {
   });
 
   it('renders form content without the provider onboarding header or back button', async () => {
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     expect(await screen.findByRole('heading', { name: /basic identity/i })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /provider onboarding/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^back$/i })).not.toBeInTheDocument();
   });
 
+  it('keeps provider onboarding content below fixed navbar space and avoids stretching the details panel', async () => {
+    renderProviderPage();
+
+    expect(await screen.findByTestId('provider-onboarding-layout')).toHaveClass('pt-28');
+    expect(screen.getByTestId('provider-onboarding-layout')).toHaveClass('items-start');
+    expect(screen.getByTestId('provider-onboarding-panel')).toHaveClass('self-start');
+  });
+
   it('validates required fields before saving and keeps future sections disabled', async () => {
     const user = userEvent.setup();
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     const legalName = await screen.findByLabelText(/legal name/i);
     const legalNameLabel = legalName.closest('label');
@@ -73,7 +83,7 @@ describe('provider onboarding route', () => {
   it('saves the current section, marks it complete, activates the next section, and allows backtracking', async () => {
     const user = userEvent.setup();
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     await user.type(await screen.findByLabelText(/legal name/i), 'Dr. Asha Rao');
     await user.type(screen.getByLabelText(/display name/i), 'Asha Rao');
@@ -154,7 +164,7 @@ describe('provider onboarding route', () => {
       },
     };
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     expect(await screen.findByDisplayValue('Grounded support for high-stress seasons.')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Collaborative care.')).toBeInTheDocument();
@@ -164,7 +174,7 @@ describe('provider onboarding route', () => {
 
   it('keeps unsaved provider edits in memory without writing provider form data to browser storage', async () => {
     const user = userEvent.setup();
-    const view = render(<OnboardingProviderPage onBack={vi.fn()} />);
+    const view = renderProviderPage();
 
     await user.type(await screen.findByLabelText(/legal name/i), 'Dr. Memory Only');
 
@@ -174,7 +184,7 @@ describe('provider onboarding route', () => {
 
     view.unmount();
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     expect(await screen.findByLabelText(/legal name/i)).toHaveValue('');
     expect(screen.queryByDisplayValue('Dr. Memory Only')).not.toBeInTheDocument();
@@ -187,7 +197,7 @@ describe('provider onboarding route', () => {
     window.sessionStorage.setItem(draftStorageKey, JSON.stringify(createStoredDrafts('Dr. Legacy Session')));
     window.sessionStorage.setItem(`${draftStoragePrefix}:legacy-application`, JSON.stringify(createStoredDrafts('Dr. Other Session')));
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     expect(await screen.findByRole('heading', { name: /basic identity/i })).toBeInTheDocument();
     expect(window.localStorage.getItem(draftStorageKey)).toBeNull();
@@ -219,7 +229,7 @@ describe('provider onboarding route', () => {
       },
     };
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     expect(await screen.findByDisplayValue('Dr. Server Provider')).toBeInTheDocument();
     expect(window.localStorage.getItem(draftStorageKey)).toBeNull();
@@ -231,7 +241,7 @@ describe('provider onboarding route', () => {
   it('purges legacy browser draft data after a successful section save', async () => {
     const user = userEvent.setup();
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     await user.type(await screen.findByLabelText(/legal name/i), 'Dr. Clear Draft');
     await user.type(screen.getByLabelText(/display name/i), 'Clear Draft');
@@ -254,7 +264,7 @@ describe('provider onboarding route', () => {
     const user = userEvent.setup();
     applicationResponse = { ...application, currentStep: 'specializations' };
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     const anxietyChip = await screen.findByRole('button', { name: 'Anxiety' });
     expect(findFetchCall('/api/provider-onboarding/taxonomy')).toBeTruthy();
@@ -284,7 +294,7 @@ describe('provider onboarding route', () => {
     window.localStorage.setItem(taxonomyCacheKey, JSON.stringify(taxonomy));
     applicationResponse = { ...application, currentStep: 'bio' };
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     expect(await screen.findByRole('button', { name: 'English' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: /languages/i })).toBeInTheDocument();
@@ -299,7 +309,7 @@ describe('provider onboarding route', () => {
         { status: 400 },
       );
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     await user.type(await screen.findByLabelText(/legal name/i), 'Dr. Asha Rao');
     await user.type(screen.getByLabelText(/display name/i), 'Asha Rao');
@@ -310,29 +320,61 @@ describe('provider onboarding route', () => {
     expect(screen.queryByText(/api request failed with status 400/i)).not.toBeInTheDocument();
 
     applicationResponse = { ...application, currentStep: 'credentials' };
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
     expect(await screen.findByRole('heading', { name: /credentials and private uploads/i })).toBeInTheDocument();
     expect(screen.queryByText(/s3/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/pre-?sign/i)).not.toBeInTheDocument();
   });
 
-  it('can submit for review from the review step', async () => {
+  it('sends provider details for admin review and redirects to the provider dashboard', async () => {
     const user = userEvent.setup();
     applicationResponse = { ...application, currentStep: 'review' };
 
-    render(<OnboardingProviderPage onBack={vi.fn()} />);
+    renderProviderPage();
 
-    await screen.findByRole('button', { name: /submit for review/i });
+    await screen.findByRole('button', { name: /send for admin review/i });
     window.localStorage.setItem(taxonomyCacheKey, JSON.stringify(taxonomy));
     window.localStorage.setItem(draftStorageKey, JSON.stringify(createStoredDrafts('Dr. Legacy Submit')));
-    await user.click(await screen.findByRole('button', { name: /submit for review/i }));
+    await user.click(await screen.findByRole('button', { name: /send for admin review/i }));
 
-    expect(await screen.findByRole('button', { name: /submitted/i })).toBeDisabled();
+    await waitFor(() => {
+      expect(findFetchCall('/api/provider-onboarding/applications/application-1/submit')).toBeTruthy();
+      expect(screen.getByTestId('current-location')).toHaveTextContent('/dashboard/provider');
+    });
     expect(window.localStorage.getItem(draftStorageKey)).toBeNull();
     expect(window.localStorage.getItem(taxonomyCacheKey)).toBe(JSON.stringify(taxonomy));
   });
+
+  it('redirects to the provider dashboard when the backend returns an already submitted application', async () => {
+    applicationResponse = {
+      ...application,
+      status: 'Submitted',
+      currentStep: 'review',
+      submittedAtUtc: '2026-06-16T00:01:00.000Z',
+    };
+
+    renderProviderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('current-location')).toHaveTextContent('/dashboard/provider');
+    });
+  });
 });
+
+function renderProviderPage() {
+  return render(
+    <MemoryRouter initialEntries={['/onboarding/provider']}>
+      <OnboardingProviderPage onBack={vi.fn()} />
+      <CurrentLocation />
+    </MemoryRouter>,
+  );
+}
+
+function CurrentLocation() {
+  const location = useLocation();
+  return <span data-testid="current-location">{location.pathname}</span>;
+}
 
 async function handleProviderOnboardingFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = String(input);

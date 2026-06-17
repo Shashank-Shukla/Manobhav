@@ -1,4 +1,4 @@
-import { Box, Flex, HStack, Icon, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Icon, Text } from '@chakra-ui/react';
 import type { LucideIcon } from 'lucide-react';
 import { adminTheme, toneStyles } from '../adminTheme';
 import type { StatusTone } from '../types';
@@ -10,9 +10,10 @@ type MetricCardProps = {
   helper: string;
   tone: StatusTone;
   icon: LucideIcon;
+  onDeltaClick?: () => void;
 };
 
-export function MetricCard({ label, value, delta, helper, tone, icon }: MetricCardProps) {
+export function MetricCard({ label, value, delta, helper, tone, icon, onDeltaClick }: MetricCardProps) {
   const styles = toneStyles[tone];
 
   return (
@@ -48,18 +49,33 @@ export function MetricCard({ label, value, delta, helper, tone, icon }: MetricCa
         </Flex>
       </Flex>
       <HStack mt={5} align="flex-start" spacing={3}>
-        <Text
-          flex="0 0 auto"
-          borderRadius="full"
-          bg={styles.bg}
-          color={styles.color}
-          px={3}
-          py={1}
-          fontSize="xs"
-          fontWeight="800"
-        >
-          {delta}
-        </Text>
+        {onDeltaClick ? (
+          <Button
+            size="xs"
+            flex="0 0 auto"
+            borderRadius="full"
+            bg={styles.bg}
+            color={styles.color}
+            fontWeight="800"
+            _hover={{ bg: styles.border }}
+            onClick={onDeltaClick}
+          >
+            {delta}
+          </Button>
+        ) : (
+          <Text
+            flex="0 0 auto"
+            borderRadius="full"
+            bg={styles.bg}
+            color={styles.color}
+            px={3}
+            py={1}
+            fontSize="xs"
+            fontWeight="800"
+          >
+            {delta}
+          </Text>
+        )}
         <Text color={adminTheme.muted} fontSize="sm" lineHeight="1.55">
           {helper}
         </Text>

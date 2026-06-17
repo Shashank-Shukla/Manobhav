@@ -4,6 +4,7 @@ export { HiringView } from './HiringView';
 export { InsightsView } from './InsightsView';
 export { PatientsView } from './PatientsView';
 export { ProvidersView } from './ProvidersView';
+export { ProviderApplicationsView } from './ProviderApplicationsView';
 export { SalaryView } from './SalaryView';
 export { TodayOpsView } from './TodayOpsView';
 export { UnknownModuleView } from './shared';

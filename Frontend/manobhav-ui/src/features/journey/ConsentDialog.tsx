@@ -8,12 +8,13 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Slide from '@mui/material/Slide';
+import TextField from '@mui/material/TextField';
 import type { TransitionProps } from '@mui/material/transitions';
 import type { IntakeConsentSection } from '../public-data';
 
 type ConsentDialogProps = {
   onClose: () => void;
-  onComplete: () => void;
+  onComplete: (typedName: string) => Promise<void> | void;
   open: boolean;
   sections?: IntakeConsentSection[];
 };
@@ -30,11 +31,17 @@ const DialogTransition = forwardRef(function DialogTransition(
 export function ConsentDialog({ onClose, onComplete, open, sections }: ConsentDialogProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [completedSections, setCompletedSections] = useState<Record<number, boolean>>({});
+  const [signatureName, setSignatureName] = useState('');
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState('');
   const consentSections = getCompleteApiConsentSections(sections);
   const isUnavailable = consentSections.length !== requiredConsentSectionNumbers.length;
   const activeSection = consentSections[activeIndex] ?? consentSections[0];
   const isLastSection = !isUnavailable && activeIndex === consentSections.length - 1;
+  const signedName = signatureName.trim();
   const isSectionComplete = activeSection ? completedSections[activeSection.sectionNumber] === true : false;
+  const canContinue = isLastSection ? signedName.length > 0 && !isCompleting : isSectionComplete;
+  const displayItems = getDisplayConsentItems(activeSection, isLastSection);
 
   const handleCompletionChange = (event: ChangeEvent<HTMLInputElement>) => {
     const checked = event.target.checked;
@@ -44,13 +51,22 @@ export function ConsentDialog({ onClose, onComplete, open, sections }: ConsentDi
     }));
   };
 
-  const handlePrimaryAction = () => {
-    if (!isSectionComplete) return;
+  const handlePrimaryAction = async () => {
+    if (!canContinue) return;
     if (isLastSection) {
-      onComplete();
+      setIsCompleting(true);
+      setCompletionError('');
+      try {
+        await onComplete(signedName);
+      } catch {
+        setCompletionError('We could not save your consent just now. Please try again.');
+      } finally {
+        setIsCompleting(false);
+      }
       return;
     }
 
+    setCompletionError('');
     setActiveIndex((index) => index + 1);
   };
 
@@ -76,7 +92,7 @@ export function ConsentDialog({ onClose, onComplete, open, sections }: ConsentDi
             Close
           </Button>
           <Button disabled variant="contained">
-            Finish consent
+            I Agree
           </Button>
         </DialogActions>
       </Dialog>
@@ -96,27 +112,42 @@ export function ConsentDialog({ onClose, onComplete, open, sections }: ConsentDi
       <DialogTitle id="intake-consent-title">{activeSection.title}</DialogTitle>
       <DialogContent dividers>
         <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Section {activeSection.sectionNumber} of 7
+          {activeIndex + 1}/3
         </p>
         <ul className="space-y-3 text-sm leading-6 text-slate-700">
-          {activeSection.items.map((item) => (
+          {displayItems.map((item) => (
             <li className="rounded-md bg-slate-50 px-3 py-2" key={item}>
               {item}
             </li>
           ))}
         </ul>
+        {isLastSection && (
+          <div className="mt-5 space-y-3">
+            <TextField
+              autoFocus
+              fullWidth
+              label="Signature name"
+              onChange={(event) => setSignatureName(event.target.value)}
+              value={signatureName}
+            />
+            <p className="text-sm text-slate-600">Date: {formatConsentDate(new Date())}</p>
+            {completionError && <p className="text-sm font-medium text-rose-700">{completionError}</p>}
+          </div>
+        )}
       </DialogContent>
       <DialogActions className="flex flex-col items-stretch gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <FormControlLabel
-          control={<Checkbox checked={isSectionComplete} onChange={handleCompletionChange} />}
-          label={`Section ${activeSection.sectionNumber} complete`}
-        />
+        {!isLastSection && (
+          <FormControlLabel
+            control={<Checkbox checked={isSectionComplete} onChange={handleCompletionChange} />}
+            label="I Agree"
+          />
+        )}
         <div className="flex justify-end gap-2">
           <Button color="inherit" onClick={onClose}>
             Close
           </Button>
-          <Button disabled={!isSectionComplete} onClick={handlePrimaryAction} variant="contained">
-            {isLastSection ? 'Finish consent' : 'Continue'}
+          <Button disabled={!canContinue} onClick={() => void handlePrimaryAction()} variant="contained">
+            {isLastSection ? 'I Agree' : 'Continue'}
           </Button>
         </div>
       </DialogActions>
@@ -133,4 +164,19 @@ function getCompleteApiConsentSections(sections: IntakeConsentSection[] | undefi
   return requiredConsentSectionNumbers
     .map((sectionNumber) => sectionsByNumber.get(sectionNumber))
     .filter((section): section is IntakeConsentSection => Boolean(section));
+}
+
+function formatConsentDate(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}/${date.getFullYear()}`;
+}
+
+function getDisplayConsentItems(section: IntakeConsentSection | undefined, isSignatureStep: boolean): string[] {
+  const items = section?.items ?? [];
+  if (!isSignatureStep) {
+    return items;
+  }
+
+  return items.filter((item) => !/signature\s*:/i.test(item));
 }

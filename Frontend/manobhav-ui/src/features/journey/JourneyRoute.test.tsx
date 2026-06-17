@@ -12,6 +12,7 @@ const apiJson = (body: unknown, status = 200) =>
 type CapturedBodies = {
   answerBodies: Array<Record<string, unknown>>;
   analyticsBodies: Array<Record<string, unknown>>;
+  consentBodies: Array<Record<string, unknown>>;
 };
 
 type ApiRoute = {
@@ -32,6 +33,13 @@ const apiRoutes: ApiRoute[] = [
     matches: (url) => url.includes('/api/intake/submissions/submission-1/answers/'),
     response: (init, captures) => {
       captures.answerBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return apiJson(createBackendSubmission());
+    },
+  },
+  {
+    matches: (url) => url.endsWith('/api/intake/submissions/submission-1/consent'),
+    response: (init, captures) => {
+      captures.consentBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
       return apiJson(createBackendSubmission());
     },
   },
@@ -153,14 +161,15 @@ describe('patient journey intake inputs', () => {
     expect(answerBodies.map((body) => body.answer)).toContain('sleep');
   });
 
-  it('requires completing each consent section before enabling submit', async () => {
+  it('requires completed consent with a typed signature before enabling submit', async () => {
     const user = userEvent.setup();
     const answerBodies: Array<Record<string, unknown>> = [];
     const analyticsBodies: Array<Record<string, unknown>> = [];
+    const consentBodies: Array<Record<string, unknown>> = [];
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
-        getApiResponse(String(input), init, answerBodies, analyticsBodies)),
+        getApiResponse(String(input), init, answerBodies, analyticsBodies, consentBodies)),
     );
 
     render(<JourneyPage onBackHome={vi.fn()} onFinish={vi.fn()} />);
@@ -171,35 +180,54 @@ describe('patient journey intake inputs', () => {
     expect(screen.queryByText(/I acknowledge the intake policies/i)).not.toBeInTheDocument();
     const submitButton = screen.getByRole('button', { name: /submit/i });
     expect(submitButton).toBeDisabled();
+    const disabledSubmit = screen.getByTestId('disabled-consent-submit');
+    expect(disabledSubmit).toHaveClass('cursor-not-allowed');
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/Please read and agree using the link above/i);
 
     await user.click(screen.getByRole('button', { name: /read terms and consent/i }));
     expect(await screen.findByRole('dialog', { name: /consent, policies & confidentiality/i })).toBeInTheDocument();
+    expect(screen.getByText('1/3')).toBeInTheDocument();
     expect(screen.getByText(/API-provided confidentiality copy/i)).toBeInTheDocument();
     expect(screen.queryByText(/50-minute sessions are standard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Section 5 of 7/i)).not.toBeInTheDocument();
 
     let continueButton = screen.getByRole('button', { name: /continue/i });
     expect(continueButton).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: /section 5 complete/i }));
+    await user.click(screen.getByRole('checkbox', { name: 'I Agree' }));
     expect(continueButton).toBeEnabled();
     await user.click(continueButton);
 
-    expect(await screen.findByRole('heading', { name: /crisis and emergency support/i })).toBeInTheDocument();
-    expect(screen.getByText(/API-provided crisis hotline copy/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /no suicidal liability & emergency disclaimer/i })).toBeInTheDocument();
+    expect(screen.getByText('2/3')).toBeInTheDocument();
+    expect(screen.getByText(/emergency services \(112\)/i)).toBeInTheDocument();
     continueButton = screen.getByRole('button', { name: /continue/i });
     expect(continueButton).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: /section 6 complete/i }));
+    await user.click(screen.getByRole('checkbox', { name: 'I Agree' }));
     await user.click(continueButton);
 
     expect(await screen.findByRole('heading', { name: /consent to therapy/i })).toBeInTheDocument();
-    expect(screen.getByText(/API-provided therapy consent copy/i)).toBeInTheDocument();
-    const finishButton = screen.getByRole('button', { name: /finish consent/i });
-    expect(finishButton).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: /section 7 complete/i }));
-    expect(finishButton).toBeEnabled();
-    await user.click(finishButton);
+    expect(screen.getByText('3/3')).toBeInTheDocument();
+    expect(screen.getByText(/I have read and agree to the above terms/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Client Signature/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Therapist Signature/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.getByText(new RegExp(formatTodayForTest()))).toBeInTheDocument();
+    const agreeButton = screen.getByRole('button', { name: 'I Agree' });
+    expect(agreeButton).toBeDisabled();
+    await user.type(screen.getByLabelText(/signature name/i), 'Asha Mehta');
+    expect(agreeButton).toBeEnabled();
+    await user.click(agreeButton);
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(submitButton).toBeEnabled();
+    expect(consentBodies).toEqual([
+      {
+        consentType: 'PatientIntake',
+        policyVersion: 1,
+        accepted: true,
+        typedName: 'Asha Mehta',
+      },
+    ]);
   });
 
   it('keeps submit unavailable when API consent sections are incomplete', async () => {
@@ -231,7 +259,7 @@ describe('patient journey intake inputs', () => {
     expect(screen.getByText(/consent terms are temporarily unavailable/i)).toBeInTheDocument();
     expect(screen.queryByText(/50-minute sessions are standard/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /section 5 complete/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /finish consent/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /i agree/i })).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: /close/i }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -330,9 +358,17 @@ function getApiResponse(
   init: RequestInit | undefined,
   answerBodies: Array<Record<string, unknown>>,
   analyticsBodies: Array<Record<string, unknown>>,
+  consentBodies: Array<Record<string, unknown>> = [],
 ): Response {
-  const captures = { answerBodies, analyticsBodies };
+  const captures = { answerBodies, analyticsBodies, consentBodies };
   return apiRoutes.find((route) => route.matches(url))?.response(init, captures) ?? apiJson({ title: 'Not found' }, 404);
+}
+
+function formatTodayForTest(): string {
+  const date = new Date();
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}/${date.getFullYear()}`;
 }
 
 function createBackendSubmission() {
@@ -389,8 +425,8 @@ function createBackendIntakeForm(options: { consentSectionNumbers?: number[] } =
       ...(consentSectionNumbers.has(6) ? [{
         id: 'section-6',
         sectionKey: 'emergency_disclaimer',
-        title: 'Crisis and Emergency Support',
-        description: 'API-provided crisis hotline copy.',
+        title: 'No Suicidal Liability & Emergency Disclaimer',
+        description: 'Manobhav does not provide crisis intervention.\nIf you are in danger, contact emergency services (112) or listed helplines.',
         displayOrder: 6,
         isRequired: true,
         questions: [],
@@ -399,7 +435,7 @@ function createBackendIntakeForm(options: { consentSectionNumbers?: number[] } =
         id: 'section-7',
         sectionKey: 'consent_to_therapy',
         title: 'Consent to Therapy',
-        description: 'API-provided therapy consent copy.',
+        description: 'I have read and agree to the above terms and consent to therapy with Manobhav.\nClient Signature: ____ Date: ____\nTherapist Signature: ____ Date: ____',
         displayOrder: 7,
         isRequired: true,
         questions: [],
