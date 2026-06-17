@@ -136,6 +136,7 @@ function AppRoutes({
       <Route path="/dashboard/patient" element={<AuthenticatedBoundedRoute context="route-patient-dashboard" navigate={navigate} returnTo="/dashboard/patient"><DashboardPatientPage /></AuthenticatedBoundedRoute>} />
       <Route path="/dashboard/admin" element={<AdminDashboardRouteElement />} />
       <Route path="/dashboard/admin/:module" element={<AdminDashboardRouteElement />} />
+      <Route path="/dashboard/admin/:module/:applicationId" element={<AdminDashboardRouteElement />} />
       <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
     </Routes>
   );

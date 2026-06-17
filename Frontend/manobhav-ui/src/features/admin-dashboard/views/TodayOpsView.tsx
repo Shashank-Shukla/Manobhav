@@ -8,7 +8,7 @@ import type { AdminDashboardData } from '../types';
 import { MiniProgress, SectionCard } from './shared';
 import { metricIcons } from './viewUtils';
 
-export function TodayOpsView({ data }: { data: AdminDashboardData }) {
+export function TodayOpsView({ data, onOpenProviderApplications }: { data: AdminDashboardData; onOpenProviderApplications: () => void }) {
   return (
     <Stack spacing={6}>
       <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={4}>
@@ -21,13 +21,19 @@ export function TodayOpsView({ data }: { data: AdminDashboardData }) {
             helper={metric.helper}
             tone={metric.tone}
             icon={metricIcons[metric.id as keyof typeof metricIcons] ?? LineChart}
+            onDeltaClick={metric.id === 'care-followups' ? onOpenProviderApplications : undefined}
           />
         ))}
       </SimpleGrid>
 
       <Grid templateColumns={{ base: '1fr', xl: '1.4fr 0.9fr' }} gap={5}>
         <GridItem>
-          <WorkQueue title="Urgent work queue" subtitle="Items that need admin attention today" items={data.opsQueues} />
+          <WorkQueue
+            title="Urgent work queue"
+            subtitle="Items that need admin attention today"
+            items={data.opsQueues}
+            getActionPath={(item) => item.id === 'provider-review' ? '/dashboard/admin/provider-applications' : undefined}
+          />
         </GridItem>
         <GridItem>
           <WorkQueue title="Quick actions" subtitle="Common operations from the command center" items={data.quickActions} actionLabel="Start" />

@@ -4,6 +4,7 @@ using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace WebApi.Controllers;
 
@@ -27,9 +28,24 @@ public sealed class AdminProviderController : ControllerBase
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .Take(100)
-            .Select(item => new ProviderApplicationDto(item.Id, item.UserId, item.Status, item.CurrentStep, item.CreatedAtUtc, item.UpdatedAtUtc, item.SubmittedAtUtc))
             .ToListAsync(cancellationToken);
-        return Ok(applications);
+        return Ok(applications.Select(ToDetailDto).ToList());
+    }
+
+    [HttpGet("{applicationId:guid}")]
+    [ProducesResponseType(typeof(ProviderApplicationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProviderApplicationDto>> Get(Guid applicationId, CancellationToken cancellationToken)
+    {
+        var application = await _db.ProviderOnboardingApplications
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == applicationId, cancellationToken);
+        if (application is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(ToDetailDto(application));
     }
 
     [HttpPost("{applicationId:guid}/approve")]
@@ -137,6 +153,80 @@ public sealed class AdminProviderController : ControllerBase
         if (!exists)
         {
             await _db.UserRoles.AddAsync(new UserRole { UserId = userId, Role = role }, cancellationToken);
+        }
+    }
+
+    private static ProviderApplicationDto ToDetailDto(ProviderOnboardingApplication application)
+    {
+        return new ProviderApplicationDto(
+            application.Id,
+            application.UserId,
+            application.Status,
+            application.CurrentStep,
+            application.CreatedAtUtc,
+            application.UpdatedAtUtc,
+            application.SubmittedAtUtc,
+            BuildSections(application));
+    }
+
+    private static IReadOnlyDictionary<string, JsonElement> BuildSections(ProviderOnboardingApplication application)
+    {
+        var sections = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        AddRootSection(sections, "basicIdentity", application.BasicProfileJson);
+        AddNestedSection(sections, application.BioJson, "bio", "bioAndApproach");
+        AddNestedSection(sections, application.BioJson, "specializations", "specializations");
+        AddNestedSection(sections, application.BioJson, "modalities", "therapyApproaches");
+        AddNestedSection(sections, application.SessionDetailsJson, "sessionDetails", "sessionDetails");
+        AddNestedSection(sections, application.SessionDetailsJson, "credentials", "credentials");
+        AddNestedSection(sections, application.SessionDetailsJson, "payout", "payout");
+
+        return sections;
+    }
+
+    private static void AddRootSection(IDictionary<string, JsonElement> sections, string sectionKey, string json)
+    {
+        if (TryParseObject(json, out var element) && element.EnumerateObject().Any())
+        {
+            sections[sectionKey] = element;
+        }
+    }
+
+    private static void AddNestedSection(IDictionary<string, JsonElement> sections, string json, string storedKey, string sectionKey)
+    {
+        if (!TryParseObject(json, out var root) ||
+            !root.TryGetProperty(storedKey, out var section) ||
+            section.ValueKind != JsonValueKind.Object ||
+            !section.EnumerateObject().Any())
+        {
+            return;
+        }
+
+        sections[sectionKey] = section.Clone();
+    }
+
+    private static bool TryParseObject(string json, out JsonElement element)
+    {
+        element = default;
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            element = document.RootElement.Clone();
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 }

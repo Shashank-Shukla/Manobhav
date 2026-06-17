@@ -126,6 +126,15 @@ export type IntakeSubmission = {
 
 export type IntakeAnswerValue = string | string[] | number | boolean;
 
+export type SignIntakeConsentInput = {
+  submissionId: string;
+  consentType: 'PatientIntake' | 'ProviderOnboarding' | string;
+  policyVersion: number;
+  accepted: boolean;
+  typedName: string;
+  signal?: AbortSignal;
+};
+
 export async function getLandingContent(signal?: AbortSignal): Promise<LandingContent> {
   return apiRequest<LandingContent>('/api/public/landing', { signal });
 }
@@ -194,6 +203,19 @@ export async function submitPartialIntake(input: {
   return apiRequest<IntakeSubmission>(`/api/intake/submissions/${encodeURIComponent(input.submissionId)}/submit-partial`, {
     method: 'POST',
     body: { policyAcknowledged: input.policyAcknowledged },
+    signal: input.signal,
+  });
+}
+
+export async function signIntakeConsent(input: SignIntakeConsentInput): Promise<IntakeSubmission> {
+  return apiRequest<IntakeSubmission>(`/api/intake/submissions/${encodeURIComponent(input.submissionId)}/consent`, {
+    method: 'POST',
+    body: {
+      consentType: input.consentType,
+      policyVersion: input.policyVersion,
+      accepted: input.accepted,
+      typedName: input.typedName,
+    },
     signal: input.signal,
   });
 }

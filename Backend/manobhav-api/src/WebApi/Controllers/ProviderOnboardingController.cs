@@ -16,11 +16,16 @@ public sealed class ProviderOnboardingController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ProviderOnboardingSectionService _sectionService;
+    private readonly IProviderOnboardingAdminNotifier _adminNotifier;
 
-    public ProviderOnboardingController(ApplicationDbContext db, ProviderOnboardingSectionService sectionService)
+    public ProviderOnboardingController(
+        ApplicationDbContext db,
+        ProviderOnboardingSectionService sectionService,
+        IProviderOnboardingAdminNotifier adminNotifier)
     {
         _db = db;
         _sectionService = sectionService;
+        _adminNotifier = adminNotifier;
     }
 
     [HttpPost]
@@ -113,9 +118,30 @@ public sealed class ProviderOnboardingController : ControllerBase
             return NotFound();
         }
 
+        if (string.Equals(application.Status, "Submitted", StringComparison.Ordinal))
+        {
+            var existingNotificationFailure = await TryNotifySubmittedAsync(
+                application,
+                application.SubmittedAtUtc ?? application.UpdatedAtUtc ?? DateTimeOffset.UtcNow,
+                cancellationToken);
+            if (existingNotificationFailure is not null)
+            {
+                return existingNotificationFailure;
+            }
+
+            return Ok(ToDto(application));
+        }
+
+        var submittedAt = DateTimeOffset.UtcNow;
+        var notificationFailure = await TryNotifySubmittedAsync(application, submittedAt, cancellationToken);
+        if (notificationFailure is not null)
+        {
+            return notificationFailure;
+        }
+
         application.Status = "Submitted";
-        application.SubmittedAtUtc = DateTimeOffset.UtcNow;
-        application.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        application.SubmittedAtUtc = submittedAt;
+        application.UpdatedAtUtc = submittedAt;
         await _db.SaveChangesAsync(cancellationToken);
         return Ok(ToDto(application));
     }
@@ -220,6 +246,44 @@ public sealed class ProviderOnboardingController : ControllerBase
             BuildSections(application));
     }
 
+    private async Task<IActionResult?> TryNotifySubmittedAsync(
+        ProviderOnboardingApplication application,
+        DateTimeOffset submittedAt,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _adminNotifier.NotifySubmittedAsync(ToAdminNotification(application, submittedAt), cancellationToken);
+            return null;
+        }
+        catch (Exception)
+        {
+            return Problem(
+                title: "Provider application was not sent for admin review.",
+                detail: "The admin email notification could not be sent. Please try again.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    private static ProviderOnboardingAdminNotification ToAdminNotification(
+        ProviderOnboardingApplication application,
+        DateTimeOffset submittedAt)
+    {
+        var sections = BuildSections(application);
+        var basicIdentity = sections.GetValueOrDefault("basicIdentity");
+        var displayName = ReadOptionalString(basicIdentity, "displayName") ??
+            ReadOptionalString(basicIdentity, "legalName") ??
+            "Provider applicant";
+
+        return new ProviderOnboardingAdminNotification(
+            application.Id,
+            application.UserId,
+            displayName,
+            ReadOptionalString(basicIdentity, "email"),
+            submittedAt,
+            sections);
+    }
+
     private static IReadOnlyDictionary<string, JsonElement> BuildSections(ProviderOnboardingApplication application)
     {
         var sections = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
@@ -279,5 +343,14 @@ public sealed class ProviderOnboardingController : ControllerBase
         {
             return false;
         }
+    }
+
+    private static string? ReadOptionalString(JsonElement element, string propertyName)
+    {
+        return element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(propertyName, out var property) &&
+            property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
     }
 }

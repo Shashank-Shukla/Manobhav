@@ -24,7 +24,7 @@ export function SectionCard({
       boxShadow="0 16px 40px rgba(45, 55, 72, 0.06)"
     >
       <Box mb={4}>
-        <Text color={adminTheme.text} fontSize="lg" fontWeight="900">
+        <Text as="h2" color={adminTheme.text} fontSize="lg" fontWeight="900">
           {title}
         </Text>
         {helper && (

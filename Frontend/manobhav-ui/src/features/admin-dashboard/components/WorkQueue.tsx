@@ -1,5 +1,6 @@
 import { Box, Button, Flex, HStack, Stack, Text } from '@chakra-ui/react';
 import { ArrowUpRight } from 'lucide-react';
+import { Link as RouterLink } from 'react-router-dom';
 import { adminTheme, toneStyles } from '../adminTheme';
 import type { QueueItem } from '../types';
 import { StatusBadge } from './StatusBadge';
@@ -9,9 +10,10 @@ type WorkQueueProps = {
   subtitle?: string;
   items: QueueItem[];
   actionLabel?: string;
+  getActionPath?: (item: QueueItem) => string | undefined;
 };
 
-export function WorkQueue({ title, subtitle, items, actionLabel = 'Open' }: WorkQueueProps) {
+export function WorkQueue({ title, subtitle, items, actionLabel = 'Open', getActionPath }: WorkQueueProps) {
   return (
     <Box
       border="1px solid"
@@ -64,20 +66,37 @@ export function WorkQueue({ title, subtitle, items, actionLabel = 'Open' }: Work
               </HStack>
               <HStack justify={{ base: 'space-between', sm: 'flex-end' }}>
                 <StatusBadge label={item.status} tone={item.tone} />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  rightIcon={<ArrowUpRight size={14} />}
-                  color={adminTheme.text}
-                  borderRadius="10px"
-                >
-                  {actionLabel}
-                </Button>
+                <QueueActionButton actionLabel={actionLabel} item={item} getActionPath={getActionPath} />
               </HStack>
             </Flex>
           );
         })}
       </Stack>
     </Box>
+  );
+}
+
+function QueueActionButton({
+  actionLabel,
+  getActionPath,
+  item,
+}: {
+  actionLabel: string;
+  getActionPath?: (item: QueueItem) => string | undefined;
+  item: QueueItem;
+}) {
+  const actionPath = getActionPath?.(item);
+  return (
+    <Button
+      as={actionPath ? RouterLink : undefined}
+      to={actionPath}
+      size="sm"
+      variant="ghost"
+      rightIcon={<ArrowUpRight size={14} />}
+      color={adminTheme.text}
+      borderRadius="10px"
+    >
+      {actionLabel}
+    </Button>
   );
 }

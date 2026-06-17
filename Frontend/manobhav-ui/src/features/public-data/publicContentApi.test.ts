@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../shared/api/apiClient';
-import { createIntakeSubmission, getActiveIntakeForm, getVisitorFlow, saveIntakeAnswer } from './publicContentApi';
+import {
+  createIntakeSubmission,
+  getActiveIntakeForm,
+  getVisitorFlow,
+  saveIntakeAnswer,
+  signIntakeConsent,
+} from './publicContentApi';
 
 type FetchHandler = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -106,6 +112,29 @@ describe('public intake API contract', () => {
       currentStep: 'sleep_quality',
       isAdvancing: true,
       timeToAnswerMs: 1250,
+    });
+  });
+
+  it('signs consent through the backend consent endpoint with typed name', async () => {
+    const fetchMock = vi.fn<FetchHandler>(async () => Response.json(createBackendSubmission()));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await signIntakeConsent({
+      submissionId: 'submission/1',
+      consentType: 'PatientIntake',
+      policyVersion: 1,
+      accepted: true,
+      typedName: 'Asha Mehta',
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain('/api/intake/submissions/submission%2F1/consent');
+    expect(init).toMatchObject({ method: 'POST', credentials: 'include' });
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+      consentType: 'PatientIntake',
+      policyVersion: 1,
+      accepted: true,
+      typedName: 'Asha Mehta',
     });
   });
 

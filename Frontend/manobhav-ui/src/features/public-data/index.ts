@@ -5,6 +5,7 @@ export {
   getProviders,
   getVisitorFlow,
   saveIntakeAnswer,
+  signIntakeConsent,
   submitPartialIntake,
   type FeaturedExpert,
   type IntakeAnswerValue,
@@ -15,6 +16,7 @@ export {
   type IntakeSection,
   type IntakeSubmission,
   type LandingContent,
+  type SignIntakeConsentInput,
   type VisitorFlow,
   type VisitorFlowQuestion,
 } from './publicContentApi';

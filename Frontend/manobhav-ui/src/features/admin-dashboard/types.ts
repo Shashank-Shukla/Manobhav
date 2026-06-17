@@ -4,6 +4,7 @@ export type AdminModule =
   | 'today'
   | 'patients'
   | 'providers'
+  | 'provider-applications'
   | 'bookings'
   | 'hiring'
   | 'salary'
@@ -106,6 +107,26 @@ export type SlotRecord = {
   open: number;
   booked: number;
   blocked: number;
+};
+
+export type ProviderApplication = {
+  id: string;
+  userId: string;
+  status: string;
+  currentStep: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string | null;
+  submittedAtUtc: string | null;
+  sections: Record<string, unknown>;
+};
+
+export type AdminNotification = {
+  id: string;
+  title: string;
+  body: string;
+  linkPath: string;
+  createdAtUtc: string;
+  readAtUtc: string | null;
 };
 
 export type HiringCandidate = {

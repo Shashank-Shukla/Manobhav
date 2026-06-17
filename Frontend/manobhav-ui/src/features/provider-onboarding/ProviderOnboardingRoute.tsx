@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Chip from '@mui/material/Chip';
+import { useNavigate } from 'react-router-dom';
 import { Text } from '../../shared/primitives/Text';
 import { Button } from '../../shared/primitives/Button';
 import {
@@ -155,6 +156,7 @@ const providerStages: ProviderStage[] = [
 
 export function OnboardingProviderPage({ onBack }: Props) {
   void onBack;
+  const navigate = useNavigate();
   const [application, setApplication] = useState<ProviderApplication | null>(null);
   const [selectedStage, setSelectedStage] = useState<ProviderStage['key']>(providerStages[0].key);
   const [activeStageIndex, setActiveStageIndex] = useState(0);
@@ -172,6 +174,13 @@ export function OnboardingProviderPage({ onBack }: Props) {
     const controller = new AbortController();
     startOrResumeProviderApplication(controller.signal)
       .then((response) => {
+        if (isSubmittedStatus(response.status)) {
+          setApplication(response);
+          setStatus('ready');
+          navigate('/dashboard/provider', { replace: true });
+          return;
+        }
+
         const currentStage = getKnownStageKey(response.currentStep);
         const currentStageIndex = getStageIndex(currentStage);
 
@@ -188,7 +197,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (readTaxonomyCache()) {
@@ -263,8 +272,10 @@ export function OnboardingProviderPage({ onBack }: Props) {
     if (!application) return;
     await runSavingAction(
       async () => {
-        setApplication(await submitProviderApplication(application.id));
+        const response = await submitProviderApplication(application.id);
+        setApplication(response);
         purgeLegacyBrowserStorageDrafts();
+        navigate('/dashboard/provider', { replace: true });
       },
       'Unable to submit provider application.',
       setError,
@@ -279,7 +290,6 @@ export function OnboardingProviderPage({ onBack }: Props) {
   return (
     <ProviderOnboardingLayout
       activeStageIndex={activeStageIndex}
-      application={application}
       completedStages={completedStages}
       draft={selectedStage === 'review' ? {} : drafts[selectedStage]}
       error={error}
@@ -298,7 +308,6 @@ export function OnboardingProviderPage({ onBack }: Props) {
 
 function ProviderOnboardingLayout({
   activeStageIndex,
-  application,
   completedStages,
   draft,
   error,
@@ -313,7 +322,6 @@ function ProviderOnboardingLayout({
   taxonomy,
 }: {
   activeStageIndex: number;
-  application: ProviderApplication | null;
   completedStages: Set<ProviderSectionKey>;
   draft: Record<string, DraftValue>;
   error: string;
@@ -328,7 +336,10 @@ function ProviderOnboardingLayout({
   taxonomy: ProviderTaxonomy;
 }) {
   return (
-    <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-6 py-10 lg:grid-cols-[280px_minmax(0,1fr)]">
+    <div
+      className="mx-auto grid w-full max-w-6xl flex-1 items-start gap-6 px-6 pb-10 pt-28 sm:pt-32 lg:grid-cols-[280px_minmax(0,1fr)]"
+      data-testid="provider-onboarding-layout"
+    >
       <ProviderStageNav
         activeStageIndex={activeStageIndex}
         completedStages={completedStages}
@@ -336,7 +347,6 @@ function ProviderOnboardingLayout({
         selectedStage={selectedStage}
       />
       <ProviderStagePanel
-        application={application}
         draft={draft}
         error={error}
         fieldErrors={fieldErrors}
@@ -437,7 +447,6 @@ function getStageButtonClassName({
 }
 
 function ProviderStagePanel({
-  application,
   draft,
   error,
   fieldErrors,
@@ -448,7 +457,6 @@ function ProviderStagePanel({
   selected,
   taxonomy,
 }: {
-  application: ProviderApplication | null;
   draft: Record<string, DraftValue>;
   error: string;
   fieldErrors: FieldErrors;
@@ -460,11 +468,10 @@ function ProviderStagePanel({
   taxonomy: ProviderTaxonomy;
 }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <section className="self-start rounded-lg border border-gray-200 bg-white p-6 shadow-sm" data-testid="provider-onboarding-panel">
       <Text variant="h3">{selected.title}</Text>
       <p className="mt-2 text-sm text-gray-600">{selected.helper}</p>
       <ProviderStageBody
-        application={application}
         draft={draft}
         fieldErrors={fieldErrors}
         isSaving={isSaving}
@@ -480,7 +487,6 @@ function ProviderStagePanel({
 }
 
 function ProviderStageBody({
-  application,
   draft,
   fieldErrors,
   isSaving,
@@ -490,7 +496,6 @@ function ProviderStageBody({
   selected,
   taxonomy,
 }: {
-  application: ProviderApplication | null;
   draft: Record<string, DraftValue>;
   fieldErrors: FieldErrors;
   isSaving: boolean;
@@ -501,7 +506,7 @@ function ProviderStageBody({
   taxonomy: ProviderTaxonomy;
 }) {
   if (selected.key === 'review') {
-    return <ReviewSubmit application={application} isSaving={isSaving} onSubmit={onSubmit} />;
+    return <ReviewSubmit isSaving={isSaving} onSubmit={onSubmit} />;
   }
 
   return (
@@ -730,25 +735,26 @@ function getChipSx(selected: boolean) {
 }
 
 function ReviewSubmit({
-  application,
   isSaving,
   onSubmit,
 }: {
-  application: ProviderApplication | null;
   isSaving: boolean;
   onSubmit: () => Promise<void>;
 }) {
-  const isSubmitted = application?.status === 'Submitted';
   return (
     <div className="mt-5 space-y-4">
       <p className="text-sm text-gray-600">
         Submit when the provider draft is ready for admin review. Profile approval does not automatically publish the public profile.
       </p>
-      <Button variant="primary" disabled={isSaving || isSubmitted} onClick={() => void onSubmit()}>
-        {isSubmitted ? 'Submitted' : isSaving ? 'Submitting...' : 'Submit for review'}
+      <Button variant="primary" disabled={isSaving} onClick={() => void onSubmit()}>
+        {isSaving ? 'Sending...' : 'Send for admin review'}
       </Button>
     </div>
   );
+}
+
+function isSubmittedStatus(status: string | null | undefined): boolean {
+  return typeof status === 'string' && status.toLowerCase() === 'submitted';
 }
 
 function getStage(stageKey: ProviderStage['key']): ProviderStage {

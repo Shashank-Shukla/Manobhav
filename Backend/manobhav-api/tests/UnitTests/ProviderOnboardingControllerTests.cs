@@ -8,7 +8,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using WebApi.Controllers;
+using WebApi.Notifications;
 
 namespace UnitTests;
 
@@ -202,7 +205,18 @@ public sealed class ProviderOnboardingControllerTests
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddApplicationAsync(db, user.Id);
-        var controller = CreateProviderController(db);
+        application.BasicProfileJson = """
+            {
+              "legalName": "Dr. Submitted Rao",
+              "displayName": "Submitted Rao",
+              "email": "submitted@example.com",
+              "phone": "+919999999999",
+              "location": "Mumbai"
+            }
+            """;
+        await db.SaveChangesAsync();
+        var notifier = new RecordingProviderOnboardingAdminNotifier();
+        var controller = CreateProviderController(db, notifier);
 
         var result = await controller.Submit(application.Id, CancellationToken.None);
 
@@ -210,6 +224,55 @@ public sealed class ProviderOnboardingControllerTests
         var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
         Assert.Equal("Submitted", dto.Status);
         Assert.NotNull(dto.SubmittedAtUtc);
+        var sent = Assert.Single(notifier.Sent);
+        Assert.Equal(application.Id, sent.ApplicationId);
+        Assert.Equal(user.Id, sent.UserId);
+        Assert.Equal("Submitted Rao", sent.ProviderDisplayName);
+        Assert.Equal("submitted@example.com", sent.ProviderEmail);
+        Assert.Equal("Submitted Rao", sent.Sections["basicIdentity"].GetProperty("displayName").GetString());
+    }
+
+    [Fact]
+    public async Task Submit_RetriesNotificationForAlreadySubmittedApplication()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        var submittedAt = DateTimeOffset.UtcNow.AddMinutes(-5);
+        application.Status = "Submitted";
+        application.SubmittedAtUtc = submittedAt;
+        await db.SaveChangesAsync();
+        var notifier = new RecordingProviderOnboardingAdminNotifier();
+        var controller = CreateProviderController(db, notifier);
+
+        var result = await controller.Submit(application.Id, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
+        Assert.Equal("Submitted", dto.Status);
+        Assert.Equal(submittedAt, dto.SubmittedAtUtc);
+        var sent = Assert.Single(notifier.Sent);
+        Assert.Equal(application.Id, sent.ApplicationId);
+        Assert.Equal(submittedAt, sent.SubmittedAtUtc);
+    }
+
+    [Fact]
+    public async Task Submit_WhenNotificationFails_DoesNotPersistSubmittedStatus()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        var notifier = new FailingProviderOnboardingAdminNotifier();
+        var controller = CreateProviderController(db, notifier);
+
+        var result = await controller.Submit(application.Id, CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, problem.StatusCode);
+        var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
+        Assert.Equal("Draft", saved!.Status);
+        Assert.Null(saved.SubmittedAtUtc);
+        Assert.Equal(1, notifier.Attempts);
     }
 
     [Fact]
@@ -260,9 +323,200 @@ public sealed class ProviderOnboardingControllerTests
         Assert.Equal("AdminOnly", ((AuthorizeAttribute)attribute).Policy);
     }
 
-    private static ProviderOnboardingController CreateProviderController(ApplicationDbContext db)
+    [Fact]
+    public async Task AdminProviderController_Get_ReturnsFullSubmittedApplicationSections()
     {
-        var controller = new ProviderOnboardingController(db, new ProviderOnboardingSectionService())
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        application.Status = "Submitted";
+        application.SubmittedAtUtc = DateTimeOffset.UtcNow;
+        application.BasicProfileJson = """
+            {
+              "legalName": "Dr. Asha Rao",
+              "displayName": "Asha Rao",
+              "email": "asha@example.com"
+            }
+            """;
+        application.SessionDetailsJson = """
+            {
+              "credentials": {
+                "items": [{
+                  "title": "Clinical Psychologist",
+                  "institution": "RCI"
+                }]
+              }
+            }
+            """;
+        await db.SaveChangesAsync();
+        var controller = new AdminProviderController(db);
+
+        var result = await controller.Get(application.Id, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
+        Assert.Equal(application.Id, dto.Id);
+        Assert.Equal("Dr. Asha Rao", dto.Sections["basicIdentity"].GetProperty("legalName").GetString());
+        Assert.Equal("Clinical Psychologist", dto.Sections["credentials"].GetProperty("items")[0].GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public void AdminNotificationsController_RequiresAdminOnlyPolicy()
+    {
+        var attribute = Assert.Single(typeof(AdminNotificationsController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true));
+        Assert.Equal("AdminOnly", ((AuthorizeAttribute)attribute).Policy);
+    }
+
+    [Fact]
+    public async Task AdminNotificationsController_List_DerivesUnreadSubmittedApplicationNotifications()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        application.Status = "Submitted";
+        application.SubmittedAtUtc = DateTimeOffset.UtcNow;
+        application.BasicProfileJson = """{"displayName":"Dr. Asha Rao"}""";
+        await db.SaveChangesAsync();
+        var controller = new AdminNotificationsController(db);
+
+        var result = await controller.List(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var notifications = Assert.IsAssignableFrom<IReadOnlyList<AdminNotificationDto>>(ok.Value);
+        var notification = Assert.Single(notifications);
+        Assert.Equal($"provider-application-submitted-{application.Id:N}", notification.Id);
+        Assert.Null(notification.ReadAtUtc);
+        Assert.Contains(application.Id.ToString(), notification.LinkPath, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AdminNotificationsController_MarkRead_HidesDerivedApplicationNotification()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        application.Status = "Submitted";
+        application.SubmittedAtUtc = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+        var controller = new AdminNotificationsController(db);
+        var notificationId = $"provider-application-submitted-{application.Id:N}";
+
+        var markReadResult = await controller.MarkRead(notificationId, CancellationToken.None);
+        var listResult = await controller.List(CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(markReadResult);
+        var ok = Assert.IsType<OkObjectResult>(listResult.Result);
+        var notifications = Assert.IsAssignableFrom<IReadOnlyList<AdminNotificationDto>>(ok.Value);
+        Assert.Empty(notifications);
+        Assert.NotNull(await db.AdminNotifications.SingleOrDefaultAsync(item => item.NotificationKey == notificationId));
+    }
+
+    [Fact]
+    public async Task AdminNotificationsController_MarkRead_TreatsConcurrentDerivedTombstoneInsertAsSuccess()
+    {
+        var databaseName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+        await using var db = new RaceOnAdminNotificationInsertDbContext(options);
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        application.Status = "Submitted";
+        application.SubmittedAtUtc = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+        db.ThrowOnNextAdminNotificationInsert = true;
+        var controller = new AdminNotificationsController(db);
+        var notificationId = $"provider-application-submitted-{application.Id:N}";
+
+        var result = await controller.MarkRead(notificationId, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+        Assert.NotNull(await db.AdminNotifications.SingleOrDefaultAsync(item => item.NotificationKey == notificationId));
+    }
+
+    [Fact]
+    public async Task AdminNotificationsController_List_OnlyUsesProviderApplicationReadTombstonesForDerivedSuppression()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        application.Status = "Submitted";
+        application.SubmittedAtUtc = DateTimeOffset.UtcNow;
+        application.BasicProfileJson = """{"displayName":"Dr. Visible Rao"}""";
+        db.AdminNotifications.Add(new AdminNotification
+        {
+            NotificationKey = $"provider-application-submitted-{application.Id:N}",
+            Type = "AdminNotification",
+            Title = "Unrelated read tombstone",
+            Body = string.Empty,
+            LinkPath = string.Empty,
+            ReadAtUtc = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var controller = new AdminNotificationsController(db);
+
+        var result = await controller.List(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var notifications = Assert.IsAssignableFrom<IReadOnlyList<AdminNotificationDto>>(ok.Value);
+        Assert.Contains(notifications, item => item.Id == $"provider-application-submitted-{application.Id:N}");
+    }
+
+    [Fact]
+    public void ProviderOnboardingNotificationOptions_DefaultsIncludeRequiredAdminRecipients()
+    {
+        var options = new ProviderOnboardingNotificationOptions();
+
+        Assert.Contains("shashankshowstoper@gmail.com", options.AdminRecipients);
+        Assert.Contains("manobhavcounsellingservices@gmail.com", options.AdminRecipients);
+        Assert.Equal("no-reply@manobhav.co.in", options.FromEmail);
+        Assert.Equal("Manobhav", options.FromDisplayName);
+        Assert.Equal("ap-south-1", options.AwsRegion);
+    }
+
+    [Fact]
+    public async Task SesProviderOnboardingAdminNotifier_SendsEmailWithDefaultSenderAndAdminRecipients()
+    {
+        var sesClient = new RecordingProviderOnboardingSesClient();
+        var notifier = new SesProviderOnboardingAdminNotifier(
+            sesClient,
+            Options.Create(new ProviderOnboardingNotificationOptions()),
+            NullLogger<SesProviderOnboardingAdminNotifier>.Instance);
+        var applicationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sections = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+        {
+            ["basicIdentity"] = JsonDocument.Parse("""{"displayName":"Dr. Asha Rao","email":"asha@example.com"}""").RootElement.Clone()
+        };
+
+        await notifier.NotifySubmittedAsync(
+            new ProviderOnboardingAdminNotification(
+                applicationId,
+                userId,
+                "Dr. Asha Rao",
+                "asha@example.com",
+                DateTimeOffset.Parse("2026-06-18T00:00:00Z"),
+                sections),
+            CancellationToken.None);
+
+        var email = Assert.Single(sesClient.Sent);
+        Assert.Contains("Manobhav", email.FromEmailAddress, StringComparison.Ordinal);
+        Assert.Contains("no-reply@manobhav.co.in", email.FromEmailAddress, StringComparison.Ordinal);
+        Assert.Contains("shashankshowstoper@gmail.com", email.ToAddresses);
+        Assert.Contains("manobhavcounsellingservices@gmail.com", email.ToAddresses);
+        Assert.Contains("Dr. Asha Rao", email.Subject, StringComparison.Ordinal);
+        Assert.Contains(applicationId.ToString(), email.TextBody, StringComparison.Ordinal);
+        Assert.Contains("asha@example.com", email.TextBody, StringComparison.Ordinal);
+    }
+
+    private static ProviderOnboardingController CreateProviderController(
+        ApplicationDbContext db,
+        IProviderOnboardingAdminNotifier? notifier = null)
+    {
+        var controller = new ProviderOnboardingController(
+            db,
+            new ProviderOnboardingSectionService(),
+            notifier ?? new RecordingProviderOnboardingAdminNotifier())
         {
             ControllerContext = new ControllerContext
             {
@@ -311,5 +565,78 @@ public sealed class ProviderOnboardingControllerTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         return new ApplicationDbContext(options);
+    }
+
+    private sealed class RaceOnAdminNotificationInsertDbContext : ApplicationDbContext
+    {
+        private readonly DbContextOptions<ApplicationDbContext> _options;
+
+        public RaceOnAdminNotificationInsertDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        {
+            _options = options;
+        }
+
+        public bool ThrowOnNextAdminNotificationInsert { get; set; }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var pendingNotification = ChangeTracker.Entries<AdminNotification>()
+                .FirstOrDefault(entry => entry.State == EntityState.Added)
+                ?.Entity;
+
+            if (ThrowOnNextAdminNotificationInsert && pendingNotification is not null)
+            {
+                ThrowOnNextAdminNotificationInsert = false;
+                Entry(pendingNotification).State = EntityState.Detached;
+                await using var competingDb = new ApplicationDbContext(_options);
+                competingDb.AdminNotifications.Add(new AdminNotification
+                {
+                    NotificationKey = pendingNotification.NotificationKey,
+                    Type = pendingNotification.Type,
+                    Title = pendingNotification.Title,
+                    Body = pendingNotification.Body,
+                    LinkPath = pendingNotification.LinkPath,
+                    CreatedAtUtc = pendingNotification.CreatedAtUtc,
+                    ReadAtUtc = pendingNotification.ReadAtUtc
+                });
+                await competingDb.SaveChangesAsync(cancellationToken);
+                throw new DbUpdateException("Simulated duplicate admin notification key.");
+            }
+
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private sealed class RecordingProviderOnboardingAdminNotifier : IProviderOnboardingAdminNotifier
+    {
+        public List<ProviderOnboardingAdminNotification> Sent { get; } = [];
+
+        public Task NotifySubmittedAsync(ProviderOnboardingAdminNotification notification, CancellationToken cancellationToken)
+        {
+            Sent.Add(notification);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FailingProviderOnboardingAdminNotifier : IProviderOnboardingAdminNotifier
+    {
+        public int Attempts { get; private set; }
+
+        public Task NotifySubmittedAsync(ProviderOnboardingAdminNotification notification, CancellationToken cancellationToken)
+        {
+            Attempts += 1;
+            throw new InvalidOperationException("SES unavailable.");
+        }
+    }
+
+    private sealed class RecordingProviderOnboardingSesClient : IProviderOnboardingSesClient
+    {
+        public List<ProviderOnboardingSesEmail> Sent { get; } = [];
+
+        public Task SendEmailAsync(ProviderOnboardingSesEmail email, CancellationToken cancellationToken)
+        {
+            Sent.Add(email);
+            return Task.CompletedTask;
+        }
     }
 }

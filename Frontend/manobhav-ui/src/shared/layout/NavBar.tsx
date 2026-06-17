@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { useAuthSession } from '../auth/useAuthSession';
+import type { AuthSession } from '../auth/cognitoAuth';
 import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
 
@@ -45,7 +46,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
           <DesktopNavLinks items={navItems} onNavigate={onNavigate} />
 
           <div className="hidden md:flex items-center gap-4">
-            <AuthNavAction isAuthenticated={isAuthenticated} onNavigate={onNavigate} variant="desktop" />
+            <AuthNavAction isAuthenticated={isAuthenticated} onNavigate={onNavigate} session={session} variant="desktop" />
           </div>
 
           <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-gray-600">
@@ -60,6 +61,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
         items={navItems}
         onClose={() => setMobileOpen(false)}
         onNavigate={onNavigate}
+        session={session}
       />
     </>
   );
@@ -81,12 +83,14 @@ function MobileNavMenu({
   items,
   onClose,
   onNavigate,
+  session,
 }: {
   isAuthenticated: boolean;
   isOpen: boolean;
   items: NavItem[];
   onClose: () => void;
   onNavigate: (path: string) => void;
+  session: AuthSession | null;
 }) {
   if (!isOpen) {
     return null;
@@ -102,6 +106,7 @@ function MobileNavMenu({
           isAuthenticated={isAuthenticated}
           onClose={onClose}
           onNavigate={onNavigate}
+          session={session}
           variant="mobile"
         />
       </div>
@@ -113,14 +118,16 @@ function AuthNavAction({
   isAuthenticated,
   onClose,
   onNavigate,
+  session,
   variant,
 }: {
   isAuthenticated: boolean;
   onClose?: () => void;
   onNavigate: (path: string) => void;
+  session: AuthSession | null;
   variant: 'desktop' | 'mobile';
 }) {
-  const path = isAuthenticated ? '/dashboard/patient' : '/login';
+  const path = isAuthenticated ? getDashboardPath(session) : '/login';
   const handleClick = () => navigateFromMobile(path, onNavigate, onClose);
 
   if (!isAuthenticated) {
@@ -210,6 +217,19 @@ function handleNavClick(
 function navigateFromMobile(path: string, onNavigate: (path: string) => void, onClose?: () => void): void {
   onClose?.();
   onNavigate(path);
+}
+
+function getDashboardPath(session: AuthSession | null): string {
+  return hasProviderDashboardRole(session) ? '/dashboard/provider' : '/dashboard/patient';
+}
+
+function hasProviderDashboardRole(session: AuthSession | null): boolean {
+  return Boolean(
+    session?.groups.some((group) => {
+      const normalized = group.trim().toLowerCase();
+      return normalized === 'provider' || normalized === 'providerapplicant';
+    }),
+  );
 }
 
 function getProfileButtonClassName(variant: 'desktop' | 'mobile'): string {

@@ -2,6 +2,7 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   HeartPulse,
+  ClipboardCheck,
   IndianRupee,
   LayoutDashboard,
   LineChart,
@@ -31,6 +32,13 @@ export const adminModules: AdminModuleConfig[] = [
     helper: 'Roster and capacity',
     path: '/dashboard/admin/providers',
     icon: Stethoscope,
+  },
+  {
+    id: 'provider-applications',
+    label: 'Applications',
+    helper: 'Provider review queue',
+    path: '/dashboard/admin/provider-applications',
+    icon: ClipboardCheck,
   },
   {
     id: 'bookings',
