@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { setRuntimeConfigForTests } from '../../shared/config/runtimeConfig';
 import { assertSafeAnalyticsProperties, canStartFullCapture, readVisitorAnalyticsConfig } from './visitorAnalytics';
 
 describe('visitor analytics controls', () => {
   it('does not enable full capture without legal approval', () => {
-    const config = readVisitorAnalyticsConfig({
-      VITE_PUBLIC_API_BASE_URL: 'https://api.example.com',
-      VITE_PUBLIC_ENABLE_VISITOR_ANALYTICS: 'true',
-      VITE_PUBLIC_ENABLE_FULL_VISITOR_CAPTURE: 'true',
-      VITE_PUBLIC_ANALYTICS_LEGAL_APPROVED: 'false',
-    });
+    setRuntimeConfigForTests(createRuntimeConfig({ fullCaptureEnabled: true, legalApproved: false }));
+
+    const config = readVisitorAnalyticsConfig();
 
     expect(canStartFullCapture(config)).toBe(false);
   });
@@ -19,3 +17,28 @@ describe('visitor analytics controls', () => {
     expect(() => assertSafeAnalyticsProperties({ answerLength: '12' })).not.toThrow();
   });
 });
+
+function createRuntimeConfig(visitorAnalytics: {
+  enabled?: boolean;
+  fullCaptureEnabled?: boolean;
+  legalApproved?: boolean;
+  capturePreciseLocation?: boolean;
+}) {
+  return {
+    apiBaseUrl: 'https://api.example.com',
+    auth: {
+      cognitoDomain: 'https://cognito.example.com',
+      clientId: 'client-id',
+      redirectUri: 'https://app.example.com/callback',
+      logoutUri: 'https://app.example.com',
+      scopes: 'openid email phone profile',
+      adminGroup: 'Admin',
+    },
+    visitorAnalytics: {
+      enabled: visitorAnalytics.enabled ?? true,
+      fullCaptureEnabled: visitorAnalytics.fullCaptureEnabled ?? false,
+      legalApproved: visitorAnalytics.legalApproved ?? false,
+      capturePreciseLocation: visitorAnalytics.capturePreciseLocation ?? false,
+    },
+  };
+}

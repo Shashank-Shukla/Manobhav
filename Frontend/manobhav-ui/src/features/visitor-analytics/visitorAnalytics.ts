@@ -1,6 +1,4 @@
-type PublicEnv = Record<string, string | boolean | undefined>;
-
-const LOCAL_DEV_API_BASE_URL = 'http://localhost:5163';
+import { getRuntimeConfig } from '../../shared/config/runtimeConfig';
 
 export type VisitorAnalyticsConfig = {
   apiBaseUrl: string;
@@ -36,14 +34,14 @@ const PROHIBITED_EXACT_KEYS = [
   'response',
 ];
 
-export function readVisitorAnalyticsConfig(env: PublicEnv = import.meta.env): VisitorAnalyticsConfig {
-  const configuredApiBaseUrl = stripTrailingSlash(String(env.VITE_PUBLIC_API_BASE_URL || '').trim());
+export function readVisitorAnalyticsConfig(): VisitorAnalyticsConfig {
+  const config = getRuntimeConfig();
   return {
-    apiBaseUrl: configuredApiBaseUrl || (env.DEV === true ? LOCAL_DEV_API_BASE_URL : ''),
-    enabled: env.VITE_PUBLIC_ENABLE_VISITOR_ANALYTICS !== 'false',
-    fullCaptureEnabled: env.VITE_PUBLIC_ENABLE_FULL_VISITOR_CAPTURE === 'true',
-    legalApproved: env.VITE_PUBLIC_ANALYTICS_LEGAL_APPROVED === 'true',
-    capturePreciseLocation: env.VITE_PUBLIC_ANALYTICS_PRECISE_LOCATION === 'true',
+    apiBaseUrl: config.apiBaseUrl,
+    enabled: config.visitorAnalytics.enabled,
+    fullCaptureEnabled: config.visitorAnalytics.fullCaptureEnabled,
+    legalApproved: config.visitorAnalytics.legalApproved,
+    capturePreciseLocation: config.visitorAnalytics.capturePreciseLocation,
   };
 }
 
@@ -81,8 +79,4 @@ export function collectNetworkInfo(): string {
     rtt: connection.rtt,
     saveData: connection.saveData,
   });
-}
-
-function stripTrailingSlash(value: string): string {
-  return value.endsWith('/') ? value.slice(0, -1) : value;
 }

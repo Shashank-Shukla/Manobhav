@@ -1,11 +1,33 @@
 import '@testing-library/jest-dom/vitest';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { resetRuntimeConfigForTests, setRuntimeConfigForTests } from '../shared/config/runtimeConfig';
+
+beforeEach(() => {
+  setRuntimeConfigForTests({
+    apiBaseUrl: 'https://api.example.com',
+    auth: {
+      cognitoDomain: 'https://cognito.example.com',
+      clientId: 'client-id',
+      redirectUri: 'https://app.example.com/callback',
+      logoutUri: 'https://app.example.com',
+      scopes: 'openid email phone profile',
+      adminGroup: 'Admin',
+    },
+    visitorAnalytics: {
+      enabled: true,
+      fullCaptureEnabled: true,
+      legalApproved: true,
+      capturePreciseLocation: false,
+    },
+  });
+});
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.clearAllMocks();
+  resetRuntimeConfigForTests();
 });
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

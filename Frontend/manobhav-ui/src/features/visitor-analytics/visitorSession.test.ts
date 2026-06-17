@@ -8,18 +8,12 @@ describe('visitor analytics configuration', () => {
     window.localStorage.clear();
   });
 
-  it('enables visitor session creation by default in local development', () => {
-    const config = readVisitorAnalyticsConfig({ DEV: true });
+  it('uses loaded runtime config for visitor session creation', () => {
+    const config = readVisitorAnalyticsConfig();
 
     expect(config.enabled).toBe(true);
-    expect(config.apiBaseUrl).toBe('http://localhost:5163');
-  });
-
-  it('requires explicit API config in production', () => {
-    const config = readVisitorAnalyticsConfig({ DEV: false });
-
-    expect(config.enabled).toBe(true);
-    expect(config.apiBaseUrl).toBe('');
+    expect(config.apiBaseUrl).toBe('https://api.example.com');
+    expect(config.fullCaptureEnabled).toBe(true);
   });
 
   it('uses cookie-backed visitor session endpoints without localStorage ids', async () => {

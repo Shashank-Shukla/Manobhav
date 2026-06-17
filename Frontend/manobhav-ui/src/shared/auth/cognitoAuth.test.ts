@@ -1,25 +1,43 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { completeCognitoRedirect, isAdminSession } from './cognitoAuth';
+import { buildAuthorizeUrl, completeCognitoRedirect, isAdminSession, readAuthConfig } from './cognitoAuth';
 
 describe('cognito auth helpers', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
-    vi.stubEnv('VITE_PUBLIC_API_BASE_URL', 'https://api.example.com');
-    vi.stubEnv('VITE_PUBLIC_COGNITO_DOMAIN', 'https://cognito.example.com');
-    vi.stubEnv('VITE_PUBLIC_COGNITO_CLIENT_ID', 'client-id');
-    vi.stubEnv('VITE_PUBLIC_COGNITO_REDIRECT_URI', 'https://app.example.com/callback');
-    vi.stubEnv('VITE_PUBLIC_COGNITO_LOGOUT_URI', 'https://app.example.com/');
   });
 
   afterEach(() => {
     window.sessionStorage.clear();
-    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
   it('requires the configured admin group for admin sessions', () => {
     expect(isAdminSession({ isAuthenticated: true, expiresAtUtc: null, groups: ['Admin'] }, 'Admin')).toBe(true);
     expect(isAdminSession({ isAuthenticated: true, expiresAtUtc: null, groups: ['Visitor'] }, 'Admin')).toBe(false);
+  });
+
+  it('reads Cognito public settings from loaded runtime config', () => {
+    expect(readAuthConfig()).toMatchObject({
+      domain: 'https://cognito.example.com',
+      clientId: 'client-id',
+      redirectUri: 'https://app.example.com/callback',
+      logoutUri: 'https://app.example.com',
+      scopes: 'openid email phone profile',
+      adminGroup: 'Admin',
+    });
+  });
+
+  it('builds the Cognito authorize URL from runtime config', () => {
+    const authorizeUrl = buildAuthorizeUrl(readAuthConfig(), 'state-1', 'challenge-1', 'Google');
+
+    expect(authorizeUrl.origin).toBe('https://cognito.example.com');
+    expect(authorizeUrl.pathname).toBe('/oauth2/authorize');
+    expect(authorizeUrl.searchParams.get('client_id')).toBe('client-id');
+    expect(authorizeUrl.searchParams.get('redirect_uri')).toBe('https://app.example.com/callback');
+    expect(authorizeUrl.searchParams.get('scope')).toBe('openid email phone profile');
+    expect(authorizeUrl.searchParams.get('identity_provider')).toBe('Google');
+    expect(authorizeUrl.searchParams.get('state')).toBe('state-1');
+    expect(authorizeUrl.searchParams.get('code_challenge')).toBe('challenge-1');
   });
 
   it('posts callback code and pkce verifier to backend without storing tokens in the browser', async () => {
