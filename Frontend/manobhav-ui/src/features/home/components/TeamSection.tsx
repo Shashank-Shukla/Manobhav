@@ -24,6 +24,10 @@ export function TeamSection() {
     return () => controller.abort();
   }, []);
 
+  if (status === 'empty') {
+    return null;
+  }
+
   return (
     <section className="py-24 bg-white/50 px-6 relative overflow-hidden backdrop-blur-sm">
       <div className="absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-[#F5F5F5] to-transparent" />
@@ -53,12 +57,6 @@ export function TeamSection() {
         {status === 'error' && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-800">
             Unable to load specialists from the API.
-          </div>
-        )}
-
-        {status === 'empty' && (
-          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-medium text-gray-600">
-            No specialists are configured yet.
           </div>
         )}
 

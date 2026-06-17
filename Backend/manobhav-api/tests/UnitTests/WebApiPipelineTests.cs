@@ -168,6 +168,43 @@ public sealed class WebApiPipelineTests
         Assert.Equal("Earlier Featured", provider.Name);
     }
 
+    [Fact]
+    public async Task RuntimeConfig_IsAnonymousAndEmitsOnlyPublicValues()
+    {
+        await using var factory = new ManobhavApiFactory();
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync("/api/public/runtime-config");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("\"apiBaseUrl\":\"https://api.example.com\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"cognitoDomain\":\"https://cognito.example.com\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"clientId\":\"test-client-id\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"redirectUri\":\"https://app.example.com/callback\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"logoutUri\":\"https://app.example.com\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"enabled\":true", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("DefaultConnection", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Password", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ignored", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RuntimeConfig_ReturnsServerErrorWhenAuthPublicConfigIsIncomplete()
+    {
+        await using var factory = new ManobhavApiFactory(configOverrides: new Dictionary<string, string?>
+        {
+            ["PublicRuntimeConfig:Auth:RedirectUri"] = ""
+        });
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync("/api/public/runtime-config");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Contains("Public runtime configuration is incomplete", body, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static HttpRequestMessage CreateAuthenticatedRequest(
         HttpMethod method,
         string uri,
@@ -202,10 +239,14 @@ public sealed class WebApiPipelineTests
     {
         private readonly string _databaseName = $"manobhav-api-test-{Guid.NewGuid():N}";
         private readonly DatabaseReadinessResult? _readinessResult;
+        private readonly IReadOnlyDictionary<string, string?> _configOverrides;
 
-        public ManobhavApiFactory(DatabaseReadinessResult? readinessResult = null)
+        public ManobhavApiFactory(
+            DatabaseReadinessResult? readinessResult = null,
+            IReadOnlyDictionary<string, string?>? configOverrides = null)
         {
             _readinessResult = readinessResult;
+            _configOverrides = configOverrides ?? new Dictionary<string, string?>();
         }
 
         public HttpClient CreateHttpsClient()
@@ -239,7 +280,7 @@ public sealed class WebApiPipelineTests
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, config) =>
             {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
+                var testConfig = new Dictionary<string, string?>
                 {
                     ["Auth:Enabled"] = "true",
                     ["Auth:CognitoAuthority"] = "https://issuer.example.com",
@@ -247,8 +288,22 @@ public sealed class WebApiPipelineTests
                     ["Auth:Audience"] = "test-client-id",
                     ["Auth:AdminGroup"] = "Admin",
                     ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Port=5432;Database=ignored;Username=ignored;Password=ignored",
-                    ["Cors:AllowedOrigins:0"] = "https://manobhav.co.in"
-                });
+                    ["Cors:AllowedOrigins:0"] = "https://manobhav.co.in",
+                    ["PublicRuntimeConfig:ApiBaseUrl"] = "https://api.example.com",
+                    ["PublicRuntimeConfig:Auth:RedirectUri"] = "https://app.example.com/callback",
+                    ["PublicRuntimeConfig:Auth:LogoutUri"] = "https://app.example.com",
+                    ["PublicRuntimeConfig:Auth:Scopes"] = "openid email phone profile",
+                    ["VisitorAnalytics:Enabled"] = "true",
+                    ["VisitorAnalytics:FullCaptureEnabled"] = "false",
+                    ["VisitorAnalytics:FullCaptureLegalApproved"] = "false",
+                    ["VisitorAnalytics:CapturePreciseLocation"] = "false"
+                };
+                foreach (var (key, value) in _configOverrides)
+                {
+                    testConfig[key] = value;
+                }
+
+                config.AddInMemoryCollection(testConfig);
             });
             builder.ConfigureTestServices(services =>
             {

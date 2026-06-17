@@ -32,6 +32,11 @@ describe('static security headers', () => {
     expect(nginxConfig).toContain("frame-ancestors 'none'");
   });
 
+  it('allows Poppins from Google Fonts without opening font sources broadly', () => {
+    expect(nginxConfig).toContain("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;");
+    expect(nginxConfig).toContain("font-src 'self' data: https://fonts.gstatic.com;");
+  });
+
   it('adds security headers in cache-control locations', () => {
     expect(getLocationBlock('/assets/')).toEqual(expect.stringContaining('add_header Cache-Control'));
     expect(getLocationBlock('/')).toEqual(expect.stringContaining('add_header Cache-Control'));

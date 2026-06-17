@@ -46,6 +46,8 @@ if (authOptions.Enabled &&
     throw new InvalidOperationException("Auth:CognitoAuthority, Auth:CognitoDomain, and Auth:Audience are required when authentication is enabled.");
 }
 
+PublicRuntimeConfigReader.ValidateProductionConfig(builder.Configuration, builder.Environment, authOptions.Enabled);
+
 if (!builder.Environment.IsDevelopment() &&
     visitorAnalyticsOptions.FullCaptureEnabled &&
     !visitorAnalyticsOptions.FullCaptureLegalApproved)

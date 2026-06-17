@@ -1,8 +1,4 @@
-type PublicEnv = Record<string, string | boolean | undefined>;
-
-function getLocalDevApiBaseUrl(): string {
-  return ['http://', 'localhost', ':5163'].join('');
-}
+import { getRuntimeConfig } from '../config/runtimeConfig';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -13,10 +9,8 @@ export class ApiError extends Error {
   }
 }
 
-export function getApiBaseUrl(env: PublicEnv = import.meta.env): string {
-  const configuredUrl = readEnvString(env.VITE_PUBLIC_API_BASE_URL);
-  const baseUrl = configuredUrl || getFallbackBaseUrl(env);
-  return stripTrailingSlash(baseUrl);
+export function getApiBaseUrl(): string {
+  return getRuntimeConfig().apiBaseUrl;
 }
 
 export async function apiRequest<T>(
@@ -97,16 +91,4 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   }
 
   return (await response.json()) as T;
-}
-
-function getFallbackBaseUrl(env: PublicEnv): string {
-  return env.DEV === true ? getLocalDevApiBaseUrl() : '';
-}
-
-function readEnvString(value: string | boolean | undefined): string {
-  return String(value || '').trim();
-}
-
-function stripTrailingSlash(value: string): string {
-  return value.endsWith('/') ? value.slice(0, -1) : value;
 }

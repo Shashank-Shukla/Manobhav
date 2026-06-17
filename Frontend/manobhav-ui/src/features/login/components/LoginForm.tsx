@@ -1,24 +1,19 @@
-import { ArrowLeft } from 'lucide-react';
 import { Button } from '../../../shared/primitives/Button';
 import { startCognitoLogin } from '../../../shared/auth/cognitoAuth';
 
 type LoginFormProps = {
-  onBack: () => void;
   onShowSignUp: () => void;
+  returnTo?: string;
 };
 
-export function LoginForm({ onBack, onShowSignUp }: LoginFormProps) {
+export function LoginForm({ onShowSignUp, returnTo = '/dashboard' }: LoginFormProps) {
   const signIn = (identityProvider?: string) => {
-    void startCognitoLogin({ identityProvider, returnTo: '/dashboard' });
+    void startCognitoLogin({ identityProvider, returnTo });
   };
 
   return (
     <div className="relative h-full min-h-0 overflow-y-auto p-6 md:p-10 lg:p-16">
-      <button onClick={onBack} className="absolute top-8 left-8 p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500">
-        <ArrowLeft size={24} />
-      </button>
-
-      <div className="mt-12 md:mt-0">
+      <div>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Sign In</h1>
           <p className="text-gray-500">Choose a verified sign-in method to continue.</p>
@@ -31,7 +26,7 @@ export function LoginForm({ onBack, onShowSignUp }: LoginFormProps) {
             signIn();
           }}
         >
-          <Button variant="primary" className="w-full">
+          <Button type="submit" variant="primary" className="w-full">
             Continue with email OTP
           </Button>
 

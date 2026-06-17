@@ -1,6 +1,5 @@
 import { ApiError, apiRequest } from '../api/apiClient';
-
-type PublicEnv = Record<string, string | boolean | undefined>;
+import { getRuntimeConfig } from '../config/runtimeConfig';
 
 export type AuthSession = {
   isAuthenticated: boolean;
@@ -23,14 +22,15 @@ const RETURN_TO_KEY = 'manobhav-auth-return-to';
 
 let cachedSession: AuthSession | null = null;
 
-export function readAuthConfig(env: PublicEnv = import.meta.env): CognitoAuthConfig {
+export function readAuthConfig(): CognitoAuthConfig {
+  const config = getRuntimeConfig().auth;
   return {
-    domain: stripTrailingSlash(readEnvString(env.VITE_PUBLIC_COGNITO_DOMAIN)),
-    clientId: readEnvString(env.VITE_PUBLIC_COGNITO_CLIENT_ID),
-    redirectUri: readEnvString(env.VITE_PUBLIC_COGNITO_REDIRECT_URI),
-    logoutUri: readEnvString(env.VITE_PUBLIC_COGNITO_LOGOUT_URI),
-    scopes: readEnvString(env.VITE_PUBLIC_COGNITO_SCOPES, 'openid email profile'),
-    adminGroup: readEnvString(env.VITE_PUBLIC_ADMIN_GROUP, 'Admin'),
+    domain: stripTrailingSlash(config.cognitoDomain),
+    clientId: config.clientId,
+    redirectUri: config.redirectUri,
+    logoutUri: config.logoutUri,
+    scopes: config.scopes,
+    adminGroup: config.adminGroup,
   };
 }
 
@@ -101,7 +101,12 @@ function createBackendSession(
   });
 }
 
-function buildAuthorizeUrl(config: CognitoAuthConfig, state: string, challenge: string, identityProvider?: string): URL {
+export function buildAuthorizeUrl(
+  config: CognitoAuthConfig,
+  state: string,
+  challenge: string,
+  identityProvider?: string,
+): URL {
   const url = new URL(`${config.domain}/oauth2/authorize`);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('client_id', config.clientId);
@@ -131,10 +136,6 @@ function assertConfigured(config: CognitoAuthConfig): void {
   if (!config.domain || !config.clientId || !config.redirectUri) {
     throw new Error('Cognito public configuration is incomplete.');
   }
-}
-
-function readEnvString(value: string | boolean | undefined, fallback = ''): string {
-  return String(value || fallback).trim() || fallback;
 }
 
 function normalizeSession(session: AuthSession): AuthSession {

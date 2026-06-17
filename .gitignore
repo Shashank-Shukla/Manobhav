@@ -61,6 +61,8 @@ bin/
 obj/
 **/bin/
 **/obj/
+Backend/manobhav-api/.publish/
+Backend/manobhav-api/manobhav-api-runtime-config-migrate-*.zip
 Backend/manobhav-api/src/WebApi/*.deps.json
 Backend/manobhav-api/src/WebApi/*.dll
 Backend/manobhav-api/src/WebApi/*.exe

@@ -217,6 +217,9 @@ describe('route smoke coverage', () => {
     renderWithRouter(<HomePage onStartJourney={onStartJourney} />);
 
     expect(screen.getByText(/inner peace/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/our specialists/i)).not.toBeInTheDocument());
+    expect(screen.queryByText(/no specialists are configured yet/i)).not.toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: /get started/i }));
     expect(onStartJourney).toHaveBeenCalledTimes(1);
   });
@@ -224,6 +227,8 @@ describe('route smoke coverage', () => {
   it('renders login, faq, disclaimer, and appointment routes', () => {
     renderWithRouter(<LoginPage onBack={vi.fn()} />);
     expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to home/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /continue with email otp/i })).toHaveAttribute('type', 'submit');
 
     renderWithRouter(<FAQPage />);
     expect(screen.getByText(/frequently asked questions/i)).toBeInTheDocument();

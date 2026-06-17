@@ -65,7 +65,7 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
 
   const handleBook = () => {
     if (!getStoredAuthSession()) {
-      navigate('/login');
+      navigate(`/login?returnTo=${encodeURIComponent('/appointment')}`);
     } else {
       navigate('/appointment');
     }

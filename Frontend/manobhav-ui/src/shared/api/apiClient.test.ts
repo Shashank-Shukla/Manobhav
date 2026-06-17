@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { getBootstrapApiBaseUrl } from '../config/runtimeConfig';
 import { apiRequest, getApiBaseUrl } from './apiClient';
 
 describe('api client configuration', () => {
@@ -8,16 +9,16 @@ describe('api client configuration', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses the configured API base URL when supplied', () => {
-    expect(getApiBaseUrl({ VITE_PUBLIC_API_BASE_URL: 'https://api.example.com/' })).toBe('https://api.example.com');
+  it('uses the loaded runtime API base URL', () => {
+    expect(getApiBaseUrl()).toBe('https://api.example.com');
   });
 
-  it('defaults to the ASP.NET Core dev API URL during local Vite development', () => {
-    expect(getApiBaseUrl({ DEV: true, VITE_PUBLIC_API_BASE_URL: '' })).toBe('http://localhost:5163');
-  });
-
-  it('does not invent an API URL for production builds', () => {
-    expect(getApiBaseUrl({ DEV: false, VITE_PUBLIC_API_BASE_URL: '' })).toBe('');
+  it('keeps build-time env handling limited to the runtime config bootstrap URL', () => {
+    expect(getBootstrapApiBaseUrl({ VITE_PUBLIC_API_BASE_URL: 'https://api.example.com/' })).toBe(
+      'https://api.example.com',
+    );
+    expect(getBootstrapApiBaseUrl({ DEV: true, VITE_PUBLIC_API_BASE_URL: '' })).toBe('http://localhost:5163');
+    expect(getBootstrapApiBaseUrl({ DEV: false, VITE_PUBLIC_API_BASE_URL: '' })).toBe('');
   });
 
   it('sends credentials so backend-owned visitor cookies are included', async () => {

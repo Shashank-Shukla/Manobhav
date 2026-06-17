@@ -25,7 +25,7 @@ export const theme = {
     white: '#FFFFFF',
     textMain: '#2D3748',
   },
-  font: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  font: '"Poppins", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 } as const;
 
 export type Theme = typeof theme;
