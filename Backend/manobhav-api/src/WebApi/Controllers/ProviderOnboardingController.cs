@@ -5,6 +5,7 @@ using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace WebApi.Controllers;
 
@@ -215,6 +216,68 @@ public sealed class ProviderOnboardingController : ControllerBase
             application.CurrentStep,
             application.CreatedAtUtc,
             application.UpdatedAtUtc,
-            application.SubmittedAtUtc);
+            application.SubmittedAtUtc,
+            BuildSections(application));
+    }
+
+    private static IReadOnlyDictionary<string, JsonElement> BuildSections(ProviderOnboardingApplication application)
+    {
+        var sections = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        AddRootSection(sections, "basicIdentity", application.BasicProfileJson);
+        AddNestedSection(sections, application.BioJson, "bio", "bioAndApproach");
+        AddNestedSection(sections, application.BioJson, "specializations", "specializations");
+        AddNestedSection(sections, application.BioJson, "modalities", "therapyApproaches");
+        AddNestedSection(sections, application.SessionDetailsJson, "sessionDetails", "sessionDetails");
+        AddNestedSection(sections, application.SessionDetailsJson, "credentials", "credentials");
+        AddNestedSection(sections, application.SessionDetailsJson, "payout", "payout");
+
+        return sections;
+    }
+
+    private static void AddRootSection(IDictionary<string, JsonElement> sections, string sectionKey, string json)
+    {
+        if (TryParseObject(json, out var element) && element.EnumerateObject().Any())
+        {
+            sections[sectionKey] = element;
+        }
+    }
+
+    private static void AddNestedSection(IDictionary<string, JsonElement> sections, string json, string storedKey, string sectionKey)
+    {
+        if (!TryParseObject(json, out var root) ||
+            !root.TryGetProperty(storedKey, out var section) ||
+            section.ValueKind != JsonValueKind.Object ||
+            !section.EnumerateObject().Any())
+        {
+            return;
+        }
+
+        sections[sectionKey] = section.Clone();
+    }
+
+    private static bool TryParseObject(string json, out JsonElement element)
+    {
+        element = default;
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            element = document.RootElement.Clone();
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }

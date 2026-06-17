@@ -8,6 +8,7 @@ export type ProviderApplication = {
   createdAtUtc: string;
   updatedAtUtc?: string | null;
   submittedAtUtc?: string | null;
+  sections?: ProviderApplicationSection[] | Record<string, unknown> | null;
 };
 
 export type ProviderSectionKey =
@@ -19,17 +20,92 @@ export type ProviderSectionKey =
   | 'credentials'
   | 'payout';
 
+export type ProviderBasicIdentitySection = {
+  legalName: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  location: string;
+};
+
+export type ProviderBioSection = {
+  shortBio: string;
+  longBio: string;
+  approach: string;
+  languages: string[];
+};
+
+export type ProviderSpecializationsSection = {
+  focusAreas: string[];
+  ageGroups: string[];
+  therapyGoals: string[];
+};
+
+export type ProviderModalitiesSection = {
+  modalities: string[];
+  deliveryModes: string[];
+};
+
+export type ProviderSessionDetailsSection = {
+  sessionLengthsMinutes: number[];
+  availabilitySummary: string;
+  capacityPerWeek: number | null;
+};
+
+export type ProviderCredentialsSection = {
+  items: Array<{
+    credentialType: string;
+    title: string;
+    institution: string;
+    licenseNumber: string;
+    year: number | null;
+  }>;
+};
+
+export type ProviderPayoutSection = {
+  payoutMode: string;
+  accountHolderName: string;
+  notes: string;
+};
+
+export type ProviderSectionPayload = {
+  basicIdentity: ProviderBasicIdentitySection;
+  bio: ProviderBioSection;
+  specializations: ProviderSpecializationsSection;
+  modalities: ProviderModalitiesSection;
+  sessionDetails: ProviderSessionDetailsSection;
+  credentials: ProviderCredentialsSection;
+  payout: ProviderPayoutSection;
+};
+
+export type ProviderApplicationSection = {
+  sectionKey?: string | null;
+  key?: string | null;
+  data?: Partial<ProviderSectionPayload> | null;
+} & Partial<ProviderSectionPayload>;
+
 export type SaveProviderSectionBody = {
   currentStep?: string | null;
 } & (
-  | { basicIdentity: { legalName: string; displayName: string; email: string; phone: string; location: string } }
-  | { bio: { shortBio: string; longBio: string; approach: string; languages: string[] } }
-  | { specializations: { focusAreas: string[]; ageGroups: string[]; therapyGoals: string[] } }
-  | { modalities: { modalities: string[]; deliveryModes: string[] } }
-  | { sessionDetails: { sessionLengthsMinutes: number[]; availabilitySummary: string; capacityPerWeek: number | null } }
-  | { credentials: { items: Array<{ credentialType: string; title: string; institution: string; licenseNumber: string; year: number | null }> } }
-  | { payout: { payoutMode: string; accountHolderName: string; notes: string } }
+  | { basicIdentity: ProviderBasicIdentitySection }
+  | { bio: ProviderBioSection }
+  | { specializations: ProviderSpecializationsSection }
+  | { modalities: ProviderModalitiesSection }
+  | { sessionDetails: ProviderSessionDetailsSection }
+  | { credentials: ProviderCredentialsSection }
+  | { payout: ProviderPayoutSection }
 );
+
+export type ProviderTaxonomyTerm = {
+  key: string;
+  label: string;
+};
+
+export type ProviderTaxonomy = {
+  specializations: ProviderTaxonomyTerm[];
+  therapyApproaches: ProviderTaxonomyTerm[];
+  languages: ProviderTaxonomyTerm[];
+};
 
 export async function startOrResumeProviderApplication(signal?: AbortSignal): Promise<ProviderApplication> {
   try {
@@ -77,6 +153,10 @@ export async function submitProviderApplication(applicationId: string, signal?: 
     method: 'POST',
     signal,
   });
+}
+
+export async function fetchProviderTaxonomy(signal?: AbortSignal): Promise<ProviderTaxonomy> {
+  return apiRequest<ProviderTaxonomy>('/api/provider-onboarding/taxonomy', { signal });
 }
 
 function isNotFoundError(error: unknown): boolean {

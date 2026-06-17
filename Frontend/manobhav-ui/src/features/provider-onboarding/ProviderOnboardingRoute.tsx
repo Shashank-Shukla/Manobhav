@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
+import Chip from '@mui/material/Chip';
 import { Text } from '../../shared/primitives/Text';
 import { Button } from '../../shared/primitives/Button';
 import {
+  fetchProviderTaxonomy,
   saveProviderSection,
   startOrResumeProviderApplication,
   submitProviderApplication,
   type ProviderApplication,
+  type ProviderApplicationSection,
   type ProviderSectionKey,
+  type ProviderTaxonomy,
+  type ProviderTaxonomyTerm,
   type SaveProviderSectionBody,
 } from './providerOnboardingApi';
 
@@ -24,11 +29,34 @@ type ProviderStage = {
 type ProviderStageField = {
   key: string;
   label: string;
-  kind?: 'text' | 'email' | 'number' | 'textarea';
+  required?: boolean;
+  kind?: 'text' | 'email' | 'number' | 'textarea' | 'chips';
   placeholder?: string;
+  taxonomyKey?: keyof ProviderTaxonomy;
 };
 
-type Drafts = Record<ProviderSectionKey, Record<string, string>>;
+type DraftValue = string | string[];
+type Drafts = Record<ProviderSectionKey, Record<string, DraftValue>>;
+type FieldErrors = Record<string, string>;
+
+const taxonomyCacheKey = 'manobhav-provider-onboarding-taxonomy';
+const draftStoragePrefix = 'manobhav-provider-onboarding-draft';
+
+const backendSectionDictionaryKeys: Record<string, { payloadKey: string; sectionKey: ProviderSectionKey }> = {
+  basicIdentity: { payloadKey: 'basicIdentity', sectionKey: 'basic-profile' },
+  bioAndApproach: { payloadKey: 'bio', sectionKey: 'bio' },
+  specializations: { payloadKey: 'specializations', sectionKey: 'specializations' },
+  therapyApproaches: { payloadKey: 'modalities', sectionKey: 'modalities' },
+  sessionDetails: { payloadKey: 'sessionDetails', sectionKey: 'session-details' },
+  credentials: { payloadKey: 'credentials', sectionKey: 'credentials' },
+  payout: { payloadKey: 'payout', sectionKey: 'payout' },
+};
+
+const emptyTaxonomy: ProviderTaxonomy = {
+  specializations: [],
+  therapyApproaches: [],
+  languages: [],
+};
 
 const providerStages: ProviderStage[] = [
   {
@@ -36,9 +64,9 @@ const providerStages: ProviderStage[] = [
     title: 'Basic identity',
     helper: 'Legal name, professional display name, contact preferences.',
     fields: [
-      { key: 'legalName', label: 'Legal name' },
-      { key: 'displayName', label: 'Display name' },
-      { key: 'email', label: 'Email', kind: 'email' },
+      { key: 'legalName', label: 'Legal name', required: true },
+      { key: 'displayName', label: 'Display name', required: true },
+      { key: 'email', label: 'Email', kind: 'email', required: true },
       { key: 'phone', label: 'Phone' },
       { key: 'location', label: 'Location' },
     ],
@@ -48,10 +76,10 @@ const providerStages: ProviderStage[] = [
     title: 'Bio and approach',
     helper: 'Therapeutic approach, languages, tone, short and long bio.',
     fields: [
-      { key: 'shortBio', label: 'Short bio', kind: 'textarea' },
+      { key: 'shortBio', label: 'Short bio', kind: 'textarea', required: true },
       { key: 'longBio', label: 'Long bio', kind: 'textarea' },
-      { key: 'approach', label: 'Therapeutic approach', kind: 'textarea' },
-      { key: 'languages', label: 'Languages', placeholder: 'English, Hindi' },
+      { key: 'approach', label: 'Therapeutic approach', kind: 'textarea', required: true },
+      { key: 'languages', label: 'Languages', kind: 'chips', required: true, taxonomyKey: 'languages' },
     ],
   },
   {
@@ -59,7 +87,13 @@ const providerStages: ProviderStage[] = [
     title: 'Specializations and tags',
     helper: 'Focus areas, age groups, therapy goals, taxonomy terms.',
     fields: [
-      { key: 'focusAreas', label: 'Focus areas', placeholder: 'Anxiety, Burnout' },
+      {
+        key: 'focusAreas',
+        label: 'Focus areas',
+        kind: 'chips',
+        required: true,
+        taxonomyKey: 'specializations',
+      },
       { key: 'ageGroups', label: 'Age groups', placeholder: 'Adults, Teens' },
       { key: 'therapyGoals', label: 'Therapy goals', placeholder: 'Sleep, Emotional regulation' },
     ],
@@ -69,8 +103,14 @@ const providerStages: ProviderStage[] = [
     title: 'Modalities',
     helper: 'Online, in-person, individual, couples, group, or hybrid care.',
     fields: [
-      { key: 'modalities', label: 'Modalities', placeholder: 'Individual, Couples' },
-      { key: 'deliveryModes', label: 'Delivery modes', placeholder: 'Online, In-person' },
+      {
+        key: 'modalities',
+        label: 'Therapy approaches',
+        kind: 'chips',
+        required: true,
+        taxonomyKey: 'therapyApproaches',
+      },
+      { key: 'deliveryModes', label: 'Delivery modes', placeholder: 'Online, In-person', required: true },
     ],
   },
   {
@@ -78,18 +118,18 @@ const providerStages: ProviderStage[] = [
     title: 'Session details and availability',
     helper: 'Session lengths, availability summary, and weekly capacity.',
     fields: [
-      { key: 'sessionLengthsMinutes', label: 'Session lengths in minutes', placeholder: '45, 60' },
-      { key: 'availabilitySummary', label: 'Availability summary', kind: 'textarea' },
-      { key: 'capacityPerWeek', label: 'Capacity per week', kind: 'number' },
+      { key: 'sessionLengthsMinutes', label: 'Session lengths in minutes', placeholder: '45, 60', required: true },
+      { key: 'availabilitySummary', label: 'Availability summary', kind: 'textarea', required: true },
+      { key: 'capacityPerWeek', label: 'Capacity per week', kind: 'number', required: true },
     ],
   },
   {
     key: 'credentials',
     title: 'Credentials and private uploads',
-    helper: 'Credential metadata only. Upload pre-signing is not enabled yet.',
+    helper: 'Add credential details for review.',
     fields: [
-      { key: 'credentialType', label: 'Credential type' },
-      { key: 'credentialTitle', label: 'Credential title' },
+      { key: 'credentialType', label: 'Credential type', required: true },
+      { key: 'credentialTitle', label: 'Credential title', required: true },
       { key: 'institution', label: 'Institution' },
       { key: 'licenseNumber', label: 'License number' },
       { key: 'credentialYear', label: 'Year', kind: 'number' },
@@ -98,9 +138,9 @@ const providerStages: ProviderStage[] = [
   {
     key: 'payout',
     title: 'Payout details',
-    helper: 'Placeholder metadata only. Do not enter account numbers or tax IDs here.',
+    helper: 'Add payout preferences for account setup after approval.',
     fields: [
-      { key: 'payoutMode', label: 'Payout mode' },
+      { key: 'payoutMode', label: 'Payout mode', required: true },
       { key: 'accountHolderName', label: 'Account holder name' },
       { key: 'notes', label: 'Payout notes', kind: 'textarea' },
     ],
@@ -114,19 +154,32 @@ const providerStages: ProviderStage[] = [
 ];
 
 export function OnboardingProviderPage({ onBack }: Props) {
+  void onBack;
   const [application, setApplication] = useState<ProviderApplication | null>(null);
   const [selectedStage, setSelectedStage] = useState<ProviderStage['key']>(providerStages[0].key);
+  const [activeStageIndex, setActiveStageIndex] = useState(0);
+  const [completedStages, setCompletedStages] = useState<Set<ProviderSectionKey>>(() => new Set());
   const [drafts, setDrafts] = useState<Drafts>(() => createInitialDrafts());
+  const [taxonomy, setTaxonomy] = useState<ProviderTaxonomy>(() => readTaxonomyCache() ?? emptyTaxonomy);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    purgeLegacyBrowserStorageDrafts();
+
     const controller = new AbortController();
     startOrResumeProviderApplication(controller.signal)
       .then((response) => {
+        const currentStage = getKnownStageKey(response.currentStep);
+        const currentStageIndex = getStageIndex(currentStage);
+
         setApplication(response);
-        setSelectedStage(getKnownStageKey(response.currentStep));
+        setDrafts(hydrateDrafts(response));
+        setSelectedStage(currentStage);
+        setActiveStageIndex(currentStageIndex);
+        setCompletedStages(inferCompletedStages(response, currentStageIndex));
         setStatus('ready');
       })
       .catch((failure: unknown) => {
@@ -137,23 +190,69 @@ export function OnboardingProviderPage({ onBack }: Props) {
     return () => controller.abort();
   }, []);
 
-  const updateDraft = (fieldKey: string, value: string) => {
+  useEffect(() => {
+    if (readTaxonomyCache()) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    fetchProviderTaxonomy(controller.signal)
+      .then((response) => {
+        const normalized = normalizeTaxonomy(response);
+        setTaxonomy(normalized);
+        writeTaxonomyCache(normalized);
+      })
+      .catch(() => {
+        setTaxonomy(emptyTaxonomy);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  const updateDraft = (fieldKey: string, value: DraftValue) => {
     if (selectedStage === 'review') return;
-    setDrafts((current) => ({
-      ...current,
-      [selectedStage]: { ...current[selectedStage], [fieldKey]: value },
-    }));
+    setDrafts((current) => {
+      const next = {
+        ...current,
+        [selectedStage]: { ...current[selectedStage], [fieldKey]: value },
+      };
+      return next;
+    });
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next[fieldKey];
+      return next;
+    });
   };
 
   const saveStage = async () => {
     if (!application || selectedStage === 'review') return;
+
+    const selected = getStage(selectedStage);
+    const validationErrors = validateStage(selected, drafts[selectedStage]);
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setError('Complete the required fields before continuing.');
+      return;
+    }
+
+    const nextStage = getNextStageKey(selectedStage);
     await runSavingAction(
-      async () => setApplication(await saveProviderSection({
-        applicationId: application.id,
-        body: buildSectionBody(selectedStage, drafts[selectedStage]),
-        currentStep: selectedStage,
-        sectionKey: selectedStage,
-      })),
+      async () => {
+        const response = await saveProviderSection({
+          applicationId: application.id,
+          body: buildSectionBody(selectedStage, drafts[selectedStage]),
+          currentStep: nextStage,
+          sectionKey: selectedStage,
+        });
+        const nextActiveIndex = Math.max(activeStageIndex, getStageIndex(nextStage));
+        setApplication({ ...response, currentStep: nextStage });
+        setCompletedStages((current) => new Set([...current, selectedStage]));
+        setActiveStageIndex(nextActiveIndex);
+        setSelectedStage(nextStage);
+        setFieldErrors({});
+        purgeLegacyBrowserStorageDrafts();
+      },
       'Unable to save provider section.',
       setError,
       setIsSaving,
@@ -163,7 +262,10 @@ export function OnboardingProviderPage({ onBack }: Props) {
   const submitApplication = async () => {
     if (!application) return;
     await runSavingAction(
-      async () => setApplication(await submitProviderApplication(application.id)),
+      async () => {
+        setApplication(await submitProviderApplication(application.id));
+        purgeLegacyBrowserStorageDrafts();
+      },
       'Unable to submit provider application.',
       setError,
       setIsSaving,
@@ -171,279 +273,418 @@ export function OnboardingProviderPage({ onBack }: Props) {
   };
 
   if (status !== 'ready') {
-    return <ProviderOnboardingStatus status={status} error={error} onBack={onBack} />;
+    return <ProviderOnboardingStatus status={status} error={error} />;
   }
 
   return (
     <ProviderOnboardingLayout
+      activeStageIndex={activeStageIndex}
       application={application}
+      completedStages={completedStages}
       draft={selectedStage === 'review' ? {} : drafts[selectedStage]}
       error={error}
+      fieldErrors={fieldErrors}
       isSaving={isSaving}
-      onBack={onBack}
       onDraftChange={updateDraft}
       onSave={saveStage}
       onSelectStage={setSelectedStage}
       onSubmit={submitApplication}
       selected={getStage(selectedStage)}
       selectedStage={selectedStage}
+      taxonomy={taxonomy}
     />
   );
 }
 
 function ProviderOnboardingLayout({
+  activeStageIndex,
   application,
+  completedStages,
   draft,
   error,
+  fieldErrors,
   isSaving,
-  onBack,
   onDraftChange,
   onSave,
   onSelectStage,
   onSubmit,
   selected,
   selectedStage,
+  taxonomy,
 }: {
+  activeStageIndex: number;
   application: ProviderApplication | null;
-  draft: Record<string, string>;
+  completedStages: Set<ProviderSectionKey>;
+  draft: Record<string, DraftValue>;
   error: string;
+  fieldErrors: FieldErrors;
   isSaving: boolean;
-  onBack: () => void;
-  onDraftChange: (fieldKey: string, value: string) => void;
+  onDraftChange: (fieldKey: string, value: DraftValue) => void;
   onSave: () => Promise<void>;
   onSelectStage: (stageKey: ProviderStage['key']) => void;
   onSubmit: () => Promise<void>;
   selected: ProviderStage;
   selectedStage: ProviderStage['key'];
+  taxonomy: ProviderTaxonomy;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-12">
-      <ProviderOnboardingHeader application={application} onBack={onBack} />
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <ProviderStageNav onSelectStage={onSelectStage} selectedStage={selectedStage} />
-        <ProviderStagePanel
-          application={application}
-          draft={draft}
-          error={error}
-          isSaving={isSaving}
-          onDraftChange={onDraftChange}
-          onSave={onSave}
-          onSubmit={onSubmit}
-          selected={selected}
-        />
-      </div>
-    </div>
-  );
-}
-
-function ProviderOnboardingHeader({ application, onBack }: { application: ProviderApplication | null; onBack: () => void }) {
-  return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <Text variant="h2">Provider Onboarding</Text>
-        <p className="mt-2 text-sm text-gray-600">
-          Status: {application?.status ?? 'Draft'} - Approval and public publishing are separate admin decisions.
-        </p>
-      </div>
-      <Button variant="secondary" onClick={onBack}>Back</Button>
+    <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-6 py-10 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <ProviderStageNav
+        activeStageIndex={activeStageIndex}
+        completedStages={completedStages}
+        onSelectStage={onSelectStage}
+        selectedStage={selectedStage}
+      />
+      <ProviderStagePanel
+        application={application}
+        draft={draft}
+        error={error}
+        fieldErrors={fieldErrors}
+        isSaving={isSaving}
+        onDraftChange={onDraftChange}
+        onSave={onSave}
+        onSubmit={onSubmit}
+        selected={selected}
+        taxonomy={taxonomy}
+      />
     </div>
   );
 }
 
 function ProviderStageNav({
+  activeStageIndex,
+  completedStages,
   onSelectStage,
   selectedStage,
 }: {
+  activeStageIndex: number;
+  completedStages: Set<ProviderSectionKey>;
   onSelectStage: (stageKey: ProviderStage['key']) => void;
   selectedStage: ProviderStage['key'];
 }) {
   return (
-    <nav className="space-y-2">
-      {providerStages.map((stage) => (
-        <ProviderStageButton
-          isSelected={selectedStage === stage.key}
-          key={stage.key}
-          onSelect={() => onSelectStage(stage.key)}
-          stage={stage}
-        />
-      ))}
+    <nav className="space-y-2" aria-label="Provider onboarding sections">
+      {providerStages.map((stage, index) => {
+        const isCompleted = isProviderSectionKey(stage.key) && completedStages.has(stage.key);
+        const isDisabled = index > activeStageIndex && !isCompleted;
+        return (
+          <ProviderStageButton
+            isCompleted={isCompleted}
+            isDisabled={isDisabled}
+            isSelected={selectedStage === stage.key}
+            key={stage.key}
+            onSelect={() => onSelectStage(stage.key)}
+            stage={stage}
+          />
+        );
+      })}
     </nav>
   );
 }
 
 function ProviderStageButton({
+  isCompleted,
+  isDisabled,
   isSelected,
   onSelect,
   stage,
 }: {
+  isCompleted: boolean;
+  isDisabled: boolean;
   isSelected: boolean;
   onSelect: () => void;
   stage: ProviderStage;
 }) {
-  const className = isSelected
-    ? 'border-[#9CAF88] bg-[#EEF4EA]'
-    : 'border-gray-200 bg-white hover:bg-gray-50';
+  const className = getStageButtonClassName({ isCompleted, isDisabled, isSelected });
   return (
     <button
+      aria-current={isSelected ? 'step' : undefined}
       className={`w-full rounded-lg border px-4 py-3 text-left text-sm transition ${className}`}
+      disabled={isDisabled}
       onClick={onSelect}
       type="button"
     >
-      <span className="font-semibold text-gray-800">{stage.title}</span>
-      <span className="mt-1 block text-xs text-gray-500">{stage.helper}</span>
+      <span className={isDisabled ? 'font-semibold text-gray-400' : 'font-semibold text-gray-800'}>{stage.title}</span>
+      <span className={isDisabled ? 'mt-1 block text-xs text-gray-400' : 'mt-1 block text-xs text-gray-500'}>
+        {stage.helper}
+      </span>
     </button>
   );
+}
+
+function getStageButtonClassName({
+  isCompleted,
+  isDisabled,
+  isSelected,
+}: {
+  isCompleted: boolean;
+  isDisabled: boolean;
+  isSelected: boolean;
+}): string {
+  if (isDisabled) {
+    return 'cursor-not-allowed border-gray-200 bg-gray-100 opacity-80';
+  }
+
+  if (isCompleted) {
+    return 'border-[#9CAF88] bg-[#EEF4EA] hover:bg-[#E3EDD9]';
+  }
+
+  if (isSelected) {
+    return 'border-[#9CAF88] bg-white shadow-sm';
+  }
+
+  return 'border-gray-200 bg-white hover:bg-gray-50';
 }
 
 function ProviderStagePanel({
   application,
   draft,
   error,
+  fieldErrors,
   isSaving,
   onDraftChange,
   onSave,
   onSubmit,
   selected,
+  taxonomy,
 }: {
   application: ProviderApplication | null;
-  draft: Record<string, string>;
+  draft: Record<string, DraftValue>;
   error: string;
+  fieldErrors: FieldErrors;
   isSaving: boolean;
-  onDraftChange: (fieldKey: string, value: string) => void;
+  onDraftChange: (fieldKey: string, value: DraftValue) => void;
   onSave: () => Promise<void>;
   onSubmit: () => Promise<void>;
   selected: ProviderStage;
+  taxonomy: ProviderTaxonomy;
 }) {
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
       <Text variant="h3">{selected.title}</Text>
       <p className="mt-2 text-sm text-gray-600">{selected.helper}</p>
-      <CredentialsUploadNotice selectedStage={selected.key} />
       <ProviderStageBody
         application={application}
         draft={draft}
+        fieldErrors={fieldErrors}
         isSaving={isSaving}
         onDraftChange={onDraftChange}
         onSave={onSave}
         onSubmit={onSubmit}
         selected={selected}
+        taxonomy={taxonomy}
       />
       {error && <p className="mt-4 text-sm font-medium text-rose-700">{error}</p>}
     </section>
   );
 }
 
-function CredentialsUploadNotice({ selectedStage }: { selectedStage: ProviderStage['key'] }) {
-  if (selectedStage !== 'credentials') {
-    return null;
-  }
-
-  return (
-    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-      Private S3 upload pre-signing is intentionally disabled in this build. Store only metadata here until S3 is wired.
-    </p>
-  );
-}
-
 function ProviderStageBody({
   application,
   draft,
+  fieldErrors,
   isSaving,
   onDraftChange,
   onSave,
   onSubmit,
   selected,
+  taxonomy,
 }: {
   application: ProviderApplication | null;
-  draft: Record<string, string>;
+  draft: Record<string, DraftValue>;
+  fieldErrors: FieldErrors;
   isSaving: boolean;
-  onDraftChange: (fieldKey: string, value: string) => void;
+  onDraftChange: (fieldKey: string, value: DraftValue) => void;
   onSave: () => Promise<void>;
   onSubmit: () => Promise<void>;
   selected: ProviderStage;
+  taxonomy: ProviderTaxonomy;
 }) {
   if (selected.key === 'review') {
     return <ReviewSubmit application={application} isSaving={isSaving} onSubmit={onSubmit} />;
   }
 
-  return <StageForm draft={draft} fields={selected.fields} isSaving={isSaving} onDraftChange={onDraftChange} onSave={onSave} />;
+  return (
+    <StageForm
+      draft={draft}
+      fieldErrors={fieldErrors}
+      fields={selected.fields}
+      isSaving={isSaving}
+      onDraftChange={onDraftChange}
+      onSave={onSave}
+      taxonomy={taxonomy}
+    />
+  );
 }
 
-function ProviderOnboardingStatus({ error, onBack, status }: { error: string; onBack: () => void; status: 'loading' | 'error' }) {
+function ProviderOnboardingStatus({ error, status }: { error: string; status: 'loading' | 'error' }) {
   return (
     <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
       <Text variant="h2">{status === 'loading' ? 'Loading provider onboarding' : 'Provider onboarding unavailable'}</Text>
-      <p className="text-sm text-gray-600">{status === 'loading' ? 'Fetching your provider application from the API.' : error}</p>
-      {status === 'error' && <Button variant="secondary" onClick={onBack}>Back</Button>}
+      <p className="text-sm text-gray-600">{status === 'loading' ? 'Preparing your provider application.' : error}</p>
     </div>
   );
 }
 
 function StageForm({
   draft,
+  fieldErrors,
   fields,
   isSaving,
   onDraftChange,
   onSave,
+  taxonomy,
 }: {
-  draft: Record<string, string>;
+  draft: Record<string, DraftValue>;
+  fieldErrors: FieldErrors;
   fields: ProviderStageField[];
   isSaving: boolean;
-  onDraftChange: (fieldKey: string, value: string) => void;
+  onDraftChange: (fieldKey: string, value: DraftValue) => void;
   onSave: () => Promise<void>;
+  taxonomy: ProviderTaxonomy;
 }) {
   return (
     <div className="mt-5 space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         {fields.map((field) => (
           <StageFieldControl
+            draft={draft}
+            error={fieldErrors[field.key]}
             field={field}
             key={field.key}
             onChange={(value) => onDraftChange(field.key, value)}
-            value={draft[field.key] ?? ''}
+            taxonomy={taxonomy}
           />
         ))}
       </div>
       <Button variant="primary" disabled={isSaving} onClick={() => void onSave()}>
-        {isSaving ? 'Saving...' : 'Save section'}
+        {isSaving ? 'Saving...' : 'Save and continue'}
       </Button>
     </div>
   );
 }
 
 function StageFieldControl({
+  draft,
+  error,
   field,
   onChange,
-  value,
+  taxonomy,
 }: {
+  draft: Record<string, DraftValue>;
+  error?: string;
   field: ProviderStageField;
-  onChange: (value: string) => void;
-  value: string;
+  onChange: (value: DraftValue) => void;
+  taxonomy: ProviderTaxonomy;
 }) {
+  if (field.kind === 'chips') {
+    return (
+      <ChipFieldControl
+        error={error}
+        field={field}
+        onChange={onChange}
+        selectedValues={getDraftList(draft, field.key)}
+        taxonomy={taxonomy}
+      />
+    );
+  }
+
   const id = `provider-${field.key}`;
+  const errorId = `${id}-error`;
   return (
     <label className={field.kind === 'textarea' ? 'space-y-2 md:col-span-2' : 'space-y-2'} htmlFor={id}>
-      <span className="block text-sm font-semibold text-gray-700">{field.label}</span>
-      <StageInput field={field} id={id} onChange={onChange} value={value} />
+      <span className="block text-sm font-semibold text-gray-700">
+        {field.label}
+        {field.required && <span className="ml-1 text-rose-600">*</span>}
+      </span>
+      <StageInput
+        describedBy={error ? errorId : undefined}
+        error={Boolean(error)}
+        field={field}
+        id={id}
+        onChange={(value) => onChange(value)}
+        value={getDraftString(draft, field.key)}
+      />
+      {error && <p id={errorId} className="text-sm font-medium text-rose-700">{error}</p>}
     </label>
   );
 }
 
+function ChipFieldControl({
+  error,
+  field,
+  onChange,
+  selectedValues,
+  taxonomy,
+}: {
+  error?: string;
+  field: ProviderStageField;
+  onChange: (value: DraftValue) => void;
+  selectedValues: string[];
+  taxonomy: ProviderTaxonomy;
+}) {
+  const id = `provider-${field.key}`;
+  const errorId = `${id}-error`;
+  const terms = getTermsForField(field, taxonomy, selectedValues);
+
+  return (
+    <div
+      aria-describedby={error ? errorId : undefined}
+      aria-labelledby={`${id}-label`}
+      className="space-y-2 md:col-span-2"
+      role="group"
+    >
+      <span id={`${id}-label`} className="block text-sm font-semibold text-gray-700">
+        {field.label}
+        {field.required && <span className="ml-1 text-rose-600">*</span>}
+      </span>
+      <div className={error ? 'rounded-lg border border-rose-400 p-3' : 'rounded-lg border border-gray-200 p-3'}>
+        <div className="flex flex-wrap gap-2">
+          {terms.map((term) => {
+            const selected = isTermSelected(selectedValues, term);
+            return (
+              <Chip
+                aria-pressed={selected}
+                clickable
+                key={term.key}
+                label={term.label}
+                onClick={() => onChange(toggleTerm(selectedValues, term))}
+                onDelete={selected ? () => onChange(removeTerm(selectedValues, term)) : undefined}
+                sx={getChipSx(selected)}
+                variant={selected ? 'filled' : 'outlined'}
+              />
+            );
+          })}
+          {terms.length === 0 && <span className="text-sm text-gray-500">Options unavailable. Try again later.</span>}
+        </div>
+      </div>
+      {error && <p id={errorId} className="text-sm font-medium text-rose-700">{error}</p>}
+    </div>
+  );
+}
+
 function StageInput({
+  describedBy,
+  error,
   field,
   id,
   onChange,
   value,
 }: {
+  describedBy?: string;
+  error: boolean;
   field: ProviderStageField;
   id: string;
   onChange: (value: string) => void;
   value: string;
 }) {
+  const className = getInputClassName(error);
   if (field.kind === 'textarea') {
     return (
       <textarea
-        className="min-h-28 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#9CAF88]"
+        aria-describedby={describedBy}
+        aria-invalid={error}
+        className={`${className} min-h-28`}
         id={id}
         onChange={(event) => onChange(event.target.value)}
         placeholder={field.placeholder}
@@ -454,7 +695,9 @@ function StageInput({
 
   return (
     <input
-      className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#9CAF88]"
+      aria-describedby={describedBy}
+      aria-invalid={error}
+      className={className}
       id={id}
       onChange={(event) => onChange(event.target.value)}
       placeholder={field.placeholder}
@@ -462,6 +705,28 @@ function StageInput({
       value={value}
     />
   );
+}
+
+function getInputClassName(error: boolean): string {
+  const border = error ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-[#9CAF88]';
+  return `w-full rounded-lg border ${border} bg-white px-4 py-3 text-sm outline-none`;
+}
+
+function getChipSx(selected: boolean) {
+  if (!selected) {
+    return {
+      borderColor: '#CBD5E1',
+      color: '#374151',
+      '&:hover': { backgroundColor: '#F3F7EF' },
+    };
+  }
+
+  return {
+    backgroundColor: '#9CAF88',
+    color: '#FFFFFF',
+    '&:hover': { backgroundColor: '#7A8C6A' },
+    '& .MuiChip-deleteIcon': { color: '#FFFFFF' },
+  };
 }
 
 function ReviewSubmit({
@@ -490,8 +755,17 @@ function getStage(stageKey: ProviderStage['key']): ProviderStage {
   return providerStages.find((stage) => stage.key === stageKey) ?? providerStages[0];
 }
 
+function getStageIndex(stageKey: ProviderStage['key']): number {
+  return Math.max(providerStages.findIndex((stage) => stage.key === stageKey), 0);
+}
+
 function getKnownStageKey(stageKey?: string | null): ProviderStage['key'] {
   return providerStages.some((stage) => stage.key === stageKey) ? (stageKey as ProviderStage['key']) : providerStages[0].key;
+}
+
+function getNextStageKey(stageKey: ProviderSectionKey): ProviderStage['key'] {
+  const nextStage = providerStages[getStageIndex(stageKey) + 1];
+  return nextStage?.key ?? 'review';
 }
 
 function createInitialDrafts(): Drafts {
@@ -500,12 +774,30 @@ function createInitialDrafts(): Drafts {
     .reduce((drafts, stage) => ({ ...drafts, [stage.key]: createStageDraft(stage.fields) }), {} as Drafts);
 }
 
-function createStageDraft(fields: ProviderStageField[]): Record<string, string> {
-  return Object.fromEntries(fields.map((field) => [field.key, '']));
+function createStageDraft(fields: ProviderStageField[]): Record<string, DraftValue> {
+  return Object.fromEntries(fields.map((field) => [field.key, field.kind === 'chips' ? [] : '']));
 }
 
-function buildSectionBody(sectionKey: ProviderSectionKey, draft: Record<string, string>): SaveProviderSectionBody {
-  const builders: Record<ProviderSectionKey, (draft: Record<string, string>) => SaveProviderSectionBody> = {
+function validateStage(stage: ProviderStage, draft: Record<string, DraftValue>): FieldErrors {
+  return stage.fields.reduce((errors, field) => {
+    if (field.required && isMissingValue(draft[field.key])) {
+      return { ...errors, [field.key]: `${field.label} is required.` };
+    }
+
+    return errors;
+  }, {} as FieldErrors);
+}
+
+function isMissingValue(value: DraftValue | undefined): boolean {
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+
+  return !value?.trim();
+}
+
+function buildSectionBody(sectionKey: ProviderSectionKey, draft: Record<string, DraftValue>): SaveProviderSectionBody {
+  const builders: Record<ProviderSectionKey, (draft: Record<string, DraftValue>) => SaveProviderSectionBody> = {
     'basic-profile': buildBasicIdentityBody,
     bio: buildBioBody,
     specializations: buildSpecializationsBody,
@@ -517,82 +809,78 @@ function buildSectionBody(sectionKey: ProviderSectionKey, draft: Record<string, 
   return builders[sectionKey](draft);
 }
 
-function buildBasicIdentityBody(draft: Record<string, string>): SaveProviderSectionBody {
+function buildBasicIdentityBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
   return {
     basicIdentity: {
-      legalName: getDraftValue(draft, 'legalName'),
-      displayName: getDraftValue(draft, 'displayName'),
-      email: getDraftValue(draft, 'email'),
-      phone: getDraftValue(draft, 'phone'),
-      location: getDraftValue(draft, 'location'),
+      legalName: getDraftString(draft, 'legalName'),
+      displayName: getDraftString(draft, 'displayName'),
+      email: getDraftString(draft, 'email'),
+      phone: getDraftString(draft, 'phone'),
+      location: getDraftString(draft, 'location'),
     },
   };
 }
 
-function getDraftValue(draft: Record<string, string>, key: string): string {
-  return draft[key] ?? '';
-}
-
-function buildBioBody(draft: Record<string, string>): SaveProviderSectionBody {
+function buildBioBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
   return {
     bio: {
-      shortBio: draft.shortBio ?? '',
-      longBio: draft.longBio ?? '',
-      approach: draft.approach ?? '',
-      languages: parseCsv(draft.languages),
+      shortBio: getDraftString(draft, 'shortBio'),
+      longBio: getDraftString(draft, 'longBio'),
+      approach: getDraftString(draft, 'approach'),
+      languages: getDraftList(draft, 'languages'),
     },
   };
 }
 
-function buildSpecializationsBody(draft: Record<string, string>): SaveProviderSectionBody {
+function buildSpecializationsBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
   return {
     specializations: {
-      focusAreas: parseCsv(draft.focusAreas),
-      ageGroups: parseCsv(draft.ageGroups),
-      therapyGoals: parseCsv(draft.therapyGoals),
+      focusAreas: getDraftList(draft, 'focusAreas'),
+      ageGroups: parseCsv(getDraftString(draft, 'ageGroups')),
+      therapyGoals: parseCsv(getDraftString(draft, 'therapyGoals')),
     },
   };
 }
 
-function buildModalitiesBody(draft: Record<string, string>): SaveProviderSectionBody {
+function buildModalitiesBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
   return {
     modalities: {
-      modalities: parseCsv(draft.modalities),
-      deliveryModes: parseCsv(draft.deliveryModes),
+      modalities: getDraftList(draft, 'modalities'),
+      deliveryModes: parseCsv(getDraftString(draft, 'deliveryModes')),
     },
   };
 }
 
-function buildSessionDetailsBody(draft: Record<string, string>): SaveProviderSectionBody {
+function buildSessionDetailsBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
   return {
     sessionDetails: {
-      sessionLengthsMinutes: parseNumberList(draft.sessionLengthsMinutes),
-      availabilitySummary: draft.availabilitySummary ?? '',
-      capacityPerWeek: parseNullableNumber(draft.capacityPerWeek),
+      sessionLengthsMinutes: parseNumberList(getDraftString(draft, 'sessionLengthsMinutes')),
+      availabilitySummary: getDraftString(draft, 'availabilitySummary'),
+      capacityPerWeek: parseNullableNumber(getDraftString(draft, 'capacityPerWeek')),
     },
   };
 }
 
-function buildCredentialsBody(draft: Record<string, string>): SaveProviderSectionBody {
+function buildCredentialsBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
   return {
     credentials: {
       items: [{
-        credentialType: draft.credentialType ?? '',
-        title: draft.credentialTitle ?? '',
-        institution: draft.institution ?? '',
-        licenseNumber: draft.licenseNumber ?? '',
-        year: parseNullableNumber(draft.credentialYear),
+        credentialType: getDraftString(draft, 'credentialType'),
+        title: getDraftString(draft, 'credentialTitle'),
+        institution: getDraftString(draft, 'institution'),
+        licenseNumber: getDraftString(draft, 'licenseNumber'),
+        year: parseNullableNumber(getDraftString(draft, 'credentialYear')),
       }],
     },
   };
 }
 
-function buildPayoutBody(draft: Record<string, string>): SaveProviderSectionBody {
+function buildPayoutBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
   return {
     payout: {
-      payoutMode: draft.payoutMode ?? '',
-      accountHolderName: draft.accountHolderName ?? '',
-      notes: draft.notes ?? '',
+      payoutMode: getDraftString(draft, 'payoutMode'),
+      accountHolderName: getDraftString(draft, 'accountHolderName'),
+      notes: getDraftString(draft, 'notes'),
     },
   };
 }
@@ -614,6 +902,328 @@ async function runSavingAction(
   }
 }
 
+function hydrateDrafts(application: ProviderApplication): Drafts {
+  const drafts = createInitialDrafts();
+  for (const section of normalizeApplicationSections(application.sections)) {
+    applySectionToDrafts(drafts, section);
+  }
+  return drafts;
+}
+
+function normalizeApplicationSections(sections: ProviderApplication['sections']): ProviderApplicationSection[] {
+  if (!sections) {
+    return [];
+  }
+
+  if (Array.isArray(sections)) {
+    return sections.filter(isRecord) as ProviderApplicationSection[];
+  }
+
+  if (!isRecord(sections)) {
+    return [];
+  }
+
+  return Object.entries(sections).map(([sectionKey, value]) => {
+    const dictionaryMapping = backendSectionDictionaryKeys[sectionKey];
+    if (dictionaryMapping && isRecord(value)) {
+      return {
+        sectionKey: dictionaryMapping.sectionKey,
+        [dictionaryMapping.payloadKey]: value,
+      } as ProviderApplicationSection;
+    }
+
+    if (isRecord(value)) {
+      return { sectionKey, ...value } as ProviderApplicationSection;
+    }
+
+    return { sectionKey } as ProviderApplicationSection;
+  });
+}
+
+function applySectionToDrafts(drafts: Drafts, section: ProviderApplicationSection): void {
+  const sectionKey = getSectionKey(section);
+  if (!sectionKey) {
+    return;
+  }
+
+  switch (sectionKey) {
+    case 'basic-profile': {
+      const payload = getPayload(section, 'basicIdentity');
+      drafts['basic-profile'] = {
+        ...drafts['basic-profile'],
+        legalName: getRecordString(payload, 'legalName'),
+        displayName: getRecordString(payload, 'displayName'),
+        email: getRecordString(payload, 'email'),
+        phone: getRecordString(payload, 'phone'),
+        location: getRecordString(payload, 'location'),
+      };
+      break;
+    }
+    case 'bio': {
+      const payload = getPayload(section, 'bio');
+      drafts.bio = {
+        ...drafts.bio,
+        shortBio: getRecordString(payload, 'shortBio'),
+        longBio: getRecordString(payload, 'longBio'),
+        approach: getRecordString(payload, 'approach'),
+        languages: getRecordStringList(payload, 'languages'),
+      };
+      break;
+    }
+    case 'specializations': {
+      const payload = getPayload(section, 'specializations');
+      drafts.specializations = {
+        ...drafts.specializations,
+        focusAreas: getRecordStringList(payload, 'focusAreas'),
+        ageGroups: getRecordStringList(payload, 'ageGroups').join(', '),
+        therapyGoals: getRecordStringList(payload, 'therapyGoals').join(', '),
+      };
+      break;
+    }
+    case 'modalities': {
+      const payload = getPayload(section, 'modalities');
+      drafts.modalities = {
+        ...drafts.modalities,
+        modalities: getRecordStringList(payload, 'modalities'),
+        deliveryModes: getRecordStringList(payload, 'deliveryModes').join(', '),
+      };
+      break;
+    }
+    case 'session-details': {
+      const payload = getPayload(section, 'sessionDetails');
+      drafts['session-details'] = {
+        ...drafts['session-details'],
+        sessionLengthsMinutes: getRecordStringList(payload, 'sessionLengthsMinutes').join(', '),
+        availabilitySummary: getRecordString(payload, 'availabilitySummary'),
+        capacityPerWeek: getRecordString(payload, 'capacityPerWeek'),
+      };
+      break;
+    }
+    case 'credentials': {
+      const payload = getPayload(section, 'credentials');
+      const firstCredential = getFirstCredential(payload);
+      drafts.credentials = {
+        ...drafts.credentials,
+        credentialType: getRecordString(firstCredential, 'credentialType'),
+        credentialTitle: getRecordString(firstCredential, 'title'),
+        institution: getRecordString(firstCredential, 'institution'),
+        licenseNumber: getRecordString(firstCredential, 'licenseNumber'),
+        credentialYear: getRecordString(firstCredential, 'year'),
+      };
+      break;
+    }
+    case 'payout': {
+      const payload = getPayload(section, 'payout');
+      drafts.payout = {
+        ...drafts.payout,
+        payoutMode: getRecordString(payload, 'payoutMode'),
+        accountHolderName: getRecordString(payload, 'accountHolderName'),
+        notes: getRecordString(payload, 'notes'),
+      };
+      break;
+    }
+  }
+}
+
+function getSectionKey(section: ProviderApplicationSection): ProviderSectionKey | null {
+  const rawKey = section.sectionKey ?? section.key;
+  if (isProviderSectionKey(rawKey)) {
+    return rawKey;
+  }
+
+  if (getPayload(section, 'basicIdentity')) return 'basic-profile';
+  if (getPayload(section, 'bio')) return 'bio';
+  if (getPayload(section, 'specializations')) return 'specializations';
+  if (getPayload(section, 'modalities')) return 'modalities';
+  if (getPayload(section, 'sessionDetails')) return 'session-details';
+  if (getPayload(section, 'credentials')) return 'credentials';
+  if (getPayload(section, 'payout')) return 'payout';
+  return null;
+}
+
+function getPayload(section: ProviderApplicationSection, payloadKey: string): Record<string, unknown> | undefined {
+  const sectionRecord = section as Record<string, unknown>;
+  const direct = sectionRecord[payloadKey];
+  if (isRecord(direct)) {
+    return direct;
+  }
+
+  const data = section.data as Record<string, unknown> | null | undefined;
+  if (isRecord(data)) {
+    const nested = data[payloadKey];
+    if (isRecord(nested)) {
+      return nested;
+    }
+  }
+
+  return undefined;
+}
+
+function inferCompletedStages(application: ProviderApplication, currentStageIndex: number): Set<ProviderSectionKey> {
+  const completed = new Set<ProviderSectionKey>();
+  providerStages.slice(0, currentStageIndex).forEach((stage) => {
+    if (isProviderSectionKey(stage.key)) {
+      completed.add(stage.key);
+    }
+  });
+
+  normalizeApplicationSections(application.sections).forEach((section) => {
+    const sectionKey = getSectionKey(section);
+    if (sectionKey) {
+      completed.add(sectionKey);
+    }
+  });
+
+  return completed;
+}
+
+function purgeLegacyBrowserStorageDrafts(): void {
+  purgeLegacyDraftsFromStorage(window.localStorage);
+  purgeLegacyDraftsFromStorage(window.sessionStorage);
+}
+
+function purgeLegacyDraftsFromStorage(storage: Storage): void {
+  try {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key && isProviderDraftStorageKey(key)) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => storage.removeItem(key));
+  } catch {
+    // Legacy draft cleanup should not block provider onboarding.
+  }
+}
+
+function isProviderDraftStorageKey(key: string): boolean {
+  return key === draftStoragePrefix || key.startsWith(`${draftStoragePrefix}:`);
+}
+
+function readTaxonomyCache(): ProviderTaxonomy | null {
+  try {
+    const cached = window.localStorage.getItem(taxonomyCacheKey);
+    return cached ? normalizeTaxonomy(JSON.parse(cached)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTaxonomyCache(taxonomy: ProviderTaxonomy): void {
+  try {
+    window.localStorage.setItem(taxonomyCacheKey, JSON.stringify(taxonomy));
+  } catch {
+    // Taxonomy cache is an optimization only.
+  }
+}
+
+function normalizeTaxonomy(value: unknown): ProviderTaxonomy {
+  if (!isRecord(value)) {
+    return emptyTaxonomy;
+  }
+
+  return {
+    specializations: normalizeTerms(value.specializations),
+    therapyApproaches: normalizeTerms(value.therapyApproaches),
+    languages: normalizeTerms(value.languages),
+  };
+}
+
+function normalizeTerms(value: unknown): ProviderTaxonomyTerm[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(isRecord)
+    .map((item) => ({
+      key: getRecordString(item, 'key'),
+      label: getRecordString(item, 'label'),
+    }))
+    .filter((item) => item.key && item.label);
+}
+
+function getTermsForField(
+  field: ProviderStageField,
+  taxonomy: ProviderTaxonomy,
+  selectedValues: string[],
+): ProviderTaxonomyTerm[] {
+  const terms = field.taxonomyKey ? [...taxonomy[field.taxonomyKey]] : [];
+  for (const value of selectedValues) {
+    if (!terms.some((term) => doesTermMatchValue(term, value))) {
+      terms.push({ key: value, label: humanizeValue(value) });
+    }
+  }
+  return terms;
+}
+
+function toggleTerm(selectedValues: string[], term: ProviderTaxonomyTerm): string[] {
+  return isTermSelected(selectedValues, term) ? removeTerm(selectedValues, term) : [...selectedValues, term.key];
+}
+
+function removeTerm(selectedValues: string[], term: ProviderTaxonomyTerm): string[] {
+  return selectedValues.filter((value) => !doesTermMatchValue(term, value));
+}
+
+function isTermSelected(selectedValues: string[], term: ProviderTaxonomyTerm): boolean {
+  return selectedValues.some((value) => doesTermMatchValue(term, value));
+}
+
+function doesTermMatchValue(term: ProviderTaxonomyTerm, value: string): boolean {
+  return normalizeTermValue(value) === normalizeTermValue(term.key) || normalizeTermValue(value) === normalizeTermValue(term.label);
+}
+
+function normalizeTermValue(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function getDraftString(draft: Record<string, DraftValue>, key: string): string {
+  const value = draft[key];
+  return Array.isArray(value) ? value.join(', ') : value ?? '';
+}
+
+function getDraftList(draft: Record<string, DraftValue>, key: string): string[] {
+  const value = draft[key];
+  return Array.isArray(value) ? value : parseCsv(value);
+}
+
+function getRecordString(record: Record<string, unknown> | undefined, key: string): string {
+  const value = record?.[key];
+  if (Array.isArray(value)) {
+    return value.map(String).join(', ');
+  }
+
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value);
+}
+
+function getRecordStringList(record: Record<string, unknown> | undefined, key: string): string[] {
+  const value = record?.[key];
+  if (Array.isArray(value)) {
+    return value.map(String).map((item) => item.trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return parseCsv(value);
+  }
+
+  if (value === null || value === undefined) {
+    return [];
+  }
+
+  return [String(value)];
+}
+
+function getFirstCredential(record: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  const items = record?.items;
+  return Array.isArray(items) && isRecord(items[0]) ? items[0] : undefined;
+}
+
 function parseCsv(value = ''): string[] {
   return value.split(',').map((item) => item.trim()).filter(Boolean);
 }
@@ -625,6 +1235,26 @@ function parseNumberList(value = ''): number[] {
 function parseNullableNumber(value = ''): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) && value.trim() ? parsed : null;
+}
+
+function humanizeValue(value: string): string {
+  return value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+}
+
+function isProviderSectionKey(value: unknown): value is ProviderSectionKey {
+  return typeof value === 'string' && getProviderSectionStages().some((stage) => stage.key === value);
+}
+
+function getProviderSectionStages(): Array<ProviderStage & { key: ProviderSectionKey }> {
+  return providerStages.filter((stage): stage is ProviderStage & { key: ProviderSectionKey } => stage.key !== 'review');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {

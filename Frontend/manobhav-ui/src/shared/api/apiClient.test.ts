@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getBootstrapApiBaseUrl } from '../config/runtimeConfig';
-import { apiRequest, getApiBaseUrl } from './apiClient';
+import { ApiError, apiRequest, getApiBaseUrl } from './apiClient';
 
 describe('api client configuration', () => {
   afterEach(() => {
@@ -81,4 +81,64 @@ describe('api client configuration', () => {
     const retryInit = (fetchMock.mock.calls[2] as unknown as [RequestInfo | URL, RequestInit | undefined])[1];
     expect(new Headers(retryInit?.headers).get('X-CSRF-Token')).toBe('server-token');
   });
+
+  it('retries unsafe requests with a server-issued csrf token when a readable token is stale', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ title: 'CSRF token validation failed.' }, { status: 400 }))
+      .mockResolvedValueOnce(Response.json({ csrfToken: 'fresh-server-token' }))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    document.cookie = 'mbv_csrf=stale-token; path=/';
+
+    await apiRequest<{ ok: boolean }>('/api/provider-onboarding/applications', { method: 'POST' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const firstInit = (fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit | undefined])[1];
+    expect(new Headers(firstInit?.headers).get('X-CSRF-Token')).toBe('stale-token');
+    expect(fetchMock.mock.calls[1][0]).toBe('https://api.example.com/api/auth/csrf-token');
+    const retryInit = (fetchMock.mock.calls[2] as unknown as [RequestInfo | URL, RequestInit | undefined])[1];
+    expect(new Headers(retryInit?.headers).get('X-CSRF-Token')).toBe('fresh-server-token');
+  });
+
+  it('uses ProblemDetails title and detail for user-facing error messages', async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json(
+        { title: 'Invalid provider section.', detail: 'Please select at least one specialization.' },
+        { status: 400 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const failure = await captureApiError(() => apiRequest('/api/provider-onboarding/applications'));
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure.status).toBe(400);
+    expect(failure.message).toBe('Invalid provider section. Please select at least one specialization.');
+    expect(failure.message).not.toMatch(/API request failed with status/i);
+  });
+
+  it('does not leak raw status wording when an error response has no readable ProblemDetails body', async () => {
+    const fetchMock = vi.fn(async () => new Response('internal error', { status: 500 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const failure = await captureApiError(() => apiRequest('/api/provider-onboarding/applications'));
+
+    expect(failure.status).toBe(500);
+    expect(failure.message).toBe("We couldn't complete the request. Please try again.");
+    expect(failure.message).not.toMatch(/API request failed with status/i);
+  });
 });
+
+async function captureApiError(action: () => Promise<unknown>): Promise<ApiError> {
+  try {
+    await action();
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return error;
+    }
+    throw error;
+  }
+
+  throw new Error('Expected request to fail.');
+}

@@ -223,11 +223,15 @@ function readAndClearReturnTo(): string {
 }
 
 function normalizePostLoginReturnTo(returnTo: string | null): string {
-  if (!returnTo || returnTo === '/dashboard') {
+  if (!isSafePostLoginReturnTo(returnTo) || returnTo === '/dashboard') {
     return DEFAULT_POST_LOGIN_RETURN_TO;
   }
 
   return returnTo;
+}
+
+function isSafePostLoginReturnTo(returnTo: string | null): returnTo is string {
+  return Boolean(returnTo?.startsWith('/') && !returnTo.startsWith('//'));
 }
 
 function createRandomString(length = 32): string {

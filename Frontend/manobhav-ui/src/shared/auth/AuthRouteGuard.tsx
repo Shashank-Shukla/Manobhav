@@ -18,7 +18,7 @@ export function AuthRouteGuard({ children, returnTo }: AuthRouteGuardProps) {
     return <>{children}</>;
   }
 
-  return <AuthGuardMessage title="Sign in required" message="Please sign in with Cognito before continuing." returnTo={returnTo} />;
+  return <AuthGuardMessage title="Sign in required" message="Please sign in to continue." returnTo={returnTo} />;
 }
 
 function AuthGuardMessage({ message, returnTo, title }: { message: string; returnTo?: string; title: string }) {

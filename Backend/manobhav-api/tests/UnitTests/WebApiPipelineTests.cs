@@ -85,6 +85,66 @@ public sealed class WebApiPipelineTests
     }
 
     [Fact]
+    public async Task ProviderOnboardingTaxonomy_ReturnsActiveTermsInStableOrder()
+    {
+        await using var factory = new ManobhavApiFactory();
+        await factory.SeedAsync(db =>
+        {
+            db.ProviderTaxonomyTerms.AddRange(
+                new ProviderTaxonomyTerm
+                {
+                    Category = "specializations",
+                    TermKey = "depression",
+                    Label = "Depression",
+                    DisplayOrder = 2,
+                    IsActive = true
+                },
+                new ProviderTaxonomyTerm
+                {
+                    Category = "specializations",
+                    TermKey = "anxiety",
+                    Label = "Anxiety",
+                    DisplayOrder = 1,
+                    IsActive = true
+                },
+                new ProviderTaxonomyTerm
+                {
+                    Category = "specializations",
+                    TermKey = "inactive",
+                    Label = "Inactive",
+                    DisplayOrder = 0,
+                    IsActive = false
+                },
+                new ProviderTaxonomyTerm
+                {
+                    Category = "therapyApproaches",
+                    TermKey = "act",
+                    Label = "ACT - Acceptance & Commitment Therapy",
+                    DisplayOrder = 1,
+                    IsActive = true
+                },
+                new ProviderTaxonomyTerm
+                {
+                    Category = "languages",
+                    TermKey = "english",
+                    Label = "English",
+                    DisplayOrder = 1,
+                    IsActive = true
+                });
+        });
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync("/api/provider-onboarding/taxonomy");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var taxonomy = await response.Content.ReadFromJsonAsync<ProviderTaxonomyResponse>();
+        Assert.NotNull(taxonomy);
+        Assert.Equal(["anxiety", "depression"], taxonomy!.Specializations.Select(item => item.Key));
+        Assert.Equal("ACT - Acceptance & Commitment Therapy", Assert.Single(taxonomy.TherapyApproaches).Label);
+        Assert.Equal("english", Assert.Single(taxonomy.Languages).Key);
+    }
+
+    [Fact]
     public async Task AuthSessionAndLogout_UseServerSessionAndCsrfBoundary()
     {
         await using var factory = new ManobhavApiFactory();
@@ -234,6 +294,13 @@ public sealed class WebApiPipelineTests
             DisplayOrder = displayOrder
         };
     }
+
+    private sealed record ProviderTaxonomyResponse(
+        IReadOnlyList<ProviderTaxonomyOptionResponse> Specializations,
+        IReadOnlyList<ProviderTaxonomyOptionResponse> TherapyApproaches,
+        IReadOnlyList<ProviderTaxonomyOptionResponse> Languages);
+
+    private sealed record ProviderTaxonomyOptionResponse(string Key, string Label);
 
     private sealed class ManobhavApiFactory : WebApplicationFactory<Program>
     {

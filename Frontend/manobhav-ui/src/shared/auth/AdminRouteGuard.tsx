@@ -22,7 +22,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
   return (
     <AdminGuardMessage
       title={getAdminTitle(Boolean(session))}
-      message="Admin dashboard access is enforced by Cognito groups and backend API policies. React routing does not grant access."
+      message="Your account does not have admin access yet. Please use an admin-approved account or contact Manobhav support."
       actions={<AdminGuardActions isAuthenticated={Boolean(session)} />}
     />
   );

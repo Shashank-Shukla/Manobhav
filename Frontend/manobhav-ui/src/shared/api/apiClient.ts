@@ -2,12 +2,21 @@ import { getRuntimeConfig } from '../config/runtimeConfig';
 
 export class ApiError extends Error {
   readonly status: number;
+  readonly problemDetails?: ProblemDetails;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, problemDetails?: ProblemDetails) {
     super(message);
     this.status = status;
+    this.problemDetails = problemDetails;
   }
 }
+
+type ProblemDetails = {
+  title?: string;
+  detail?: string;
+  status?: number;
+  [key: string]: unknown;
+};
 
 export function getApiBaseUrl(): string {
   return getRuntimeConfig().apiBaseUrl;
@@ -32,7 +41,7 @@ export async function apiRequest<T>(
     response = await sendApiRequest(baseUrl, path, options, csrfToken);
   }
 
-  assertSuccessfulResponse(response);
+  await assertSuccessfulResponse(response);
   return parseJsonResponse<T>(response);
 }
 
@@ -100,13 +109,13 @@ async function shouldRetryWithServerCsrfToken(
   response: Response,
   options: { method?: string; body?: unknown; signal?: AbortSignal },
 ): Promise<boolean> {
-  if (!isUnsafeMethod(options.method) || response.status !== 400 || readCookie('mbv_csrf')) {
+  if (!isUnsafeMethod(options.method) || response.status !== 400) {
     return false;
   }
 
   try {
-    const body = (await response.clone().json()) as { title?: string };
-    return body.title === 'CSRF token validation failed.';
+    const body = (await response.clone().json()) as ProblemDetails;
+    return isCsrfProblem(body);
   } catch {
     return false;
   }
@@ -118,14 +127,15 @@ async function fetchServerCsrfToken(baseUrl: string, signal?: AbortSignal): Prom
     credentials: 'include',
     signal,
   });
-  assertSuccessfulResponse(response);
+  await assertSuccessfulResponse(response);
   const body = (await response.json()) as { csrfToken?: string };
   return body.csrfToken ?? '';
 }
 
-function assertSuccessfulResponse(response: Response): void {
+async function assertSuccessfulResponse(response: Response): Promise<void> {
   if (!response.ok) {
-    throw new ApiError(`API request failed with status ${response.status}.`, response.status);
+    const problemDetails = await parseProblemDetails(response);
+    throw new ApiError(getFriendlyErrorMessage(problemDetails), response.status, problemDetails);
   }
 }
 
@@ -135,4 +145,38 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+async function parseProblemDetails(response: Response): Promise<ProblemDetails | undefined> {
+  try {
+    const body = await response.clone().json();
+    if (!body || typeof body !== 'object') {
+      return undefined;
+    }
+
+    return body as ProblemDetails;
+  } catch {
+    return undefined;
+  }
+}
+
+function getFriendlyErrorMessage(problemDetails?: ProblemDetails): string {
+  const title = getProblemText(problemDetails?.title);
+  const detail = getProblemText(problemDetails?.detail);
+  const parts = [title, detail].filter((part, index, values): part is string => Boolean(part) && values.indexOf(part) === index);
+
+  if (parts.length === 0) {
+    return "We couldn't complete the request. Please try again.";
+  }
+
+  return parts.join(' ');
+}
+
+function getProblemText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isCsrfProblem(problemDetails: ProblemDetails): boolean {
+  const text = `${problemDetails.title ?? ''} ${problemDetails.detail ?? ''}`.toLowerCase();
+  return text.includes('csrf') && text.includes('token');
 }

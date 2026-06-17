@@ -27,6 +27,7 @@ export type VisitorFlow = {
   flowKey: string;
   formDefinitionId: string;
   formVersion: number;
+  consentSections: IntakeConsentSection[];
   questions: VisitorFlowQuestion[];
 };
 
@@ -53,8 +54,15 @@ export type IntakeSection = {
   id: string;
   sectionKey: string;
   title: string;
+  description?: string | null;
   displayOrder: number;
   questions: IntakeQuestion[];
+};
+
+export type IntakeConsentSection = {
+  sectionNumber: 5 | 6 | 7;
+  title: string;
+  items: string[];
 };
 
 export type IntakeForm = {
@@ -90,6 +98,7 @@ type IntakeSectionApiResponse = {
   id: string;
   sectionKey: string;
   title: string;
+  description?: string | null;
   displayOrder: number;
   questions: IntakeQuestionApiResponse[];
 };
@@ -208,6 +217,7 @@ function mapIntakeFormToVisitorFlow(form: IntakeForm): VisitorFlow {
     flowKey: form.kind,
     formDefinitionId: form.id,
     formVersion: form.version,
+    consentSections: mapIntakeConsentSections(form.sections),
     questions: flattenQuestions(form),
   };
 }
@@ -227,6 +237,7 @@ function normalizeIntakeSection(section: IntakeSectionApiResponse): IntakeSectio
     id: section.id,
     sectionKey: section.sectionKey,
     title: section.title,
+    description: section.description,
     displayOrder: section.displayOrder,
     questions: section.questions.map(normalizeIntakeQuestion),
   };
@@ -257,6 +268,7 @@ function normalizeIntakeQuestionOption(option: IntakeQuestionOptionApiResponse):
 
 function flattenQuestions(form: IntakeForm): VisitorFlowQuestion[] {
   return form.sections
+    .filter((section) => !isConsentSection(section))
     .flatMap((section) => section.questions)
     .sort((left, right) => left.displayOrder - right.displayOrder)
     .map((question, index) => ({
@@ -269,4 +281,44 @@ function flattenQuestions(form: IntakeForm): VisitorFlowQuestion[] {
       sensitivity: question.sensitivity,
       options: question.options,
     }));
+}
+
+function mapIntakeConsentSections(sections: IntakeSection[]): IntakeConsentSection[] {
+  return sections
+    .filter(isConsentSection)
+    .sort((left, right) => left.displayOrder - right.displayOrder)
+    .map(toIntakeConsentSection)
+    .filter((section): section is IntakeConsentSection => section !== null);
+}
+
+function toIntakeConsentSection(section: IntakeSection): IntakeConsentSection | null {
+  if (!isConsentSectionNumber(section.displayOrder)) {
+    return null;
+  }
+
+  const items = splitConsentDescription(section.description);
+  if (items.length === 0) {
+    return null;
+  }
+
+  return {
+    sectionNumber: section.displayOrder,
+    title: section.title,
+    items,
+  };
+}
+
+function isConsentSection(section: IntakeSection): boolean {
+  return isConsentSectionNumber(section.displayOrder);
+}
+
+function isConsentSectionNumber(value: number): value is 5 | 6 | 7 {
+  return value === 5 || value === 6 || value === 7;
+}
+
+function splitConsentDescription(description: string | null | undefined): string[] {
+  return (description ?? '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

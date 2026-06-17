@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { useAuthSession } from '../auth/useAuthSession';
 import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
 
@@ -17,6 +18,7 @@ type NavItem = {
 
 export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps) {
   const location = useLocation();
+  const { session } = useAuthSession();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -27,6 +29,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
   }, []);
 
   const navItems = getNavItems(location.pathname);
+  const isAuthenticated = session?.isAuthenticated === true;
 
   return (
     <>
@@ -42,9 +45,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
           <DesktopNavLinks items={navItems} onNavigate={onNavigate} />
 
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="nav" onClick={() => onNavigate('/login')}>
-              Login
-            </Button>
+            <AuthNavAction isAuthenticated={isAuthenticated} onNavigate={onNavigate} variant="desktop" />
           </div>
 
           <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-gray-600">
@@ -54,6 +55,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
       </nav>
 
       <MobileNavMenu
+        isAuthenticated={isAuthenticated}
         isOpen={mobileOpen}
         items={navItems}
         onClose={() => setMobileOpen(false)}
@@ -74,11 +76,13 @@ function DesktopNavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate: 
 }
 
 function MobileNavMenu({
+  isAuthenticated,
   isOpen,
   items,
   onClose,
   onNavigate,
 }: {
+  isAuthenticated: boolean;
   isOpen: boolean;
   items: NavItem[];
   onClose: () => void;
@@ -94,11 +98,53 @@ function MobileNavMenu({
         {items.map((item) => (
           <NavAnchor key={item.label} iconSize={18} item={item} onClose={onClose} onNavigate={onNavigate} />
         ))}
-        <Button variant="primary" onClick={() => navigateFromMobile('/login', onNavigate, onClose)}>
-          Login
-        </Button>
+        <AuthNavAction
+          isAuthenticated={isAuthenticated}
+          onClose={onClose}
+          onNavigate={onNavigate}
+          variant="mobile"
+        />
       </div>
     </div>
+  );
+}
+
+function AuthNavAction({
+  isAuthenticated,
+  onClose,
+  onNavigate,
+  variant,
+}: {
+  isAuthenticated: boolean;
+  onClose?: () => void;
+  onNavigate: (path: string) => void;
+  variant: 'desktop' | 'mobile';
+}) {
+  const path = isAuthenticated ? '/dashboard/patient' : '/login';
+  const handleClick = () => navigateFromMobile(path, onNavigate, onClose);
+
+  if (!isAuthenticated) {
+    return (
+      <Button variant={variant === 'mobile' ? 'primary' : 'nav'} onClick={handleClick}>
+        Login
+      </Button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label="Open profile"
+      className={getProfileButtonClassName(variant)}
+      onClick={handleClick}
+    >
+      <span
+        aria-hidden="true"
+        className="flex h-full w-full items-center justify-center rounded-full bg-slate-800 text-sm font-semibold text-white shadow-sm"
+      >
+        U
+      </span>
+    </button>
   );
 }
 
@@ -161,9 +207,16 @@ function handleNavClick(
   onNavigate(path);
 }
 
-function navigateFromMobile(path: string, onNavigate: (path: string) => void, onClose: () => void): void {
-  onClose();
+function navigateFromMobile(path: string, onNavigate: (path: string) => void, onClose?: () => void): void {
+  onClose?.();
   onNavigate(path);
+}
+
+function getProfileButtonClassName(variant: 'desktop' | 'mobile'): string {
+  const base =
+    'inline-flex shrink-0 items-center justify-center rounded-full border border-white/70 bg-white p-1 shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#9CAF88]/40';
+
+  return variant === 'mobile' ? `${base} mx-auto h-12 w-12` : `${base} h-10 w-10`;
 }
 
 function getNavClassName(variant: 'glass' | 'flat', scrolled: boolean): string {

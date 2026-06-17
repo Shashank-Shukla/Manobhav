@@ -25,6 +25,7 @@ public sealed class ProviderOnboardingSectionService
         "credentials",
         "payout"
     ];
+    private static readonly HashSet<string> CurrentStepKeys = [.. SectionKeys, "review"];
 
     public IReadOnlySet<string> KnownSectionKeys => SectionKeys;
 
@@ -75,7 +76,7 @@ public sealed class ProviderOnboardingSectionService
 
     private string NormalizeCurrentStep(string sectionKey, string? currentStep)
     {
-        return string.IsNullOrWhiteSpace(currentStep) || !SectionKeys.Contains(currentStep)
+        return string.IsNullOrWhiteSpace(currentStep) || !CurrentStepKeys.Contains(currentStep)
             ? sectionKey
             : currentStep;
     }

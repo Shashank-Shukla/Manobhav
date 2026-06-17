@@ -28,6 +28,25 @@ describe('LoginRoute', () => {
     expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/appointment' });
   });
 
+  it('opens create account from the mode query and preserves provider onboarding return target', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/login?mode=sign-up&returnTo=%2Fonboarding%2Fprovider']}>
+        <LoginPage onBack={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: /create account/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^google$/i }));
+
+    expect(startCognitoLogin).toHaveBeenCalledWith({
+      identityProvider: 'Google',
+      returnTo: '/onboarding/provider',
+    });
+  });
+
   it('defaults Google login to the patient dashboard when no return target is provided', async () => {
     const user = userEvent.setup();
 
@@ -56,7 +75,7 @@ describe('LoginRoute', () => {
     expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/dashboard/patient' });
   });
 
-  it('anchors the desktop back button just above the auth container', () => {
+  it('centers the desktop back button on the auth container top-left corner', () => {
     render(
       <MemoryRouter initialEntries={['/login']}>
         <LoginPage onBack={vi.fn()} />
@@ -67,8 +86,17 @@ describe('LoginRoute', () => {
 
     expect(backButton.parentElement).toHaveClass('relative', 'w-full', 'max-w-5xl');
     expect(backButton.nextElementSibling).toHaveClass('relative', 'grid', 'w-full');
-    expect(backButton).toHaveClass('absolute', 'bottom-full', 'left-0', 'mb-3', 'hidden', 'md:inline-flex');
+    expect(backButton).toHaveClass(
+      'absolute',
+      'left-0',
+      'top-0',
+      '-translate-x-1/2',
+      '-translate-y-1/2',
+      'hidden',
+      'md:inline-flex',
+    );
     expect(backButton).toHaveClass('shadow-xl');
+    expect(backButton).not.toHaveClass('bottom-full');
     expect(backButton).not.toHaveClass('ml-2');
   });
 });

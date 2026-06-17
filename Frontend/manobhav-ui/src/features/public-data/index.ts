@@ -8,6 +8,7 @@ export {
   submitPartialIntake,
   type FeaturedExpert,
   type IntakeAnswerValue,
+  type IntakeConsentSection,
   type IntakeForm,
   type IntakeQuestion,
   type IntakeQuestionOption,

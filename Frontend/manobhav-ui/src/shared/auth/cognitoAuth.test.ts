@@ -104,6 +104,38 @@ describe('cognito auth helpers', () => {
     expect(returnTo).toBe('/dashboard/patient');
   });
 
+  it('preserves provider onboarding as the stored post-login return target', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({ isAuthenticated: true, expiresAtUtc: '2026-06-16T12:00:00Z', groups: [] }),
+      ),
+    );
+    window.sessionStorage.setItem('manobhav-auth-state', 'state-1');
+    window.sessionStorage.setItem('manobhav-auth-code-verifier', 'verifier-1');
+    window.sessionStorage.setItem('manobhav-auth-return-to', '/onboarding/provider');
+
+    const returnTo = await completeCognitoRedirect('https://app.example.com/callback?code=auth-code&state=state-1');
+
+    expect(returnTo).toBe('/onboarding/provider');
+  });
+
+  it('falls back to the patient dashboard when the stored return target is unsafe', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({ isAuthenticated: true, expiresAtUtc: '2026-06-16T12:00:00Z', groups: [] }),
+      ),
+    );
+    window.sessionStorage.setItem('manobhav-auth-state', 'state-1');
+    window.sessionStorage.setItem('manobhav-auth-code-verifier', 'verifier-1');
+    window.sessionStorage.setItem('manobhav-auth-return-to', 'https://evil.example/onboarding/provider');
+
+    const returnTo = await completeCognitoRedirect('https://app.example.com/callback?code=auth-code&state=state-1');
+
+    expect(returnTo).toBe('/dashboard/patient');
+  });
+
   it('requests an email OTP through the backend auth API', async () => {
     const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);

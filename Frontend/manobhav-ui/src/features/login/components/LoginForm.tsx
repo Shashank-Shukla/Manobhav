@@ -3,6 +3,7 @@ import TextField from '@mui/material/TextField';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../shared/primitives/Button';
 import * as cognitoAuth from '../../../shared/auth/cognitoAuth';
+import { GoogleAuthButton } from './GoogleAuthButton';
 
 type LoginFormProps = {
   onShowSignUp: () => void;
@@ -111,9 +112,7 @@ export function LoginForm({ onShowSignUp, returnTo = '/dashboard' }: LoginFormPr
           </div>
 
           <div>
-            <Button type="button" variant="secondary" className="w-full text-sm" onClick={() => signIn('Google')}>
-              Google
-            </Button>
+            <GoogleAuthButton onClick={() => signIn('Google')} />
           </div>
         </form>
 
