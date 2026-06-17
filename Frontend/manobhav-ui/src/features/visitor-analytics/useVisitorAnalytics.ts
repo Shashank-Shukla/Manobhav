@@ -103,7 +103,7 @@ export async function recordVisitorEvent(input: {
   signal?: AbortSignal;
 }): Promise<void> {
   const config = readVisitorAnalyticsConfig();
-  if (!config.enabled || !config.apiBaseUrl) {
+  if (!canStartFullCapture(config)) {
     return;
   }
 
@@ -113,23 +113,27 @@ export async function recordVisitorEvent(input: {
   }
 
   const properties = toStringProperties(input.properties);
-  assertSafeAnalyticsProperties(properties);
-  const response = await fetch(`${config.apiBaseUrl}/api/visitors/events`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({
-      eventType: input.eventType,
-      route: input.route,
-      targetKey: input.targetKey,
-      properties,
-      clientTimestampUtc: new Date().toISOString(),
-    }),
-    signal: input.signal,
-  });
+  try {
+    assertSafeAnalyticsProperties(properties);
+    const response = await fetch(`${config.apiBaseUrl}/api/visitors/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        eventType: input.eventType,
+        route: input.route,
+        targetKey: input.targetKey,
+        properties,
+        clientTimestampUtc: new Date().toISOString(),
+      }),
+      signal: input.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Visitor event failed with status ${response.status}.`);
+    if (!response.ok) {
+      reportAnalyticsFailure('Visitor event failed.', new Error(`status ${response.status}`));
+    }
+  } catch (error: unknown) {
+    reportAnalyticsFailure('Visitor event failed.', error);
   }
 }
 

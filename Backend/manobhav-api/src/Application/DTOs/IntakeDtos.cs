@@ -56,7 +56,8 @@ public sealed record SaveIntakeAnswerRequest(
     string? CurrentStep,
     int TimeToAnswerMs,
     DateTimeOffset? ClientTimestampUtc,
-    bool IsAdvancing = false);
+    bool IsAdvancing = false,
+    string? StepId = null);
 
 public sealed record SubmitPartialIntakeRequest(bool PolicyAcknowledged);
 

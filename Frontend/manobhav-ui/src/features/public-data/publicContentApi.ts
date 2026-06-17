@@ -154,6 +154,7 @@ export async function createIntakeSubmission(input: {
 export async function saveIntakeAnswer(input: {
   submissionId: string;
   questionKey: string;
+  stepId?: string;
   answer: IntakeAnswerValue;
   currentStep: string;
   isAdvancing?: boolean;
@@ -167,6 +168,7 @@ export async function saveIntakeAnswer(input: {
       body: {
         answer: input.answer,
         currentStep: input.currentStep,
+        ...(input.stepId ? { stepId: input.stepId } : {}),
         ...(input.isAdvancing === undefined ? {} : { isAdvancing: input.isAdvancing }),
         timeToAnswerMs: Math.max(0, Math.round(input.timeToAnswerMs)),
       },

@@ -104,6 +104,67 @@ describe('patient journey intake inputs', () => {
     expect(JSON.stringify(analyticsBodies)).not.toContain('Feeling steady');
     expect(JSON.stringify(analyticsBodies)).not.toContain('Sleeping better this week');
   });
+
+  it('continues after a required answer save when optional visitor analytics fails', async () => {
+    const user = userEvent.setup();
+    const answerBodies: Array<Record<string, unknown>> = [];
+    const analyticsBodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith('/api/visitors/events')) {
+          analyticsBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+          return apiJson({ title: 'Full visitor event capture is not enabled.' }, 400);
+        }
+
+        return getApiResponse(url, init, answerBodies, analyticsBodies);
+      }),
+    );
+
+    render(<JourneyPage onBackHome={vi.fn()} onFinish={vi.fn()} />);
+
+    expect(await screen.findByText(/short check-in/i)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/short check-in/i), 'Feeling steady');
+    await user.click(screen.getByRole('button', { name: /next question/i }));
+
+    expect(await screen.findByText(/share more context/i)).toBeInTheDocument();
+    expect(screen.queryByText(/visitor event failed/i)).not.toBeInTheDocument();
+    expect(answerBodies).toHaveLength(1);
+  });
+
+  it('deduplicates repeated saves for the same journey step and includes a stable step id', async () => {
+    const answerBodies: Array<Record<string, unknown>> = [];
+    const analyticsBodies: Array<Record<string, unknown>> = [];
+    const pendingAnswerResponses: Array<() => void> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes('/api/intake/submissions/submission-1/answers/')) {
+          answerBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+          return new Promise<Response>((resolve) => {
+            pendingAnswerResponses.push(() => resolve(apiJson(createBackendSubmission())));
+          });
+        }
+
+        return getApiResponse(url, init, answerBodies, analyticsBodies);
+      }),
+    );
+
+    render(<JourneyPage onBackHome={vi.fn()} onFinish={vi.fn()} />);
+
+    expect(await screen.findByText(/short check-in/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/short check-in/i), { target: { value: 'Feeling steady' } });
+    fireEvent.click(screen.getByRole('button', { name: /next question/i }));
+    fireEvent.click(screen.getByRole('button', { name: /next question/i }));
+
+    await waitFor(() => expect(answerBodies).toHaveLength(1));
+    expect(answerBodies[0]).toEqual(expect.objectContaining({ stepId: 'q-1' }));
+
+    pendingAnswerResponses.forEach((resolve) => resolve());
+    expect(await screen.findByText(/share more context/i)).toBeInTheDocument();
+  });
 });
 
 function getApiResponse(

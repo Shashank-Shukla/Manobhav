@@ -33,6 +33,8 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
   const [policyAcknowledged, setPolicyAcknowledged] = useState(false);
   const currentStartedAtRef = useRef(0);
   const lastScrollTs = useRef(0);
+  const savingStepRef = useRef(false);
+  const savedStepSignaturesRef = useRef(new Set<string>());
 
   const totalSteps = questions.length + 1; // final step = submit
   const atFirst = current === 0;
@@ -128,6 +130,7 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
   const saveQuestionAnswer = async (action: string): Promise<boolean> => {
     const question = getCurrentQuestion(questions, current);
     if (!question) return true;
+    if (savingStepRef.current) return false;
     if (!submissionId) {
       setSaveError('Unable to store journey response because the intake session is not ready.');
       return false;
@@ -138,6 +141,12 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
       return false;
     }
 
+    const saveSignature = getAnswerSaveSignature(submissionId, question, answer);
+    if (savedStepSignaturesRef.current.has(saveSignature)) {
+      return true;
+    }
+
+    savingStepRef.current = true;
     setIsSavingStep(true);
     setSaveError('');
     const result = await tryRecordQuestionAnswer(
@@ -147,6 +156,10 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
       action,
       currentStartedAtRef.current,
     );
+    if (result.saved) {
+      savedStepSignaturesRef.current.add(saveSignature);
+    }
+    savingStepRef.current = false;
     setIsSavingStep(false);
     setSaveError(result.errorMessage);
     return result.saved;
@@ -573,15 +586,16 @@ function renderSingleChoiceInput({ answer, onChange, question }: QuestionInputPr
   return (
     <div aria-label={question.text} className="grid gap-3 sm:grid-cols-2" role="radiogroup">
       {question.options.map((option) => (
-        <label className={getOptionClassName()} key={option.value}>
+        <label className={getChoiceCardClassName(answer === option.value)} key={option.value}>
           <input
             checked={answer === option.value}
-            className="h-4 w-4 accent-[#9CAF88]"
+            className="sr-only"
             name={question.id}
             onChange={() => onChange(option.value)}
             type="radio"
           />
-          <span>{option.label}</span>
+          <ChoiceMarker selected={answer === option.value} type="radio" />
+          <span className="min-w-0 flex-1">{option.label}</span>
         </label>
       ))}
     </div>
@@ -589,17 +603,19 @@ function renderSingleChoiceInput({ answer, onChange, question }: QuestionInputPr
 }
 
 function renderMultiChoiceInput({ answer, onChange, question }: QuestionInputProps) {
+  const selectedValues = toMultiChoiceAnswer(answer);
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {question.options.map((option) => (
-        <label className={getOptionClassName()} key={option.value}>
+        <label className={getChoiceCardClassName(selectedValues.includes(option.value))} key={option.value}>
           <input
-            checked={toMultiChoiceAnswer(answer).includes(option.value)}
-            className="h-4 w-4 accent-[#9CAF88]"
+            checked={selectedValues.includes(option.value)}
+            className="sr-only"
             onChange={() => onChange(toggleMultiChoiceAnswer(answer, option.value))}
             type="checkbox"
           />
-          <span>{option.label}</span>
+          <ChoiceMarker selected={selectedValues.includes(option.value)} type="checkbox" />
+          <span className="min-w-0 flex-1">{option.label}</span>
         </label>
       ))}
     </div>
@@ -626,15 +642,30 @@ function renderScaleInput({ answer, onChange, question }: QuestionInputProps) {
 
 function renderAcknowledgementInput({ answer, onChange }: QuestionInputProps) {
   return (
-    <label className={getOptionClassName()}>
+    <label className={getChoiceCardClassName(answer === true)}>
       <input
         checked={answer === true}
-        className="h-4 w-4 accent-[#9CAF88]"
+        className="sr-only"
         onChange={(event) => onChange(event.target.checked)}
         type="checkbox"
       />
-      <span>I acknowledge</span>
+      <ChoiceMarker selected={answer === true} type="checkbox" />
+      <span className="min-w-0 flex-1">I acknowledge</span>
     </label>
+  );
+}
+
+function ChoiceMarker({ selected, type }: { selected: boolean; type: 'checkbox' | 'radio' }) {
+  const shape = type === 'radio' ? 'rounded-full' : 'rounded-md';
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-5 w-5 shrink-0 items-center justify-center border transition ${shape} ${
+        selected ? 'border-[#7A8C6A] bg-[#9CAF88] shadow-sm' : 'border-slate-300 bg-white'
+      }`}
+    >
+      <span className={`h-2 w-2 ${type === 'radio' ? 'rounded-full' : 'rounded-[2px]'} bg-white transition ${selected ? 'opacity-100' : 'opacity-0'}`} />
+    </span>
   );
 }
 
@@ -747,8 +778,9 @@ async function tryRecordQuestionAnswer(
     await saveIntakeAnswer({
       submissionId,
       questionKey: question.questionKey,
+      stepId: question.id,
       answer: response,
-      currentStep: question.questionKey,
+      currentStep: question.id,
       isAdvancing: true,
       timeToAnswerMs,
     });
@@ -757,6 +789,7 @@ async function tryRecordQuestionAnswer(
       route: '/journey',
       targetKey: question.id,
       properties: {
+        stepId: question.id,
         questionId: question.id,
         stepOrder: question.stepOrder,
         answered: hasJourneyAnswer(response, question.responseType),
@@ -776,6 +809,14 @@ function getJourneySaveErrorMessage(error: unknown): string {
 
 function getNowMs(): number {
   return Date.now();
+}
+
+function getAnswerSaveSignature(submissionId: string, question: VisitorFlowQuestion, answer: JourneyAnswer): string {
+  return `${submissionId}:${question.id}:${stableAnswerKey(answer)}`;
+}
+
+function stableAnswerKey(answer: JourneyAnswer): string {
+  return JSON.stringify(Array.isArray(answer) ? [...answer].sort() : answer);
 }
 
 async function loadVisitorFlowSession(signal: AbortSignal): Promise<{ questions: VisitorFlowQuestion[]; submissionId: string }> {
@@ -857,8 +898,10 @@ function getTextInputClassName(): string {
   return 'w-full bg-transparent border-0 border-b-2 border-b-[#9CAF88] rounded-none px-1 pb-3 text-lg outline-none focus:ring-0 focus:border-b-[#7A8C6A]';
 }
 
-function getOptionClassName(): string {
-  return 'flex items-center gap-3 rounded-lg border border-white/50 bg-white/40 px-4 py-3 text-sm font-medium text-gray-700';
+function getChoiceCardClassName(selected: boolean): string {
+  const selectedClassName = 'border-[#9CAF88] bg-[#F1F6EE] text-slate-800 shadow-[0_12px_28px_rgba(156,175,136,0.22)] ring-2 ring-[#9CAF88]/25';
+  const idleClassName = 'border-slate-200/80 bg-white/70 text-slate-700 shadow-sm hover:border-[#B0CED6] hover:bg-white hover:shadow-md';
+  return `group flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold transition focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#9CAF88] ${selected ? selectedClassName : idleClassName}`;
 }
 
 function rememberActiveIntakeSubmission(submissionId: string): void {

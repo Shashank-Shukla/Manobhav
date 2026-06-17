@@ -112,6 +112,35 @@ public sealed class IntakeWorkflowServiceTests
     }
 
     [Fact]
+    public async Task SaveAnswerAsync_UpsertsRepeatedStepAnswers()
+    {
+        var repository = new InMemoryIntakeRepository();
+        var service = new IntakeWorkflowService(repository);
+        var form = await repository.CreateFormAsync(CancellationToken.None);
+        var submission = await service.CreateSubmissionAsync(
+            new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            CancellationToken.None);
+
+        await service.SaveAnswerAsync(
+            submission.Id,
+            "therapy_goals",
+            new SaveIntakeAnswerRequest("First answer", "step-1", 100, DateTimeOffset.UtcNow, true, "step-1"),
+            new IntakeOwnerContext(null, submission.VisitorSessionId),
+            CancellationToken.None);
+        await service.SaveAnswerAsync(
+            submission.Id,
+            "therapy_goals",
+            new SaveIntakeAnswerRequest("Updated answer", "step-1", 200, DateTimeOffset.UtcNow, true, "step-1"),
+            new IntakeOwnerContext(null, submission.VisitorSessionId),
+            CancellationToken.None);
+
+        var answer = Assert.Single(repository.Answers);
+        Assert.Equal(submission.Id, answer.SubmissionId);
+        Assert.Equal("therapy_goals", answer.QuestionKey);
+        Assert.Contains("Updated answer", answer.AnswerJsonb);
+    }
+
+    [Fact]
     public async Task SaveAnswerAsync_RejectsMissingRequiredAnswerWhenAdvancing()
     {
         var repository = new InMemoryIntakeRepository();
