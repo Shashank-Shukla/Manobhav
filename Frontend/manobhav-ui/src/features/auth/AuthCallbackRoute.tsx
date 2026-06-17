@@ -18,8 +18,8 @@ export function AuthCallbackRoute() {
 
         if (active) navigate(returnTo, { replace: true });
       })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Sign in failed.');
+      .catch(() => {
+        if (active) setError("We couldn't complete sign in. Please try again.");
       });
 
     return () => {
@@ -32,7 +32,7 @@ export function AuthCallbackRoute() {
       <section className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-8 text-center shadow-lg">
         <h1 className="text-2xl font-semibold">{error ? 'Sign in failed' : 'Completing sign in'}</h1>
         <p className="mt-3 text-sm text-gray-600">
-          {error || 'Please wait while Manobhav verifies the Cognito response.'}
+          {error || 'Please wait while Manobhav securely completes sign in.'}
         </p>
         {error && (
           <Button variant="primary" className="mt-6" onClick={() => navigate('/login', { replace: true })}>

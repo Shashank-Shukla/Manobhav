@@ -18,9 +18,27 @@ describe('public intake API contract', () => {
 
     expect(form.kind).toBe('PatientIntake');
     expect(form.title).toBe('Patient Intake');
+    expect(form.sections[1].description).toBe('API section description');
     expect(form.sections[0].questions[0].responseType).toBe('Text');
     expect(form.sections[0].questions[0].options[0].value).toBe('sleep_yes');
     expect(flow.flowKey).toBe('PatientIntake');
+    expect(flow.consentSections).toEqual([
+      {
+        sectionNumber: 5,
+        title: 'Consent, Policies & Confidentiality',
+        items: ['API consent line one.', 'API consent line two.'],
+      },
+      {
+        sectionNumber: 6,
+        title: 'Crisis and Emergency Support',
+        items: ['API crisis line one.', 'API crisis line two.'],
+      },
+      {
+        sectionNumber: 7,
+        title: 'Consent to Therapy',
+        items: ['API therapy consent line.'],
+      },
+    ]);
     expect(flow.questions[0]).toEqual(
       expect.objectContaining({
         questionKey: 'sleep_quality',
@@ -140,6 +158,42 @@ function createBackendIntakeForm() {
             ],
           },
         ],
+      },
+      {
+        id: 'section-2',
+        sectionKey: 'support',
+        title: 'Support',
+        description: 'API section description',
+        displayOrder: 2,
+        isRequired: false,
+        questions: [],
+      },
+      {
+        id: 'section-5',
+        sectionKey: 'consent_policies_confidentiality',
+        title: 'Consent, Policies & Confidentiality',
+        description: 'API consent line one.\nAPI consent line two.',
+        displayOrder: 5,
+        isRequired: true,
+        questions: [],
+      },
+      {
+        id: 'section-6',
+        sectionKey: 'emergency_disclaimer',
+        title: 'Crisis and Emergency Support',
+        description: 'API crisis line one.\nAPI crisis line two.',
+        displayOrder: 6,
+        isRequired: true,
+        questions: [],
+      },
+      {
+        id: 'section-7',
+        sectionKey: 'consent_to_therapy',
+        title: 'Consent to Therapy',
+        description: 'API therapy consent line.',
+        displayOrder: 7,
+        isRequired: true,
+        questions: [],
       },
     ],
   };

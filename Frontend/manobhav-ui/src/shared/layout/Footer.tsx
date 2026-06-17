@@ -38,7 +38,7 @@ export function Footer() {
           <ul className="space-y-4 text-gray-500">
             <li><a href="/about" className="hover:text-[#D6A2AD]">About Us</a></li>
             <li><a href="/disclaimer" className="hover:text-[#D6A2AD]">Disclaimer</a></li>
-            <li><a href="/onboarding/provider" className="hover:text-[#D6A2AD]">Careers</a></li>
+            <li><a href="/login?mode=sign-up&returnTo=%2Fonboarding%2Fprovider" className="hover:text-[#D6A2AD]">Careers</a></li>
             <li><a href="#" className="hover:text-[#D6A2AD]">Contact</a></li>
           </ul>
         </div>

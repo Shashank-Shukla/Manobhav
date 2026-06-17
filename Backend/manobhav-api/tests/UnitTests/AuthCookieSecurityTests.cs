@@ -153,6 +153,36 @@ public sealed class AuthCookieSecurityTests
         Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("wrong-token")]
+    public async Task CsrfMiddleware_RejectsMissingOrInvalidCsrfHeaderWithRetryableMessage(string? headerValue)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Post;
+        context.Request.Path = "/api/provider-onboarding/applications";
+        context.Request.Headers.Cookie = "mbv_auth=access-token; mbv_csrf=csrf-cookie";
+        context.Response.Body = new MemoryStream();
+        if (headerValue is not null)
+        {
+            context.Request.Headers["X-CSRF-Token"] = headerValue;
+        }
+        var nextCalled = false;
+        var middleware = new CsrfProtectionMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        }, CreateOptions());
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.Body.Position = 0;
+        var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
+        Assert.False(nextCalled);
+        Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
+        Assert.Contains("CSRF token validation failed.", body);
+    }
+
     [Fact]
     public async Task CsrfMiddleware_AllowsUnsafeCookieAuthenticatedRequestWithMatchingHeader()
     {

@@ -30,6 +30,17 @@ describe('SignUpForm', () => {
     expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/appointment' });
   });
 
+  it('renders the Google logo before the Google button label', () => {
+    renderSignUpForm();
+
+    const googleButton = screen.getByRole('button', { name: /^google$/i });
+    const logo = googleButton.firstElementChild;
+
+    expect(logo?.tagName.toLowerCase()).toBe('svg');
+    expect(logo).toHaveAttribute('aria-hidden', 'true');
+    expect(logo?.nextElementSibling).toHaveTextContent('Google');
+  });
+
   it('opens an email OTP input without starting Cognito hosted UI', async () => {
     const user = userEvent.setup();
 

@@ -1,0 +1,170 @@
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Infrastructure.Persistence.Migrations;
+
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20260617110000_SeedProviderTaxonomyTerms")]
+public partial class SeedProviderTaxonomyTerms : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.Sql("""
+            INSERT INTO "ProviderTaxonomyTerms" (
+                "Id",
+                "Category",
+                "TermKey",
+                "Label",
+                "IsActive",
+                "DisplayOrder"
+            ) VALUES
+                ('55555555-1111-4111-8111-000000000001', 'specializations', 'anxiety', 'Anxiety', TRUE, 1),
+                ('55555555-1111-4111-8111-000000000002', 'specializations', 'depression', 'Depression', TRUE, 2),
+                ('55555555-1111-4111-8111-000000000003', 'specializations', 'stress-burnout', 'Stress & Burnout', TRUE, 3),
+                ('55555555-1111-4111-8111-000000000004', 'specializations', 'panic-attacks', 'Panic attacks', TRUE, 4),
+                ('55555555-1111-4111-8111-000000000005', 'specializations', 'ptsd-trauma', 'PTSD / Trauma', TRUE, 5),
+                ('55555555-1111-4111-8111-000000000006', 'specializations', 'childhood-trauma', 'Childhood trauma', TRUE, 6),
+                ('55555555-1111-4111-8111-000000000007', 'specializations', 'sexual-abuse-emotional-abuse', 'Sexual abuse / Emotional abuse', TRUE, 7),
+                ('55555555-1111-4111-8111-000000000008', 'specializations', 'relationship-issues', 'Relationship issues', TRUE, 8),
+                ('55555555-1111-4111-8111-000000000009', 'specializations', 'marriage-counseling', 'Marriage counseling', TRUE, 9),
+                ('55555555-1111-4111-8111-000000000010', 'specializations', 'life-transitions', 'Life transitions', TRUE, 10),
+                ('55555555-1111-4111-8111-000000000011', 'specializations', 'self-esteem-issues', 'Self-esteem issues', TRUE, 11),
+                ('55555555-1111-4111-8111-000000000012', 'specializations', 'ocd', 'OCD', TRUE, 12),
+                ('55555555-1111-4111-8111-000000000013', 'specializations', 'eating-disorders', 'Eating disorders', TRUE, 13),
+                ('55555555-1111-4111-8111-000000000014', 'specializations', 'personality-disorders', 'Personality disorders', TRUE, 14),
+                ('55555555-1111-4111-8111-000000000015', 'specializations', 'grief-loss', 'Grief & loss', TRUE, 15),
+                ('55555555-1111-4111-8111-000000000016', 'specializations', 'anger-management', 'Anger management', TRUE, 16),
+                ('55555555-1111-4111-8111-000000000017', 'specializations', 'addiction', 'Addiction', TRUE, 17),
+                ('55555555-1111-4111-8111-000000000018', 'specializations', 'family-conflict', 'Family conflict', TRUE, 18),
+                ('55555555-2222-4222-8222-000000000001', 'therapyApproaches', 'cbt', 'CBT - Cognitive Behavioral Therapy', TRUE, 1),
+                ('55555555-2222-4222-8222-000000000002', 'therapyApproaches', 'dbt', 'DBT - Dialectical Behavioral Therapy', TRUE, 2),
+                ('55555555-2222-4222-8222-000000000003', 'therapyApproaches', 'act', 'ACT - Acceptance & Commitment Therapy', TRUE, 3),
+                ('55555555-2222-4222-8222-000000000004', 'therapyApproaches', 'rebt', 'REBT - Rational Emotive Behavioral Therapy', TRUE, 4),
+                ('55555555-2222-4222-8222-000000000005', 'therapyApproaches', 'psychodynamic-therapy', 'Psychodynamic therapy', TRUE, 5),
+                ('55555555-2222-4222-8222-000000000006', 'therapyApproaches', 'psychoanalysis', 'Psychoanalysis', TRUE, 6),
+                ('55555555-2222-4222-8222-000000000007', 'therapyApproaches', 'emdr', 'EMDR', TRUE, 7),
+                ('55555555-2222-4222-8222-000000000008', 'therapyApproaches', 'somatic-therapy', 'Somatic therapy', TRUE, 8),
+                ('55555555-2222-4222-8222-000000000009', 'therapyApproaches', 'person-centered-therapy', 'Person-centered therapy', TRUE, 9),
+                ('55555555-2222-4222-8222-000000000010', 'therapyApproaches', 'gestalt-therapy', 'Gestalt therapy', TRUE, 10),
+                ('55555555-2222-4222-8222-000000000011', 'therapyApproaches', 'existential-therapy', 'Existential therapy', TRUE, 11),
+                ('55555555-2222-4222-8222-000000000012', 'therapyApproaches', 'humanistic', 'humanistic', TRUE, 12),
+                ('55555555-2222-4222-8222-000000000013', 'therapyApproaches', 'narrative-therapy', 'Narrative therapy', TRUE, 13),
+                ('55555555-2222-4222-8222-000000000014', 'therapyApproaches', 'solution-focused-therapy', 'Solution-focused therapy', TRUE, 14),
+                ('55555555-2222-4222-8222-000000000015', 'therapyApproaches', 'family-systems-therapy', 'Family systems therapy', TRUE, 15),
+                ('55555555-2222-4222-8222-000000000016', 'therapyApproaches', 'expressive-arts-therapy', 'Expressive Arts Therapy', TRUE, 16),
+                ('55555555-2222-4222-8222-000000000017', 'therapyApproaches', 'art-therapy', 'Art therapy', TRUE, 17),
+                ('55555555-2222-4222-8222-000000000018', 'therapyApproaches', 'music-therapy', 'Music therapy', TRUE, 18),
+                ('55555555-2222-4222-8222-000000000019', 'therapyApproaches', 'drama-therapy', 'Drama therapy', TRUE, 19),
+                ('55555555-2222-4222-8222-000000000020', 'therapyApproaches', 'movement-therapy', 'Movement therapy', TRUE, 20),
+                ('55555555-2222-4222-8222-000000000021', 'therapyApproaches', 'trauma-informed', 'Trauma-informed', TRUE, 21),
+                ('55555555-2222-4222-8222-000000000022', 'therapyApproaches', 'couple-therapy', 'Couple therapy', TRUE, 22),
+                ('55555555-2222-4222-8222-000000000023', 'therapyApproaches', 'lgbtq-affirmative-therapy', 'LGBTQ+ affirmative therapy', TRUE, 23),
+                ('55555555-2222-4222-8222-000000000024', 'therapyApproaches', 'mbct', 'Mindfulness-Based Cognitive Therapy (MBCT)', TRUE, 24),
+                ('55555555-2222-4222-8222-000000000025', 'therapyApproaches', 'attachment-based-psychotherapy', 'Attachment-Based Psychotherapy', TRUE, 25),
+                ('55555555-2222-4222-8222-000000000026', 'therapyApproaches', 'ifs', 'Internal Family Systems (IFS)', TRUE, 26),
+                ('55555555-3333-4333-8333-000000000001', 'languages', 'english', 'English', TRUE, 1),
+                ('55555555-3333-4333-8333-000000000002', 'languages', 'hindi', 'Hindi', TRUE, 2),
+                ('55555555-3333-4333-8333-000000000003', 'languages', 'bengali', 'Bengali', TRUE, 3),
+                ('55555555-3333-4333-8333-000000000004', 'languages', 'telugu', 'Telugu', TRUE, 4),
+                ('55555555-3333-4333-8333-000000000005', 'languages', 'marathi', 'Marathi', TRUE, 5),
+                ('55555555-3333-4333-8333-000000000006', 'languages', 'tamil', 'Tamil', TRUE, 6),
+                ('55555555-3333-4333-8333-000000000007', 'languages', 'urdu', 'Urdu', TRUE, 7),
+                ('55555555-3333-4333-8333-000000000008', 'languages', 'gujarati', 'Gujarati', TRUE, 8),
+                ('55555555-3333-4333-8333-000000000009', 'languages', 'kannada', 'Kannada', TRUE, 9),
+                ('55555555-3333-4333-8333-000000000010', 'languages', 'malayalam', 'Malayalam', TRUE, 10),
+                ('55555555-3333-4333-8333-000000000011', 'languages', 'odia', 'Odia', TRUE, 11),
+                ('55555555-3333-4333-8333-000000000012', 'languages', 'punjabi', 'Punjabi', TRUE, 12),
+                ('55555555-3333-4333-8333-000000000013', 'languages', 'assamese', 'Assamese', TRUE, 13),
+                ('55555555-3333-4333-8333-000000000014', 'languages', 'sanskrit', 'Sanskrit', TRUE, 14),
+                ('55555555-3333-4333-8333-000000000015', 'languages', 'nepali', 'Nepali', TRUE, 15),
+                ('55555555-3333-4333-8333-000000000016', 'languages', 'konkani', 'Konkani', TRUE, 16),
+                ('55555555-3333-4333-8333-000000000017', 'languages', 'manipuri', 'Manipuri', TRUE, 17),
+                ('55555555-3333-4333-8333-000000000018', 'languages', 'kashmiri', 'Kashmiri', TRUE, 18),
+                ('55555555-3333-4333-8333-000000000019', 'languages', 'sindhi', 'Sindhi', TRUE, 19),
+                ('55555555-3333-4333-8333-000000000020', 'languages', 'bodo', 'Bodo', TRUE, 20),
+                ('55555555-3333-4333-8333-000000000021', 'languages', 'dogri', 'Dogri', TRUE, 21),
+                ('55555555-3333-4333-8333-000000000022', 'languages', 'maithili', 'Maithili', TRUE, 22),
+                ('55555555-3333-4333-8333-000000000023', 'languages', 'santali', 'Santali', TRUE, 23)
+            ON CONFLICT ("Category", "TermKey") DO NOTHING;
+            """);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.Sql("""
+            DELETE FROM "ProviderTaxonomyTerms"
+            WHERE "Id" IN (
+                '55555555-1111-4111-8111-000000000001',
+                '55555555-1111-4111-8111-000000000002',
+                '55555555-1111-4111-8111-000000000003',
+                '55555555-1111-4111-8111-000000000004',
+                '55555555-1111-4111-8111-000000000005',
+                '55555555-1111-4111-8111-000000000006',
+                '55555555-1111-4111-8111-000000000007',
+                '55555555-1111-4111-8111-000000000008',
+                '55555555-1111-4111-8111-000000000009',
+                '55555555-1111-4111-8111-000000000010',
+                '55555555-1111-4111-8111-000000000011',
+                '55555555-1111-4111-8111-000000000012',
+                '55555555-1111-4111-8111-000000000013',
+                '55555555-1111-4111-8111-000000000014',
+                '55555555-1111-4111-8111-000000000015',
+                '55555555-1111-4111-8111-000000000016',
+                '55555555-1111-4111-8111-000000000017',
+                '55555555-1111-4111-8111-000000000018',
+                '55555555-2222-4222-8222-000000000001',
+                '55555555-2222-4222-8222-000000000002',
+                '55555555-2222-4222-8222-000000000003',
+                '55555555-2222-4222-8222-000000000004',
+                '55555555-2222-4222-8222-000000000005',
+                '55555555-2222-4222-8222-000000000006',
+                '55555555-2222-4222-8222-000000000007',
+                '55555555-2222-4222-8222-000000000008',
+                '55555555-2222-4222-8222-000000000009',
+                '55555555-2222-4222-8222-000000000010',
+                '55555555-2222-4222-8222-000000000011',
+                '55555555-2222-4222-8222-000000000012',
+                '55555555-2222-4222-8222-000000000013',
+                '55555555-2222-4222-8222-000000000014',
+                '55555555-2222-4222-8222-000000000015',
+                '55555555-2222-4222-8222-000000000016',
+                '55555555-2222-4222-8222-000000000017',
+                '55555555-2222-4222-8222-000000000018',
+                '55555555-2222-4222-8222-000000000019',
+                '55555555-2222-4222-8222-000000000020',
+                '55555555-2222-4222-8222-000000000021',
+                '55555555-2222-4222-8222-000000000022',
+                '55555555-2222-4222-8222-000000000023',
+                '55555555-2222-4222-8222-000000000024',
+                '55555555-2222-4222-8222-000000000025',
+                '55555555-2222-4222-8222-000000000026',
+                '55555555-3333-4333-8333-000000000001',
+                '55555555-3333-4333-8333-000000000002',
+                '55555555-3333-4333-8333-000000000003',
+                '55555555-3333-4333-8333-000000000004',
+                '55555555-3333-4333-8333-000000000005',
+                '55555555-3333-4333-8333-000000000006',
+                '55555555-3333-4333-8333-000000000007',
+                '55555555-3333-4333-8333-000000000008',
+                '55555555-3333-4333-8333-000000000009',
+                '55555555-3333-4333-8333-000000000010',
+                '55555555-3333-4333-8333-000000000011',
+                '55555555-3333-4333-8333-000000000012',
+                '55555555-3333-4333-8333-000000000013',
+                '55555555-3333-4333-8333-000000000014',
+                '55555555-3333-4333-8333-000000000015',
+                '55555555-3333-4333-8333-000000000016',
+                '55555555-3333-4333-8333-000000000017',
+                '55555555-3333-4333-8333-000000000018',
+                '55555555-3333-4333-8333-000000000019',
+                '55555555-3333-4333-8333-000000000020',
+                '55555555-3333-4333-8333-000000000021',
+                '55555555-3333-4333-8333-000000000022',
+                '55555555-3333-4333-8333-000000000023'
+            );
+            """);
+    }
+}

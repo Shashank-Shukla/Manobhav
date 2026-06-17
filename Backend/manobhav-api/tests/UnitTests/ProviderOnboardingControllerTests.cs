@@ -88,6 +88,115 @@ public sealed class ProviderOnboardingControllerTests
     }
 
     [Fact]
+    public async Task GetMine_ReturnsSavedSectionsForDraftHydration()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        application.BasicProfileJson = """
+            {
+              "legalName": "Dr. Hydrate Rao",
+              "displayName": "Hydrate Rao",
+              "email": "hydrate@example.com",
+              "phone": "+919999999999",
+              "location": "Bengaluru"
+            }
+            """;
+        application.BioJson = """
+            {
+              "bio": {
+                "shortBio": "Therapist",
+                "longBio": "Long bio",
+                "approach": "I practice ACT.",
+                "languages": ["English", "Hindi"]
+              },
+              "specializations": {
+                "focusAreas": ["Anxiety"],
+                "ageGroups": ["Adults"],
+                "therapyGoals": ["Stress"]
+              },
+              "modalities": {
+                "modalities": ["ACT - Acceptance & Commitment Therapy"],
+                "deliveryModes": ["Online"]
+              }
+            }
+            """;
+        application.SessionDetailsJson = """
+            {
+              "sessionDetails": {
+                "sessionLengthsMinutes": [60],
+                "availabilitySummary": "Weekdays",
+                "capacityPerWeek": 12
+              },
+              "credentials": {
+                "items": [{
+                  "credentialType": "License",
+                  "title": "Clinical Psychologist",
+                  "institution": "RCI",
+                  "licenseNumber": "A123",
+                  "year": 2020
+                }]
+              },
+              "payout": {
+                "payoutMode": "Bank",
+                "accountHolderName": "Hydrate Rao",
+                "notes": "Verified later"
+              }
+            }
+            """;
+        await db.SaveChangesAsync();
+        var controller = CreateProviderController(db);
+
+        var result = await controller.GetMine(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
+        var sectionsProperty = dto.GetType().GetProperty("Sections");
+        Assert.NotNull(sectionsProperty);
+        var sections = Assert.IsAssignableFrom<IReadOnlyDictionary<string, JsonElement>>(sectionsProperty!.GetValue(dto));
+        Assert.Equal("Dr. Hydrate Rao", sections["basicIdentity"].GetProperty("legalName").GetString());
+        Assert.Equal("I practice ACT.", sections["bioAndApproach"].GetProperty("approach").GetString());
+        Assert.Equal("Anxiety", sections["specializations"].GetProperty("focusAreas")[0].GetString());
+        Assert.Equal("ACT - Acceptance & Commitment Therapy", sections["therapyApproaches"].GetProperty("modalities")[0].GetString());
+        Assert.Equal(60, sections["sessionDetails"].GetProperty("sessionLengthsMinutes")[0].GetInt32());
+        Assert.Equal("Clinical Psychologist", sections["credentials"].GetProperty("items")[0].GetProperty("title").GetString());
+        Assert.Equal("Bank", sections["payout"].GetProperty("payoutMode").GetString());
+    }
+
+    [Fact]
+    public async Task SavePayout_CanPersistReviewAsCurrentStepAndReloadsReview()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        var controller = CreateProviderController(db);
+
+        var result = await controller.SaveSection(
+            application.Id,
+            "payout",
+            new SaveProviderSectionRequest
+            {
+                Payout = new ProviderPayoutSection
+                {
+                    PayoutMode = "Bank transfer",
+                    AccountHolderName = "Dr. Review Ready",
+                    Notes = "Ready for review"
+                },
+                CurrentStep = "review"
+            },
+            CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
+        Assert.Equal("review", saved!.CurrentStep);
+
+        var reloadResult = await controller.GetMine(CancellationToken.None);
+        var ok = Assert.IsType<OkObjectResult>(reloadResult);
+        var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
+        Assert.Equal("review", dto.CurrentStep);
+    }
+
+    [Fact]
     public async Task Submit_MarksDraftAsSubmitted()
     {
         await using var db = CreateDbContext();

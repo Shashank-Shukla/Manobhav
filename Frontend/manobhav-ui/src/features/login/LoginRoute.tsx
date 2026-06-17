@@ -14,8 +14,8 @@ type LoginPageProps = {
 type LoginMode = 'sign-in' | 'sign-up';
 
 export function LoginPage({ onBack, returnTo }: LoginPageProps) {
-  const [mode, setMode] = useState<LoginMode>('sign-in');
   const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<LoginMode>(() => (searchParams.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in'));
   const isSignUp = mode === 'sign-up';
   const authReturnTo = sanitizeReturnTo(returnTo ?? searchParams.get('returnTo'));
 
@@ -27,7 +27,7 @@ export function LoginPage({ onBack, returnTo }: LoginPageProps) {
             type="button"
             aria-label="Back to home"
             onClick={onBack}
-            className="absolute bottom-full left-0 z-10 mb-3 hidden h-12 w-12 items-center justify-center rounded-full border border-white/75 bg-white/75 text-gray-600 shadow-xl shadow-slate-900/15 backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#9CAF88]/40 md:inline-flex"
+            className="absolute left-0 top-0 z-10 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/75 bg-white/75 text-gray-600 shadow-xl shadow-slate-900/15 backdrop-blur-md transition hover:bg-white hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#9CAF88]/40 md:inline-flex"
           >
             <ArrowLeft size={22} />
           </button>

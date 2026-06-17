@@ -34,7 +34,17 @@ type ThemeMode = 'light' | 'dark';
 type FlowStep = 'home' | 'journey' | 'providers';
 
 const viewportLockedPaths = new Set(['/providers', '/about', '/disclaimer', '/login']);
-const standaloneFooterHiddenPaths = new Set(['/about', '/disclaimer', '/providers', '/login', '/appointment']);
+const standaloneFooterHiddenPaths = new Set([
+  '/about',
+  '/dashboard/patient',
+  '/dashboard/provider',
+  '/disclaimer',
+  '/login',
+  '/onboarding/patient',
+  '/onboarding/provider',
+  '/appointment',
+  '/providers',
+]);
 
 export default function App() {
   const [themeMode] = useState<ThemeMode>('light');

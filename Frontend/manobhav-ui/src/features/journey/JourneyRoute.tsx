@@ -4,11 +4,13 @@ import { ArrowDown, ArrowLeft, ArrowUp } from 'lucide-react';
 import { Text } from '../../shared/primitives/Text';
 import { Button } from '../../shared/primitives/Button';
 import { Logo } from '../../shared/Logo';
+import { ConsentDialog } from './ConsentDialog';
 import {
   createIntakeSubmission,
   getVisitorFlow,
   saveIntakeAnswer,
   submitPartialIntake,
+  type IntakeConsentSection,
   type IntakeAnswerValue,
   type VisitorFlowQuestion,
 } from '../public-data';
@@ -24,6 +26,7 @@ type JourneyAnswer = IntakeAnswerValue;
 
 export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
   const [questions, setQuestions] = useState<VisitorFlowQuestion[]>([]);
+  const [consentSections, setConsentSections] = useState<IntakeConsentSection[]>([]);
   const [flowStatus, setFlowStatus] = useState<FlowStatus>('loading');
   const [current, setCurrent] = useState(0); // includes submit step
   const [answers, setAnswers] = useState<Record<string, JourneyAnswer>>({});
@@ -90,16 +93,30 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
     setAnswers((items) => ({ ...items, [question.id]: val }));
   };
 
+  const onSingleChoiceSelect = async (val: JourneyAnswer) => {
+    if (!isQuestionStep(current, questions.length)) return;
+    const question = questions[current];
+    setAnswers((items) => ({ ...items, [question.id]: val }));
+
+    const saved = await saveQuestionAnswer('single-choice', val);
+    if (!saved) return;
+
+    currentStartedAtRef.current = getNowMs();
+    setCurrent((i) => i + 1);
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     loadVisitorFlowSession(controller.signal)
       .then((flowSession) => {
         setQuestions(flowSession.questions);
+        setConsentSections(flowSession.consentSections);
         setSubmissionId(flowSession.submissionId);
         setFlowStatus(flowSession.questions.length > 0 ? 'ready' : 'empty');
       })
       .catch(() => {
         setQuestions([]);
+        setConsentSections([]);
         setSubmissionId('');
         setFlowStatus('error');
       });
@@ -127,7 +144,7 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
     });
   }, [current, flowStatus, questions]);
 
-  const saveQuestionAnswer = async (action: string): Promise<boolean> => {
+  const saveQuestionAnswer = async (action: string, selectedAnswer?: JourneyAnswer): Promise<boolean> => {
     const question = getCurrentQuestion(questions, current);
     if (!question) return true;
     if (savingStepRef.current) return false;
@@ -135,7 +152,7 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
       setSaveError('Unable to store journey response because the intake session is not ready.');
       return false;
     }
-    const answer = getAnswerForSave(answers, question);
+    const answer = selectedAnswer ?? getAnswerForSave(answers, question);
     if (question.isRequired && !hasJourneyAnswer(answer, question.responseType)) {
       setSaveError('Please answer this question before continuing.');
       return false;
@@ -250,8 +267,10 @@ export function JourneyPage({ onBackHome, onFinish }: JourneyPageProps) {
           onNext={goNext}
           onPrevious={goPrev}
           onPolicyChange={setPolicyAcknowledged}
+          onSingleChoiceSelect={onSingleChoiceSelect}
           onSubmit={submitJourney}
           policyAcknowledged={policyAcknowledged}
+          consentSections={consentSections}
           questions={questions}
           saveError={saveError}
           totalSteps={totalSteps}
@@ -290,8 +309,10 @@ function JourneyContent({
   onNext,
   onPrevious,
   onPolicyChange,
+  onSingleChoiceSelect,
   onSubmit,
   policyAcknowledged,
+  consentSections,
   questions,
   saveError,
   totalSteps,
@@ -306,8 +327,10 @@ function JourneyContent({
   onNext: () => Promise<void>;
   onPrevious: () => void;
   onPolicyChange: (checked: boolean) => void;
+  onSingleChoiceSelect: (value: JourneyAnswer) => Promise<void>;
   onSubmit: () => Promise<void>;
   policyAcknowledged: boolean;
+  consentSections: IntakeConsentSection[];
   questions: VisitorFlowQuestion[];
   saveError: string;
   totalSteps: number;
@@ -327,8 +350,10 @@ function JourneyContent({
           onChange={onChange}
           onNext={onNext}
           onPolicyChange={onPolicyChange}
+          onSingleChoiceSelect={onSingleChoiceSelect}
           onSubmit={onSubmit}
           policyAcknowledged={policyAcknowledged}
+          consentSections={consentSections}
           questions={questions}
           saveError={saveError}
         />
@@ -428,8 +453,10 @@ function JourneyStepCard({
   onChange,
   onNext,
   onPolicyChange,
+  onSingleChoiceSelect,
   onSubmit,
   policyAcknowledged,
+  consentSections,
   questions,
   saveError,
 }: {
@@ -439,8 +466,10 @@ function JourneyStepCard({
   onChange: (value: JourneyAnswer) => void;
   onNext: () => Promise<void>;
   onPolicyChange: (checked: boolean) => void;
+  onSingleChoiceSelect: (value: JourneyAnswer) => Promise<void>;
   onSubmit: () => Promise<void>;
   policyAcknowledged: boolean;
+  consentSections: IntakeConsentSection[];
   questions: VisitorFlowQuestion[];
   saveError: string;
 }) {
@@ -456,8 +485,10 @@ function JourneyStepCard({
         onChange={onChange}
         onNext={onNext}
         onPolicyChange={onPolicyChange}
+        onSingleChoiceSelect={onSingleChoiceSelect}
         onSubmit={onSubmit}
         policyAcknowledged={policyAcknowledged}
+        consentSections={consentSections}
         questions={questions}
         saveError={saveError}
       />
@@ -472,8 +503,10 @@ function JourneyStepCardBody({
   onChange,
   onNext,
   onPolicyChange,
+  onSingleChoiceSelect,
   onSubmit,
   policyAcknowledged,
+  consentSections,
   questions,
   saveError,
 }: {
@@ -483,8 +516,10 @@ function JourneyStepCardBody({
   onChange: (value: JourneyAnswer) => void;
   onNext: () => Promise<void>;
   onPolicyChange: (checked: boolean) => void;
+  onSingleChoiceSelect: (value: JourneyAnswer) => Promise<void>;
   onSubmit: () => Promise<void>;
   policyAcknowledged: boolean;
+  consentSections: IntakeConsentSection[];
   questions: VisitorFlowQuestion[];
   saveError: string;
 }) {
@@ -493,7 +528,8 @@ function JourneyStepCardBody({
     return (
       <SubmitStep
         isSavingStep={isSavingStep}
-        onPolicyChange={onPolicyChange}
+        onConsentComplete={onPolicyChange}
+        consentSections={consentSections}
         onSubmit={onSubmit}
         policyAcknowledged={policyAcknowledged}
         saveError={saveError}
@@ -506,6 +542,7 @@ function JourneyStepCardBody({
       answer={getAnswerForSave(answers, question)}
       onChange={onChange}
       onNext={onNext}
+      onSingleChoiceSelect={onSingleChoiceSelect}
       question={question}
       saveError={saveError}
     />
@@ -516,19 +553,30 @@ function QuestionStep({
   answer,
   onChange,
   onNext,
+  onSingleChoiceSelect,
   question,
   saveError,
 }: {
   answer: JourneyAnswer;
   onChange: (value: JourneyAnswer) => void;
   onNext: () => Promise<void>;
+  onSingleChoiceSelect: (value: JourneyAnswer) => Promise<void>;
   question: VisitorFlowQuestion;
   saveError: string;
 }) {
   return (
     <div key={question.id} className="w-full space-y-4 animate-fade-slide">
-      <Text variant="h3" className="text-left">{question.text}</Text>
-      <QuestionInput answer={answer} onChange={onChange} onNext={onNext} question={question} />
+      <Text variant="h3" className="text-left">
+        <span>{question.text}</span>
+        {question.isRequired && <span aria-hidden="true" className="text-red-600"> *</span>}
+      </Text>
+      <QuestionInput
+        answer={answer}
+        onChange={onChange}
+        onNext={onNext}
+        onSingleChoiceSelect={onSingleChoiceSelect}
+        question={question}
+      />
       <SaveErrorMessage message={saveError} />
     </div>
   );
@@ -538,6 +586,7 @@ type QuestionInputProps = {
   answer: JourneyAnswer;
   onChange: (value: JourneyAnswer) => void;
   onNext: () => Promise<void>;
+  onSingleChoiceSelect: (value: JourneyAnswer) => Promise<void>;
   question: VisitorFlowQuestion;
 };
 
@@ -582,7 +631,7 @@ function renderTextareaInput({ answer, onChange, question }: QuestionInputProps)
   );
 }
 
-function renderSingleChoiceInput({ answer, onChange, question }: QuestionInputProps) {
+function renderSingleChoiceInput({ answer, onSingleChoiceSelect, question }: QuestionInputProps) {
   return (
     <div aria-label={question.text} className="grid gap-3 sm:grid-cols-2" role="radiogroup">
       {question.options.map((option) => (
@@ -591,7 +640,7 @@ function renderSingleChoiceInput({ answer, onChange, question }: QuestionInputPr
             checked={answer === option.value}
             className="sr-only"
             name={question.id}
-            onChange={() => onChange(option.value)}
+            onChange={() => void onSingleChoiceSelect(option.value)}
             type="radio"
           />
           <ChoiceMarker selected={answer === option.value} type="radio" />
@@ -670,30 +719,47 @@ function ChoiceMarker({ selected, type }: { selected: boolean; type: 'checkbox' 
 }
 
 function SubmitStep({
+  consentSections,
   isSavingStep,
-  onPolicyChange,
+  onConsentComplete,
   onSubmit,
   policyAcknowledged,
   saveError,
 }: {
+  consentSections: IntakeConsentSection[];
   isSavingStep: boolean;
-  onPolicyChange: (checked: boolean) => void;
+  onConsentComplete: (checked: boolean) => void;
   onSubmit: () => Promise<void>;
   policyAcknowledged: boolean;
   saveError: string;
 }) {
+  const [consentDialogOpen, setConsentDialogOpen] = useState(false);
+
   return (
     <div className="w-full flex flex-col items-center gap-4">
       <Text variant="h3" className="text-center">Ready to share?</Text>
-      <label className="flex max-w-xl items-start gap-3 text-sm text-gray-700">
-        <input
-          className="mt-1 h-4 w-4 accent-[#9CAF88]"
-          checked={policyAcknowledged}
-          onChange={(event) => onPolicyChange(event.target.checked)}
-          type="checkbox"
+      <p className="max-w-xl text-center text-sm leading-6 text-gray-700">
+        Please read the consent terms before submitting your intake.
+      </p>
+      <button
+        className="border-0 bg-transparent p-0 text-sm font-semibold text-[#6F805F] underline underline-offset-4 hover:text-[#4F6144]"
+        onClick={() => setConsentDialogOpen(true)}
+        type="button"
+      >
+        Read terms and consent
+      </button>
+      {policyAcknowledged && <p className="text-sm font-medium text-[#4F6144]">Consent completed.</p>}
+      {consentDialogOpen && (
+        <ConsentDialog
+          onClose={() => setConsentDialogOpen(false)}
+          onComplete={() => {
+            onConsentComplete(true);
+            setConsentDialogOpen(false);
+          }}
+          open={consentDialogOpen}
+          sections={consentSections}
         />
-        <span>I acknowledge the intake policies and consent to save this partial intake before provider matching.</span>
-      </label>
+      )}
       <SaveErrorMessage message={saveError} />
       <Button variant="primary" disabled={!policyAcknowledged || isSavingStep} onClick={() => void onSubmit()}>
         {isSavingStep ? 'Saving...' : 'Submit'}
@@ -819,10 +885,14 @@ function stableAnswerKey(answer: JourneyAnswer): string {
   return JSON.stringify(Array.isArray(answer) ? [...answer].sort() : answer);
 }
 
-async function loadVisitorFlowSession(signal: AbortSignal): Promise<{ questions: VisitorFlowQuestion[]; submissionId: string }> {
+async function loadVisitorFlowSession(signal: AbortSignal): Promise<{
+  consentSections: IntakeConsentSection[];
+  questions: VisitorFlowQuestion[];
+  submissionId: string;
+}> {
   const flow = await getVisitorFlow(signal);
   if (flow.questions.length === 0) {
-    return { questions: [], submissionId: '' };
+    return { consentSections: flow.consentSections, questions: [], submissionId: '' };
   }
 
   const submission = await createIntakeSubmission({
@@ -833,7 +903,7 @@ async function loadVisitorFlowSession(signal: AbortSignal): Promise<{ questions:
   });
   rememberActiveIntakeSubmission(submission.id);
 
-  return { questions: flow.questions, submissionId: submission.id };
+  return { consentSections: flow.consentSections, questions: flow.questions, submissionId: submission.id };
 }
 
 const defaultAnswerByType: Record<string, JourneyAnswer> = {
