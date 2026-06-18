@@ -46,6 +46,7 @@ secrets.json
 .aws/
 .tools/
 .codex/
+.worktrees/
 *.targets
 *.cache
 
