@@ -8,7 +8,7 @@ export function Logo({ onClick, className = '' }: LogoProps) {
     <div onClick={onClick} className={`flex items-center gap-2 cursor-pointer ${className}`}>
       <div className="relative w-10 h-10 overflow-hidden rounded-full bg-[#9CAF88] flex items-center justify-center">
         <img
-          src="Manobhav_Logo.png"
+          src="/Manobhav_Logo.png"
           alt="Manobhav"
           className="w-full h-full object-cover"
           loading="lazy"

@@ -23,7 +23,7 @@ import {
   Text,
   useDisclosure,
 } from '@chakra-ui/react';
-import { Bell, ChevronDown, Home, Menu as MenuIcon, Search, Settings } from 'lucide-react';
+import { Bell, Home, Menu as MenuIcon, Search, Settings } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import { adminModules } from '../data';
 import { getAdminNotifications, markAdminNotificationRead } from '../adminDashboardApi';
@@ -57,7 +57,7 @@ export function AdminShell({
 
       <Drawer isOpen={nav.isOpen} placement="left" onClose={nav.onClose} size="xs">
         <DrawerOverlay bg="rgba(45, 55, 72, 0.24)" backdropFilter="blur(3px)" />
-        <DrawerContent bg="white">
+        <DrawerContent bg={adminTheme.panelBg}>
           <DrawerBody p={0}>
             <AdminSidebar activeModule={activeModule} onNavigate={nav.onClose} />
           </DrawerBody>
@@ -114,7 +114,7 @@ export function AdminShell({
                 value={search}
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Search admin records"
-                bg="white"
+                bg={adminTheme.panelBg}
                 borderColor={adminTheme.border}
                 borderRadius="14px"
                 _focusVisible={{ borderColor: adminTheme.sage.DEFAULT, boxShadow: `0 0 0 1px ${adminTheme.sage.DEFAULT}` }}
@@ -124,27 +124,18 @@ export function AdminShell({
             <Menu>
               <MenuButton
                 as={Button}
-                rightIcon={<ChevronDown size={15} />}
-                bg="white"
+                aria-label="Open admin profile menu"
+                bg={adminTheme.panelBg}
                 border="1px solid"
                 borderColor={adminTheme.border}
                 borderRadius="999px"
                 boxShadow="0 12px 30px rgba(45, 55, 72, 0.08)"
-                px={2}
-                py={1}
+                h="42px"
+                minW="42px"
+                p={1}
                 _hover={{ bg: adminTheme.grey.light }}
               >
-                <HStack spacing={3}>
-                  <Avatar name="Admin" size="sm" bg={adminTheme.sage.DEFAULT} color="white" />
-                  <Box display={{ base: 'none', xl: 'block' }} textAlign="left">
-                    <Text fontSize="sm" fontWeight="800">
-                      Super Admin
-                    </Text>
-                    <Text fontSize="xs" color={adminTheme.muted}>
-                      Operations
-                    </Text>
-                  </Box>
-                </HStack>
+                <Avatar name="Admin" size="sm" bg={adminTheme.sage.DEFAULT} color="white" />
               </MenuButton>
               <MenuList borderColor={adminTheme.border} borderRadius="16px" boxShadow="0 22px 50px rgba(45, 55, 72, 0.16)" p={2}>
                 <MenuItem icon={<Settings size={16} />}>Admin settings</MenuItem>
@@ -163,7 +154,7 @@ export function AdminShell({
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search admin records"
-              bg="white"
+              bg={adminTheme.panelBg}
               borderColor={adminTheme.border}
               borderRadius="14px"
             />
@@ -333,7 +324,7 @@ function AdminSidebar({ activeModule, onNavigate }: AdminSidebarProps) {
       direction="column"
       borderRight="1px solid"
       borderColor={adminTheme.border}
-      bg="white"
+      bg={adminTheme.panelBg}
       px={4}
       py={5}
     >

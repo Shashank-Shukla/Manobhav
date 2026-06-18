@@ -38,3 +38,14 @@ describe('app shell footer visibility', () => {
     expect(await screen.findByText(/all rights reserved/i, undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 });
+
+describe('app shell provider dashboard chrome', () => {
+  it('hides the public navigation on the provider dashboard route', async () => {
+    window.history.pushState({}, '', '/dashboard/provider');
+
+    render(<App />);
+
+    await screen.findByText(/sign in required/i);
+    expect(screen.queryByRole('button', { name: /^login$/i })).not.toBeInTheDocument();
+  });
+});

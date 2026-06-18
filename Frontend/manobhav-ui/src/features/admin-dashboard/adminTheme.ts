@@ -2,8 +2,8 @@ import { theme } from '../../utils/theme';
 import type { StatusTone } from './types';
 
 export const adminTheme = {
-  shellBg: '#F5F7F4',
-  panelBg: '#FFFFFF',
+  shellBg: theme.colors.smokeWhite,
+  panelBg: theme.colors.white,
   softPanel: 'rgba(255, 255, 255, 0.78)',
   border: 'rgba(156, 175, 136, 0.22)',
   text: theme.colors.textMain,

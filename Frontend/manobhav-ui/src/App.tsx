@@ -290,6 +290,7 @@ function getRouteLayout(pathname: string, flow: FlowStep) {
 
 function shouldHideNav(pathname: string, flow: FlowStep, isAdminRoute: boolean): boolean {
   if (isAdminRoute) return true;
+  if (pathname === '/dashboard/provider') return true;
   if (pathname === '/journey') return true;
   if (pathname === '/appointment') return true;
   return pathname === '/' && flow === 'journey';

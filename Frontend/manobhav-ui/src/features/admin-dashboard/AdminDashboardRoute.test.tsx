@@ -1,4 +1,4 @@
-import { act, render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -175,5 +175,21 @@ describe('AdminDashboardRoute notifications and branding', () => {
     const logo = await screen.findByRole('img', { name: /Manobhav admin/i, hidden: true });
     expect(logo).toHaveAttribute('src', '/Manobhav_Logo.png');
     expect(screen.queryByText(/^M$/)).not.toBeInTheDocument();
+  });
+
+  it('opens the admin account menu from an avatar-only trigger', async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    const trigger = await screen.findByRole('button', { name: /open admin profile menu/i });
+
+    expect(within(trigger).queryByText(/Super Admin/i)).not.toBeInTheDocument();
+    expect(within(trigger).queryByText(/Operations/i)).not.toBeInTheDocument();
+
+    await user.click(trigger);
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(/admin settings/i)).toBeInTheDocument();
+    expect(screen.getByText(/back to website/i)).toBeInTheDocument();
   });
 });

@@ -1,27 +1,18 @@
-import { Text } from '../../shared/primitives/Text';
+import { theme } from '../../utils/theme';
+import { ProviderDashboardAside } from './components/ProviderDashboardAside';
+import { ProviderDashboardMain } from './components/ProviderDashboardMain';
+import { ProviderDashboardSidebar } from './components/ProviderDashboardSidebar';
+import { providerDashboardData } from './providerDashboardData';
 
 export function DashboardProviderPage() {
   return (
-    <div className="max-w-6xl mx-auto py-16 px-6 space-y-6">
-      <Text variant="h2">Provider Dashboard</Text>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="p-4 rounded-2xl border border-gray-200 bg-white/70">
-          <Text variant="h3">Active patients</Text>
-          <p className="text-gray-600 text-sm">List of active and past/archived patients (to be implemented).</p>
-        </div>
-        <div className="p-4 rounded-2xl border border-gray-200 bg-white/70">
-          <Text variant="h3">Patient details</Text>
-          <p className="text-gray-600 text-sm">Select a patient to view records and medical summary.</p>
-        </div>
-        <div className="p-4 rounded-2xl border border-gray-200 bg-white/70">
-          <Text variant="h3">Medical records</Text>
-          <p className="text-gray-600 text-sm">Future module: secure storage and viewing of summaries.</p>
-        </div>
-        <div className="p-4 rounded-2xl border border-gray-200 bg-white/70">
-          <Text variant="h3">Appointments</Text>
-          <p className="text-gray-600 text-sm">Upcoming and past appointments per patient.</p>
-        </div>
-      </div>
+    <div
+      className="grid min-h-screen grid-cols-1 lg:grid-cols-[5rem_minmax(0,1fr)_23rem]"
+      style={{ backgroundColor: theme.colors.smokeWhite, fontFamily: theme.font }}
+    >
+      <ProviderDashboardSidebar />
+      <ProviderDashboardMain data={providerDashboardData} />
+      <ProviderDashboardAside data={providerDashboardData} />
     </div>
   );
 }

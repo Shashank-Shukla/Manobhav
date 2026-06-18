@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { useAuthSession } from '../auth/useAuthSession';
-import type { AuthSession } from '../auth/cognitoAuth';
+import { isAdminSession, logout, type AuthSession } from '../auth/cognitoAuth';
 import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
+import { theme } from '../../utils/theme';
 
 type NavBarProps = {
   onNavigate: (path: string) => void;
@@ -15,6 +16,16 @@ type NavBarProps = {
 type NavItem = {
   label: string;
   path: string;
+};
+
+type ThemeCssProperties = CSSProperties & {
+  '--profile-button-focus-ring'?: string;
+  '--profile-menu-item-active-bg'?: string;
+  '--profile-menu-item-active-color'?: string;
+};
+
+type CloseProfileMenuOptions = {
+  restoreFocus?: boolean;
 };
 
 export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps) {
@@ -127,8 +138,42 @@ function AuthNavAction({
   session: AuthSession | null;
   variant: 'desktop' | 'mobile';
 }) {
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const path = isAuthenticated ? getDashboardPath(session) : '/login';
   const handleClick = () => navigateFromMobile(path, onNavigate, onClose);
+
+  useEffect(() => {
+    if (!profileMenuOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setProfileMenuOpen(false);
+        profileButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [profileMenuOpen]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) {
+      return;
+    }
+
+    const handleMouseDown = (event: globalThis.MouseEvent) => {
+      if (event.target instanceof Node && !profileMenuRef.current?.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [profileMenuOpen]);
 
   if (!isAuthenticated) {
     return (
@@ -139,18 +184,146 @@ function AuthNavAction({
   }
 
   return (
+    <div ref={profileMenuRef} className={getProfileMenuWrapperClassName(variant)}>
+      <button
+        type="button"
+        ref={profileButtonRef}
+        aria-label="Open profile menu"
+        aria-expanded={profileMenuOpen}
+        aria-haspopup="menu"
+        className={getProfileButtonClassName(variant)}
+        style={getProfileButtonStyle()}
+        onClick={() => setProfileMenuOpen((open) => !open)}
+      >
+        <span
+          aria-hidden="true"
+          className="flex h-full w-full items-center justify-center rounded-full text-sm font-semibold shadow-sm"
+          style={getProfileAvatarStyle()}
+        >
+          U
+        </span>
+      </button>
+      {profileMenuOpen && (
+        <ProfileMenu
+          dashboardPath={path}
+          onClose={onClose}
+          onNavigate={onNavigate}
+          onRequestClose={(options) => {
+            setProfileMenuOpen(false);
+            if (options?.restoreFocus) {
+              profileButtonRef.current?.focus();
+            }
+          }}
+          variant={variant}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProfileMenu({
+  dashboardPath,
+  onClose,
+  onNavigate,
+  onRequestClose,
+  variant,
+}: {
+  dashboardPath: string;
+  onClose?: () => void;
+  onNavigate: (path: string) => void;
+  onRequestClose: (options?: CloseProfileMenuOptions) => void;
+  variant: 'desktop' | 'mobile';
+}) {
+  const menuItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const handleNavigate = (path: string) => {
+    onRequestClose();
+    navigateFromMobile(path, onNavigate, onClose);
+  };
+
+  const menuItems = [
+    { label: 'Dashboard', onClick: () => handleNavigate(dashboardPath) },
+    {
+      label: 'Sign out',
+      onClick: () => {
+        onRequestClose();
+        onClose?.();
+        void logout();
+      },
+    },
+  ];
+
+  const focusMenuItem = (index: number) => {
+    menuItemRefs.current[index]?.focus();
+  };
+
+  const handleMenuItemKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusMenuItem((index + 1) % menuItems.length);
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusMenuItem((index - 1 + menuItems.length) % menuItems.length);
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      focusMenuItem(0);
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      focusMenuItem(menuItems.length - 1);
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      onRequestClose({ restoreFocus: true });
+    }
+  };
+
+  return (
+    <div role="menu" className={getProfileMenuClassName(variant)} style={getProfileMenuStyle()}>
+      {menuItems.map((item, index) => (
+        <ProfileMenuItem
+          key={item.label}
+          label={item.label}
+          onClick={item.onClick}
+          onKeyDown={(event) => handleMenuItemKeyDown(event, index)}
+          itemRef={(element) => {
+            menuItemRefs.current[index] = element;
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ProfileMenuItem({
+  itemRef,
+  label,
+  onClick,
+  onKeyDown,
+}: {
+  itemRef: (element: HTMLButtonElement | null) => void;
+  label: string;
+  onClick: () => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+}) {
+  return (
     <button
       type="button"
-      aria-label="Open profile"
-      className={getProfileButtonClassName(variant)}
-      onClick={handleClick}
+      role="menuitem"
+      ref={itemRef}
+      className="w-full rounded-md px-3 py-2 text-left text-sm font-semibold transition hover:bg-[var(--profile-menu-item-active-bg)] hover:text-[var(--profile-menu-item-active-color)] focus:bg-[var(--profile-menu-item-active-bg)] focus:text-[var(--profile-menu-item-active-color)] focus:outline-none"
+      style={getProfileMenuItemStyle()}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
     >
-      <span
-        aria-hidden="true"
-        className="flex h-full w-full items-center justify-center rounded-full bg-slate-800 text-sm font-semibold text-white shadow-sm"
-      >
-        U
-      </span>
+      {label}
     </button>
   );
 }
@@ -220,6 +393,10 @@ function navigateFromMobile(path: string, onNavigate: (path: string) => void, on
 }
 
 function getDashboardPath(session: AuthSession | null): string {
+  if (isAdminSession(session)) {
+    return '/dashboard/admin';
+  }
+
   return hasProviderDashboardRole(session) ? '/dashboard/provider' : '/dashboard/patient';
 }
 
@@ -234,9 +411,50 @@ function hasProviderDashboardRole(session: AuthSession | null): boolean {
 
 function getProfileButtonClassName(variant: 'desktop' | 'mobile'): string {
   const base =
-    'inline-flex shrink-0 items-center justify-center rounded-full border border-white/70 bg-white p-1 shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#9CAF88]/40';
+    'inline-flex shrink-0 items-center justify-center rounded-full border p-1 shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[var(--profile-button-focus-ring)]';
 
   return variant === 'mobile' ? `${base} mx-auto h-12 w-12` : `${base} h-10 w-10`;
+}
+
+function getProfileButtonStyle(): ThemeCssProperties {
+  return {
+    '--profile-button-focus-ring': theme.colors.sage.DEFAULT,
+    backgroundColor: theme.colors.white,
+    borderColor: theme.colors.white,
+  };
+}
+
+function getProfileAvatarStyle(): CSSProperties {
+  return {
+    backgroundColor: theme.colors.textMain,
+    color: theme.colors.white,
+  };
+}
+
+function getProfileMenuWrapperClassName(variant: 'desktop' | 'mobile'): string {
+  return variant === 'mobile' ? 'relative mx-auto flex flex-col items-center' : 'relative';
+}
+
+function getProfileMenuClassName(variant: 'desktop' | 'mobile'): string {
+  const base =
+    'z-50 mt-3 min-w-40 rounded-lg border p-2 shadow-xl';
+
+  return variant === 'mobile' ? `${base} static` : `${base} absolute right-0 top-full`;
+}
+
+function getProfileMenuStyle(): CSSProperties {
+  return {
+    backgroundColor: theme.colors.white,
+    borderColor: theme.colors.grey.DEFAULT,
+  };
+}
+
+function getProfileMenuItemStyle(): ThemeCssProperties {
+  return {
+    '--profile-menu-item-active-bg': theme.colors.sage.light,
+    '--profile-menu-item-active-color': theme.colors.textMain,
+    color: theme.colors.textMain,
+  };
 }
 
 function getNavClassName(variant: 'glass' | 'flat', scrolled: boolean): string {

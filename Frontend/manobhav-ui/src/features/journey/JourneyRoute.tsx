@@ -832,29 +832,25 @@ function SubmitButton({
 }) {
   const isConsentIncomplete = !policyAcknowledged;
   const isDisabled = isConsentIncomplete || isSavingStep;
-  const tooltipId = 'journey-submit-consent-tooltip';
-  const wrapperClassName = isConsentIncomplete ? 'group relative inline-flex cursor-not-allowed' : 'group relative inline-flex';
+  const wrapperClassName = isConsentIncomplete ? 'inline-flex cursor-not-allowed' : 'inline-flex';
+  const buttonClassName = isDisabled
+    ? 'disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-100'
+    : '';
+  const buttonStyle = isDisabled
+    ? { backgroundColor: '#D1D5DB', color: '#4B5563' }
+    : undefined;
 
   return (
     <span className={wrapperClassName} data-testid={isConsentIncomplete ? 'disabled-consent-submit' : undefined}>
       <Button
-        aria-describedby={isConsentIncomplete ? tooltipId : undefined}
-        className="disabled:pointer-events-none disabled:opacity-60"
+        className={buttonClassName}
         disabled={isDisabled}
         onClick={() => void onSubmit()}
+        style={buttonStyle}
         variant="primary"
       >
         {isSavingStep ? 'Saving...' : 'Submit'}
       </Button>
-      {isConsentIncomplete && (
-        <span
-          className="absolute bottom-full left-1/2 mb-2 w-64 -translate-x-1/2 rounded-md bg-white px-3 py-2 text-center text-xs font-medium text-slate-700 opacity-0 shadow-lg ring-1 ring-slate-200 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-          id={tooltipId}
-          role="tooltip"
-        >
-          Please read and agree using the link above.
-        </span>
-      )}
     </span>
   );
 }

@@ -182,7 +182,13 @@ describe('patient journey intake inputs', () => {
     expect(submitButton).toBeDisabled();
     const disabledSubmit = screen.getByTestId('disabled-consent-submit');
     expect(disabledSubmit).toHaveClass('cursor-not-allowed');
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/Please read and agree using the link above/i);
+    expect(submitButton).toHaveStyle({ backgroundColor: '#D1D5DB', color: '#4B5563' });
+    expect(submitButton).not.toHaveStyle({ backgroundColor: '#9CAF88' });
+    expect(submitButton).not.toHaveAttribute('aria-describedby');
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+    await user.hover(disabledSubmit);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /read terms and consent/i }));
     expect(await screen.findByRole('dialog', { name: /consent, policies & confidentiality/i })).toBeInTheDocument();
