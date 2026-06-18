@@ -11,13 +11,26 @@ vi.mock('../../../shared/auth/cognitoAuth', () => ({
   verifyEmailOtp: vi.fn(),
 }));
 
+const signUpChallenge = {
+  challengeId: 'challenge-1',
+  email: 'person@example.com',
+  flow: 'sign-up' as const,
+  expiresAtUtc: '2026-06-18T12:05:00Z',
+  resendAvailableAtUtc: '2026-06-18T12:01:00Z',
+  retryAfterSeconds: 60,
+  sendsRemainingThisHour: 4,
+};
+
 describe('SignUpForm', () => {
   beforeEach(() => {
     vi.mocked(requestEmailOtp).mockReset();
     vi.mocked(startCognitoLogin).mockReset();
     vi.mocked(verifyEmailOtp).mockReset();
-    vi.mocked(requestEmailOtp).mockResolvedValue(undefined);
-    vi.mocked(verifyEmailOtp).mockResolvedValue({ isAuthenticated: true, expiresAtUtc: null, groups: [] });
+    vi.mocked(requestEmailOtp).mockResolvedValue(signUpChallenge);
+    vi.mocked(verifyEmailOtp).mockResolvedValue({
+      status: 'authenticated',
+      session: { isAuthenticated: true, expiresAtUtc: null, groups: [] },
+    });
   });
 
   it('preserves the return target when starting Google registration', async () => {
@@ -74,7 +87,12 @@ describe('SignUpForm', () => {
     await user.type(screen.getByRole('textbox', { name: /email address/i }), 'person@example.com{Enter}');
     await user.type(screen.getByRole('textbox', { name: /one-time code/i }), '123456{Enter}');
 
-    expect(verifyEmailOtp).toHaveBeenCalledWith({ email: 'person@example.com', flow: 'sign-up', otp: '123456' });
+    expect(verifyEmailOtp).toHaveBeenCalledWith({
+      email: 'person@example.com',
+      flow: 'sign-up',
+      challengeId: 'challenge-1',
+      otp: '123456',
+    });
     expect(screen.getByText(/next step reached/i)).toBeInTheDocument();
   });
 });

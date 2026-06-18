@@ -5,6 +5,7 @@ using WebApi.Auditing;
 using WebApi.Health;
 using WebApi.Notifications;
 using Amazon;
+using Amazon.CognitoIdentityProvider;
 using Amazon.SimpleEmailV2;
 using Application;
 using Application.Services;
@@ -49,6 +50,16 @@ if (authOptions.Enabled &&
     throw new InvalidOperationException("Auth:CognitoAuthority, Auth:CognitoDomain, and Auth:Audience are required when authentication is enabled.");
 }
 
+if (!builder.Environment.IsDevelopment() &&
+    authOptions.Enabled &&
+    (string.IsNullOrWhiteSpace(authOptions.UserPoolId) ||
+     string.IsNullOrWhiteSpace(authOptions.CognitoAwsRegion) ||
+     string.IsNullOrWhiteSpace(authOptions.OtpEmailFromAddress) ||
+     string.IsNullOrWhiteSpace(authOptions.EmailOtpHmacSecret)))
+{
+    throw new InvalidOperationException("Auth:UserPoolId, Auth:CognitoAwsRegion, Auth:OtpEmailFromAddress, and Auth:EmailOtpHmacSecret are required when email OTP authentication is enabled outside Development.");
+}
+
 PublicRuntimeConfigReader.ValidateProductionConfig(builder.Configuration, builder.Environment, authOptions.Enabled);
 
 if (!builder.Environment.IsDevelopment() &&
@@ -77,6 +88,23 @@ builder.Services.AddHttpClient<ICognitoEmailOtpAuth, CognitoEmailOtpAuthService>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditContextAccessor, HttpAuditContextAccessor>();
 builder.Services.AddScoped<IDatabaseReadinessProbe, EfCoreDatabaseReadinessProbe>();
+builder.Services.AddSingleton<WebApi.Security.ISystemClock, WebApi.Security.SystemClock>();
+builder.Services.AddSingleton<IEmailOtpCodeGenerator, EmailOtpCodeGenerator>();
+builder.Services.AddScoped<IEmailOtpRateLimiter, EmailOtpRateLimiter>();
+builder.Services.AddScoped<IEmailOtpAuthService, EmailOtpAuthService>();
+builder.Services.AddScoped<IEmailOtpSender, SesEmailOtpSender>();
+if (!string.IsNullOrWhiteSpace(authOptions.UserPoolId))
+{
+    builder.Services.AddSingleton<IAmazonCognitoIdentityProvider>(_ =>
+    {
+        return string.IsNullOrWhiteSpace(authOptions.CognitoAwsRegion)
+            ? new AmazonCognitoIdentityProviderClient()
+            : new AmazonCognitoIdentityProviderClient(new AmazonCognitoIdentityProviderConfig
+            {
+                RegionEndpoint = RegionEndpoint.GetBySystemName(authOptions.CognitoAwsRegion)
+            });
+    });
+}
 builder.Services.AddSingleton<IAmazonSimpleEmailServiceV2>(_ =>
 {
     var notificationOptions = builder.Configuration
@@ -90,7 +118,7 @@ builder.Services.AddSingleton<IAmazonSimpleEmailServiceV2>(_ =>
         RegionEndpoint = RegionEndpoint.GetBySystemName(region)
     });
 });
-builder.Services.AddSingleton<IProviderOnboardingSesClient, AwsProviderOnboardingSesClient>();
+builder.Services.AddSingleton<ISesEmailClient, AwsSesEmailClient>();
 builder.Services.AddScoped<IProviderOnboardingAdminNotifier, SesProviderOnboardingAdminNotifier>();
 
 builder.Services.AddControllers();

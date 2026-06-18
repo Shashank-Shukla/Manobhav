@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="7.1.0" />
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="4.0.10" />
     <PackageReference Include="AWSSDK.SimpleEmailV2" Version="4.0.14.7" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />

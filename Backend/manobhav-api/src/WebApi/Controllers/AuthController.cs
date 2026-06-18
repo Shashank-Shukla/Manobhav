@@ -9,7 +9,7 @@ namespace WebApi.Controllers;
 public sealed class AuthController(
     ICognitoTokenExchange tokenExchange,
     AuthCookieManager cookies,
-    ICognitoEmailOtpAuth emailOtpAuth) : ControllerBase
+    IEmailOtpAuthService emailOtpAuth) : ControllerBase
 {
     [HttpGet("csrf-token")]
     [Authorize]
@@ -46,9 +46,24 @@ public sealed class AuthController(
 
         try
         {
-            var challenge = await emailOtpAuth.RequestAsync(Normalize(request!), cancellationToken);
-            cookies.StoreEmailOtpSession(Response, EncodeEmailOtpSession(new EmailOtpSession(request!.Email.Trim(), request.Flow, challenge.Session)));
-            return NoContent();
+            return Ok(await emailOtpAuth.RequestAsync(Normalize(request!), HttpContext, cancellationToken));
+        }
+        catch (EmailOtpConflictException exception)
+        {
+            return Problem(title: exception.Message, statusCode: StatusCodes.Status409Conflict);
+        }
+        catch (EmailOtpRateLimitException exception)
+        {
+            Response.Headers.RetryAfter = exception.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return ProblemWithExtensions(
+                exception.Message,
+                StatusCodes.Status429TooManyRequests,
+                new Dictionary<string, object?>
+                {
+                    ["resendAvailableAtUtc"] = exception.ResendAvailableAtUtc,
+                    ["retryAfterSeconds"] = exception.RetryAfterSeconds,
+                    ["sendsRemainingThisHour"] = exception.SendsRemainingThisHour
+                });
         }
         catch (CognitoEmailOtpException exception)
         {
@@ -58,21 +73,41 @@ public sealed class AuthController(
 
     [HttpPost("email-otp/verify")]
     [AllowAnonymous]
-    public async Task<ActionResult<AuthSessionResponse>> VerifyEmailOtp(
+    public async Task<ActionResult<EmailOtpVerifyResponse>> VerifyEmailOtp(
         [FromBody] EmailOtpVerifyRequest? request,
         CancellationToken cancellationToken)
     {
-        var session = DecodeEmailOtpSession(cookies.ReadEmailOtpSession(Request));
-        if (HasMissingEmailOtpVerifyField(request) || session is null || !MatchesSession(request!, session))
+        if (HasMissingEmailOtpVerifyField(request))
         {
             return Problem(title: "Email OTP verification is incomplete.", statusCode: StatusCodes.Status400BadRequest);
         }
 
         try
         {
-            var tokens = await emailOtpAuth.VerifyAsync(Normalize(request!), session.Session, cancellationToken);
-            cookies.ClearEmailOtpSession(Response);
-            return Ok(cookies.SignIn(Response, tokens));
+            var result = await emailOtpAuth.VerifyAsync(Normalize(request!), HttpContext, cancellationToken);
+            var session = result.Tokens is null ? null : cookies.SignIn(Response, result.Tokens);
+            return Ok(new EmailOtpVerifyResponse(result.Status, session, result.Challenge, result.Message));
+        }
+        catch (EmailOtpConflictException exception)
+        {
+            return Problem(title: exception.Message, statusCode: StatusCodes.Status409Conflict);
+        }
+        catch (EmailOtpValidationException exception)
+        {
+            return Problem(title: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+        catch (EmailOtpRateLimitException exception)
+        {
+            Response.Headers.RetryAfter = exception.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return ProblemWithExtensions(
+                exception.Message,
+                StatusCodes.Status429TooManyRequests,
+                new Dictionary<string, object?>
+                {
+                    ["resendAvailableAtUtc"] = exception.ResendAvailableAtUtc,
+                    ["retryAfterSeconds"] = exception.RetryAfterSeconds,
+                    ["sendsRemainingThisHour"] = exception.SendsRemainingThisHour
+                });
         }
         catch (CognitoEmailOtpException exception)
         {
@@ -115,6 +150,7 @@ public sealed class AuthController(
         return request is null ||
                string.IsNullOrWhiteSpace(request.Email) ||
                string.IsNullOrWhiteSpace(request.Otp) ||
+               request.ChallengeId == Guid.Empty ||
                !IsSupportedEmailOtpFlow(request.Flow);
     }
 
@@ -133,42 +169,18 @@ public sealed class AuthController(
         return request with { Email = request.Email.Trim().ToLowerInvariant(), Otp = request.Otp.Trim() };
     }
 
-    private static bool MatchesSession(EmailOtpVerifyRequest request, EmailOtpSession session)
+    private ObjectResult ProblemWithExtensions(string title, int statusCode, IReadOnlyDictionary<string, object?> extensions)
     {
-        return string.Equals(request.Email.Trim(), session.Email, StringComparison.OrdinalIgnoreCase) &&
-               string.Equals(request.Flow, session.Flow, StringComparison.Ordinal);
+        var details = new ProblemDetails
+        {
+            Title = title,
+            Status = statusCode
+        };
+        foreach (var extension in extensions)
+        {
+            details.Extensions[extension.Key] = extension.Value;
+        }
+
+        return new ObjectResult(details) { StatusCode = statusCode };
     }
-
-    private static string EncodeEmailOtpSession(EmailOtpSession session)
-    {
-        return Convert.ToBase64String(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(session))
-            .Replace('+', '-')
-            .Replace('/', '_')
-            .TrimEnd('=');
-    }
-
-    private static EmailOtpSession? DecodeEmailOtpSession(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        try
-        {
-            var normalized = value.Replace('-', '+').Replace('_', '/');
-            var padded = normalized.PadRight(normalized.Length + ((4 - normalized.Length % 4) % 4), '=');
-            return System.Text.Json.JsonSerializer.Deserialize<EmailOtpSession>(Convert.FromBase64String(padded));
-        }
-        catch (FormatException)
-        {
-            return null;
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return null;
-        }
-    }
-
-    private sealed record EmailOtpSession(string Email, string Flow, string Session);
 }

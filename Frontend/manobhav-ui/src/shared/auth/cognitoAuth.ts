@@ -9,6 +9,30 @@ export type AuthSession = {
 
 export type EmailOtpFlow = 'sign-in' | 'sign-up';
 
+export type EmailOtpAuthResponse = {
+  challengeId: string;
+  email: string;
+  flow: EmailOtpFlow;
+  expiresAtUtc: string;
+  resendAvailableAtUtc: string | null;
+  retryAfterSeconds: number | null;
+  sendsRemainingThisHour: number | null;
+};
+
+export type VerifyEmailOtpResponse =
+  | {
+      status: 'authenticated';
+      session: AuthSession;
+      challenge?: never;
+      message?: string;
+    }
+  | {
+      status: 'sign-in-otp-required';
+      session?: never;
+      challenge: EmailOtpAuthResponse;
+      message?: string;
+    };
+
 type CognitoAuthConfig = {
   domain: string;
   clientId: string;
@@ -74,8 +98,8 @@ export async function startCognitoLogin(options: { identityProvider?: string; re
   window.location.assign(buildAuthorizeUrl(config, state, challenge, options.identityProvider).toString());
 }
 
-export async function requestEmailOtp(input: { email: string; flow: EmailOtpFlow }): Promise<void> {
-  await apiRequest<void>('/api/auth/email-otp/request', {
+export async function requestEmailOtp(input: { email: string; flow: EmailOtpFlow }): Promise<EmailOtpAuthResponse> {
+  return apiRequest<EmailOtpAuthResponse>('/api/auth/email-otp/request', {
     method: 'POST',
     body: {
       email: input.email,
@@ -84,18 +108,28 @@ export async function requestEmailOtp(input: { email: string; flow: EmailOtpFlow
   });
 }
 
-export async function verifyEmailOtp(input: { email: string; flow: EmailOtpFlow; otp: string }): Promise<AuthSession> {
-  cachedSession = normalizeSession(
-    await apiRequest<AuthSession>('/api/auth/email-otp/verify', {
+export async function verifyEmailOtp(input: {
+  email: string;
+  flow: EmailOtpFlow;
+  challengeId: string;
+  otp: string;
+}): Promise<VerifyEmailOtpResponse> {
+  const response = await apiRequest<VerifyEmailOtpResponse>('/api/auth/email-otp/verify', {
       method: 'POST',
       body: {
         email: input.email,
         flow: input.flow,
+        challengeId: input.challengeId,
         otp: input.otp,
       },
-    }),
-  );
-  return cachedSession;
+    });
+
+  if (response.status === 'authenticated') {
+    cachedSession = normalizeSession(response.session);
+    return { ...response, session: cachedSession };
+  }
+
+  return response;
 }
 
 export async function completeCognitoRedirect(url = window.location.href): Promise<string> {

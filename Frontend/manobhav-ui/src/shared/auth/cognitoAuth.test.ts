@@ -136,11 +136,20 @@ describe('cognito auth helpers', () => {
     expect(returnTo).toBe('/dashboard/patient');
   });
 
-  it('requests an email OTP through the backend auth API', async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+  it('requests an email OTP through the backend auth API and returns challenge metadata', async () => {
+    const challenge = {
+      challengeId: 'challenge-1',
+      email: 'person@example.com',
+      flow: 'sign-in',
+      expiresAtUtc: '2026-06-18T12:05:00Z',
+      resendAvailableAtUtc: '2026-06-18T12:01:00Z',
+      retryAfterSeconds: 60,
+      sendsRemainingThisHour: 4,
+    };
+    const fetchMock = vi.fn(async () => Response.json(challenge));
     vi.stubGlobal('fetch', fetchMock);
 
-    await requestEmailOtp({ email: 'person@example.com', flow: 'sign-in' });
+    const result = await requestEmailOtp({ email: 'person@example.com', flow: 'sign-in' });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit | undefined];
@@ -151,15 +160,24 @@ describe('cognito auth helpers', () => {
       email: 'person@example.com',
       flow: 'sign-in',
     });
+    expect(result).toEqual(challenge);
   });
 
-  it('verifies an email OTP through the backend and caches the authenticated session', async () => {
+  it('verifies an email OTP through the backend and caches an authenticated session', async () => {
     const fetchMock = vi.fn(async () =>
-      Response.json({ isAuthenticated: true, expiresAtUtc: '2026-06-16T12:00:00Z', groups: ['Patient'] }),
+      Response.json({
+        status: 'authenticated',
+        session: { isAuthenticated: true, expiresAtUtc: '2026-06-16T12:00:00Z', groups: ['Patient'] },
+      }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const session = await verifyEmailOtp({ email: 'person@example.com', flow: 'sign-up', otp: '123456' });
+    const result = await verifyEmailOtp({
+      email: 'person@example.com',
+      flow: 'sign-up',
+      challengeId: 'challenge-1',
+      otp: '123456',
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit | undefined];
@@ -169,9 +187,41 @@ describe('cognito auth helpers', () => {
     expect(JSON.parse(String(init?.body))).toEqual({
       email: 'person@example.com',
       flow: 'sign-up',
+      challengeId: 'challenge-1',
       otp: '123456',
     });
-    expect(session).toEqual({ isAuthenticated: true, expiresAtUtc: '2026-06-16T12:00:00Z', groups: ['Patient'] });
-    expect(getStoredAuthSession()).toEqual(session);
+    expect(result).toEqual({
+      status: 'authenticated',
+      session: { isAuthenticated: true, expiresAtUtc: '2026-06-16T12:00:00Z', groups: ['Patient'] },
+    });
+    expect(getStoredAuthSession()).toEqual(result.session);
+  });
+
+  it('returns a follow-up sign-in challenge without treating the user as authenticated', async () => {
+    const response = {
+      status: 'sign-in-otp-required',
+      message: 'Account created. Enter the sign-in code we just sent.',
+      challenge: {
+        challengeId: 'challenge-2',
+        email: 'person@example.com',
+        flow: 'sign-in',
+        expiresAtUtc: '2026-06-18T12:10:00Z',
+        resendAvailableAtUtc: '2026-06-18T12:06:00Z',
+        retryAfterSeconds: 60,
+        sendsRemainingThisHour: 3,
+      },
+    };
+    const fetchMock = vi.fn(async () => Response.json(response));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await verifyEmailOtp({
+      email: 'person@example.com',
+      flow: 'sign-up',
+      challengeId: 'challenge-1',
+      otp: '123456',
+    });
+
+    expect(result).toEqual(response);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

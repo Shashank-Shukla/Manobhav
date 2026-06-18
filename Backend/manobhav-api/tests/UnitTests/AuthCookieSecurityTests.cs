@@ -18,7 +18,7 @@ public sealed class AuthCookieSecurityTests
         var controller = new AuthController(
             new StubCognitoTokenExchange(new CognitoTokenSet(accessToken, "id-token", "refresh-token", 900)),
             new AuthCookieManager(options),
-            new StubCognitoEmailOtpAuth())
+            new StubEmailOtpAuthService())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -43,7 +43,7 @@ public sealed class AuthCookieSecurityTests
     [Fact]
     public async Task Session_ReturnsClaimsWithoutTokens()
     {
-        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubCognitoEmailOtpAuth())
+        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubEmailOtpAuthService())
         {
             ControllerContext = new ControllerContext
             {
@@ -71,7 +71,7 @@ public sealed class AuthCookieSecurityTests
     [Fact]
     public void CsrfToken_ReturnsCookieBackedToken()
     {
-        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubCognitoEmailOtpAuth())
+        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubEmailOtpAuthService())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -87,7 +87,7 @@ public sealed class AuthCookieSecurityTests
     [Fact]
     public async Task EmailOtpRequestAndVerify_StoreChallengeThenSetAuthCookies()
     {
-        var emailOtpAuth = new StubCognitoEmailOtpAuth(new CognitoTokenSet(CreateJwt("""{"cognito:groups":["Patient"]}"""), null, null, 900));
+        var emailOtpAuth = new StubEmailOtpAuthService(new CognitoTokenSet(CreateJwt("""{"cognito:groups":["Patient"]}"""), null, null, 900));
         var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), emailOtpAuth)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
@@ -95,20 +95,22 @@ public sealed class AuthCookieSecurityTests
 
         var requestResult = await controller.RequestEmailOtp(new EmailOtpAuthRequest("Patient@Example.com", "sign-in"), CancellationToken.None);
 
-        Assert.IsType<NoContentResult>(requestResult);
-        var otpCookie = Assert.Single(controller.Response.Headers.SetCookie, value => value?.StartsWith("mbv_email_otp=", StringComparison.Ordinal) == true);
-        Assert.NotNull(otpCookie);
-        var otpCookieValue = otpCookie!;
-        Assert.Contains("httponly", otpCookieValue, StringComparison.OrdinalIgnoreCase);
+        var requestOk = Assert.IsType<OkObjectResult>(requestResult);
+        var challenge = Assert.IsType<EmailOtpAuthResponse>(requestOk.Value);
+        Assert.Equal("patient@example.com", challenge.Email);
+        Assert.Equal("sign-in", challenge.Flow);
+        Assert.DoesNotContain(controller.Response.Headers.SetCookie, value => value?.StartsWith("mbv_email_otp=", StringComparison.Ordinal) == true);
 
-        controller.Request.Headers.Cookie = otpCookieValue.Split(';', 2)[0];
-        var verifyResult = await controller.VerifyEmailOtp(new EmailOtpVerifyRequest("patient@example.com", "sign-in", "123456"), CancellationToken.None);
+        var verifyResult = await controller.VerifyEmailOtp(new EmailOtpVerifyRequest("patient@example.com", "sign-in", challenge.ChallengeId, "123456"), CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(verifyResult.Result);
-        var session = Assert.IsType<AuthSessionResponse>(ok.Value);
-        Assert.True(session.IsAuthenticated);
-        Assert.Contains("Patient", session.Groups);
+        var response = Assert.IsType<EmailOtpVerifyResponse>(ok.Value);
+        Assert.Equal("authenticated", response.Status);
+        Assert.NotNull(response.Session);
+        Assert.True(response.Session!.IsAuthenticated);
+        Assert.Contains("Patient", response.Session.Groups);
         Assert.Equal("challenge-session", emailOtpAuth.VerifiedSession);
+        Assert.Contains(controller.Response.Headers.SetCookie, value => value?.StartsWith("mbv_auth=", StringComparison.Ordinal) == true);
     }
 
     [Fact]
@@ -231,7 +233,7 @@ public sealed class AuthCookieSecurityTests
         var handler = new RecordingHandler("""{"ChallengeName":"EMAIL_OTP","Session":"challenge-session"}""");
         var service = new CognitoEmailOtpAuthService(new HttpClient(handler), CreateOptions());
 
-        var challenge = await service.RequestAsync(new EmailOtpAuthRequest("person@example.com", "sign-in"), CancellationToken.None);
+        var challenge = await service.RequestSignInOtpAsync("person@example.com", CancellationToken.None);
 
         Assert.Equal("challenge-session", challenge.Session);
         Assert.Equal(new Uri("https://issuer.example.com/"), handler.Request?.RequestUri);
@@ -288,21 +290,29 @@ public sealed class AuthCookieSecurityTests
         }
     }
 
-    private sealed class StubCognitoEmailOtpAuth(CognitoTokenSet? tokens = null) : ICognitoEmailOtpAuth
+    private sealed class StubEmailOtpAuthService(CognitoTokenSet? tokens = null) : IEmailOtpAuthService
     {
         private readonly CognitoTokenSet _tokens = tokens ?? new CognitoTokenSet("access-token", null, null, 900);
+        private readonly Guid _challengeId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
         public string? VerifiedSession { get; private set; }
 
-        public Task<EmailOtpChallenge> RequestAsync(EmailOtpAuthRequest request, CancellationToken cancellationToken)
+        public Task<EmailOtpAuthResponse> RequestAsync(EmailOtpAuthRequest request, HttpContext httpContext, CancellationToken cancellationToken)
         {
-            return Task.FromResult(new EmailOtpChallenge("challenge-session", request.Flow));
+            return Task.FromResult(new EmailOtpAuthResponse(
+                _challengeId,
+                request.Email.Trim().ToLowerInvariant(),
+                request.Flow,
+                DateTimeOffset.UtcNow.AddMinutes(10),
+                DateTimeOffset.UtcNow.AddMinutes(1),
+                60,
+                2));
         }
 
-        public Task<CognitoTokenSet> VerifyAsync(EmailOtpVerifyRequest request, string session, CancellationToken cancellationToken)
+        public Task<EmailOtpVerifyResult> VerifyAsync(EmailOtpVerifyRequest request, HttpContext httpContext, CancellationToken cancellationToken)
         {
-            VerifiedSession = session;
-            return Task.FromResult(_tokens);
+            VerifiedSession = "challenge-session";
+            return Task.FromResult(new EmailOtpVerifyResult("authenticated", _tokens, null, null));
         }
     }
 

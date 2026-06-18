@@ -8,20 +8,20 @@ using Microsoft.Extensions.Options;
 
 namespace WebApi.Notifications;
 
-public sealed record ProviderOnboardingSesEmail(
+public sealed record SesEmail(
     string FromEmailAddress,
     IReadOnlyList<string> ToAddresses,
     string Subject,
     string TextBody);
 
-public interface IProviderOnboardingSesClient
+public interface ISesEmailClient
 {
-    Task SendEmailAsync(ProviderOnboardingSesEmail email, CancellationToken cancellationToken);
+    Task SendEmailAsync(SesEmail email, CancellationToken cancellationToken);
 }
 
-public sealed class AwsProviderOnboardingSesClient(IAmazonSimpleEmailServiceV2 sesClient) : IProviderOnboardingSesClient
+public sealed class AwsSesEmailClient(IAmazonSimpleEmailServiceV2 sesClient) : ISesEmailClient
 {
-    public Task SendEmailAsync(ProviderOnboardingSesEmail email, CancellationToken cancellationToken)
+    public Task SendEmailAsync(SesEmail email, CancellationToken cancellationToken)
     {
         var request = new SendEmailRequest
         {
@@ -56,7 +56,7 @@ public sealed class AwsProviderOnboardingSesClient(IAmazonSimpleEmailServiceV2 s
 }
 
 public sealed class SesProviderOnboardingAdminNotifier(
-    IProviderOnboardingSesClient sesClient,
+    ISesEmailClient sesClient,
     IOptions<ProviderOnboardingNotificationOptions> options,
     ILogger<SesProviderOnboardingAdminNotifier> logger) : IProviderOnboardingAdminNotifier
 {
@@ -83,7 +83,7 @@ public sealed class SesProviderOnboardingAdminNotifier(
         }
     }
 
-    internal static ProviderOnboardingSesEmail BuildEmail(
+    internal static SesEmail BuildEmail(
         ProviderOnboardingAdminNotification notification,
         ProviderOnboardingNotificationOptions settings)
     {
@@ -98,7 +98,7 @@ public sealed class SesProviderOnboardingAdminNotifier(
             throw new InvalidOperationException("Provider onboarding admin notification sender is not configured.");
         }
 
-        return new ProviderOnboardingSesEmail(
+        return new SesEmail(
             FormatFromAddress(settings),
             recipients,
             $"Provider application ready for review: {GetProviderName(notification)}",

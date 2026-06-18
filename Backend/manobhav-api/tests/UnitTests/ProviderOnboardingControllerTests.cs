@@ -785,11 +785,11 @@ public sealed class ProviderOnboardingControllerTests
         }
     }
 
-    private sealed class RecordingProviderOnboardingSesClient : IProviderOnboardingSesClient
+    private sealed class RecordingProviderOnboardingSesClient : ISesEmailClient
     {
-        public List<ProviderOnboardingSesEmail> Sent { get; } = [];
+        public List<SesEmail> Sent { get; } = [];
 
-        public Task SendEmailAsync(ProviderOnboardingSesEmail email, CancellationToken cancellationToken)
+        public Task SendEmailAsync(SesEmail email, CancellationToken cancellationToken)
         {
             Sent.Add(email);
             return Task.CompletedTask;

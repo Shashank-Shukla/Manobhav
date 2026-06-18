@@ -2,6 +2,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Amazon.CognitoIdentityProvider;
+using Amazon.CognitoIdentityProvider.Model;
 
 namespace WebApi.Security;
 
@@ -9,39 +11,102 @@ public sealed record EmailOtpChallenge(string Session, string Flow);
 
 public interface ICognitoEmailOtpAuth
 {
-    Task<EmailOtpChallenge> RequestAsync(EmailOtpAuthRequest request, CancellationToken cancellationToken);
+    Task<bool> UserExistsAsync(string email, CancellationToken cancellationToken);
 
-    Task<CognitoTokenSet> VerifyAsync(EmailOtpVerifyRequest request, string session, CancellationToken cancellationToken);
+    Task CreatePasswordlessUserAsync(string email, CancellationToken cancellationToken);
+
+    Task DeletePasswordlessUserAsync(string email, CancellationToken cancellationToken);
+
+    Task<EmailOtpChallenge> RequestSignInOtpAsync(string email, CancellationToken cancellationToken);
+
+    Task<CognitoTokenSet> VerifySignInOtpAsync(string email, string otp, string session, CancellationToken cancellationToken);
 }
 
-public sealed class CognitoEmailOtpAuthService(HttpClient httpClient, AuthOptions options) : ICognitoEmailOtpAuth
+public sealed class CognitoEmailOtpAuthService(
+    HttpClient httpClient,
+    AuthOptions options,
+    IAmazonCognitoIdentityProvider? cognitoClient = null) : ICognitoEmailOtpAuth
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-    public async Task<EmailOtpChallenge> RequestAsync(EmailOtpAuthRequest request, CancellationToken cancellationToken)
+    public async Task<bool> UserExistsAsync(string email, CancellationToken cancellationToken)
     {
-        return request.Flow switch
+        if (cognitoClient is null || string.IsNullOrWhiteSpace(options.UserPoolId))
         {
-            "sign-in" => await RequestSignInOtpAsync(request.Email, cancellationToken),
-            "sign-up" => await RequestSignUpOtpAsync(request.Email, cancellationToken),
-            _ => throw new CognitoEmailOtpException("Unsupported email OTP flow.")
-        };
+            return false;
+        }
+
+        try
+        {
+            await cognitoClient.AdminGetUserAsync(new AdminGetUserRequest
+            {
+                UserPoolId = options.UserPoolId,
+                Username = email
+            }, cancellationToken);
+            return true;
+        }
+        catch (UserNotFoundException)
+        {
+            return false;
+        }
     }
 
-    public async Task<CognitoTokenSet> VerifyAsync(EmailOtpVerifyRequest request, string session, CancellationToken cancellationToken)
+    public async Task CreatePasswordlessUserAsync(string email, CancellationToken cancellationToken)
     {
-        return request.Flow switch
+        if (cognitoClient is null || string.IsNullOrWhiteSpace(options.UserPoolId))
         {
-            "sign-in" => await VerifySignInOtpAsync(request.Email, request.Otp, session, cancellationToken),
-            "sign-up" => await VerifySignUpOtpAsync(request.Email, request.Otp, session, cancellationToken),
-            _ => throw new CognitoEmailOtpException("Unsupported email OTP flow.")
-        };
+            throw new CognitoEmailOtpException("Cognito user pool is not configured.");
+        }
+
+        try
+        {
+            await cognitoClient.AdminCreateUserAsync(new AdminCreateUserRequest
+            {
+                UserPoolId = options.UserPoolId,
+                Username = email,
+                MessageAction = MessageActionType.SUPPRESS,
+                DesiredDeliveryMediums = [DeliveryMediumType.EMAIL],
+                UserAttributes =
+                [
+                    new AttributeType { Name = "email", Value = email },
+                    new AttributeType { Name = "email_verified", Value = "true" }
+                ]
+            }, cancellationToken);
+        }
+        catch (UsernameExistsException exception)
+        {
+            throw new CognitoEmailOtpException(exception.Message, nameof(UsernameExistsException));
+        }
+        catch (AliasExistsException exception)
+        {
+            throw new CognitoEmailOtpException(exception.Message, nameof(AliasExistsException));
+        }
     }
 
-    private async Task<EmailOtpChallenge> RequestSignInOtpAsync(string email, CancellationToken cancellationToken)
+    public async Task DeletePasswordlessUserAsync(string email, CancellationToken cancellationToken)
+    {
+        if (cognitoClient is null || string.IsNullOrWhiteSpace(options.UserPoolId))
+        {
+            return;
+        }
+
+        try
+        {
+            await cognitoClient.AdminDeleteUserAsync(new AdminDeleteUserRequest
+            {
+                UserPoolId = options.UserPoolId,
+                Username = email
+            }, cancellationToken);
+        }
+        catch (UserNotFoundException)
+        {
+        }
+    }
+
+    public async Task<EmailOtpChallenge> RequestSignInOtpAsync(string email, CancellationToken cancellationToken)
     {
         var response = await InitiateEmailOtpAuthAsync(email, session: null, cancellationToken);
         if (!string.Equals(response.ChallengeName, "EMAIL_OTP", StringComparison.Ordinal) ||
@@ -53,59 +118,10 @@ public sealed class CognitoEmailOtpAuthService(HttpClient httpClient, AuthOption
         return new EmailOtpChallenge(response.Session, "sign-in");
     }
 
-    private async Task<EmailOtpChallenge> RequestSignUpOtpAsync(string email, CancellationToken cancellationToken)
-    {
-        var response = await PostCognitoAsync<CognitoSignUpResponse>(
-            "SignUp",
-            new
-            {
-                ClientId = options.Audience,
-                Username = email,
-                UserAttributes = new[] { new { Name = "email", Value = email } }
-            },
-            cancellationToken);
-
-        if (string.IsNullOrWhiteSpace(response.Session))
-        {
-            throw new CognitoEmailOtpException("Cognito did not return a sign-up session.");
-        }
-
-        return new EmailOtpChallenge(response.Session, "sign-up");
-    }
-
-    private async Task<CognitoTokenSet> VerifySignInOtpAsync(string email, string otp, string session, CancellationToken cancellationToken)
+    public async Task<CognitoTokenSet> VerifySignInOtpAsync(string email, string otp, string session, CancellationToken cancellationToken)
     {
         var response = await RespondToEmailOtpChallengeAsync(email, otp, session, cancellationToken);
         return CreateTokenSet(response.AuthenticationResult);
-    }
-
-    private async Task<CognitoTokenSet> VerifySignUpOtpAsync(string email, string otp, string session, CancellationToken cancellationToken)
-    {
-        var confirmResponse = await PostCognitoAsync<CognitoSessionResponse>(
-            "ConfirmSignUp",
-            new
-            {
-                ClientId = options.Audience,
-                Username = email,
-                ConfirmationCode = otp,
-                Session = session
-            },
-            cancellationToken);
-
-        var authResponse = await InitiateEmailOtpAuthAsync(email, confirmResponse.Session, cancellationToken);
-        if (authResponse.AuthenticationResult is not null)
-        {
-            return CreateTokenSet(authResponse.AuthenticationResult);
-        }
-
-        if (string.Equals(authResponse.ChallengeName, "EMAIL_OTP", StringComparison.Ordinal) &&
-            !string.IsNullOrWhiteSpace(authResponse.Session))
-        {
-            var challengeResponse = await RespondToEmailOtpChallengeAsync(email, otp, authResponse.Session, cancellationToken);
-            return CreateTokenSet(challengeResponse.AuthenticationResult);
-        }
-
-        throw new CognitoEmailOtpException("Cognito did not complete email OTP registration.");
     }
 
     private Task<CognitoAuthResponse> InitiateEmailOtpAuthAsync(string email, string? session, CancellationToken cancellationToken)
@@ -192,16 +208,6 @@ public sealed class CognitoEmailOtpAuthService(HttpClient httpClient, AuthOption
         {
             return ("", "Cognito email OTP request failed.");
         }
-    }
-
-    private sealed class CognitoSignUpResponse
-    {
-        public string? Session { get; init; }
-    }
-
-    private sealed class CognitoSessionResponse
-    {
-        public string? Session { get; init; }
     }
 
     private sealed class CognitoAuthResponse

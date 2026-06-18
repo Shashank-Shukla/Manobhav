@@ -43,6 +43,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<VisitorFlowQuestion> VisitorFlowQuestions => Set<VisitorFlowQuestion>();
     public DbSet<AdminNotification> AdminNotifications => Set<AdminNotification>();
+    public DbSet<EmailOtpChallenge> EmailOtpChallenges => Set<EmailOtpChallenge>();
+    public DbSet<EmailOtpRateLimitBucket> EmailOtpRateLimitBuckets => Set<EmailOtpRateLimitBucket>();
 
     public override int SaveChanges()
     {
@@ -573,6 +575,36 @@ public class ApplicationDbContext : DbContext
             entity.Property(notification => notification.LinkPath).HasMaxLength(300).IsRequired();
             entity.Property(notification => notification.SourceEntityType).HasMaxLength(120);
             entity.Property(notification => notification.SourceEntityId).HasMaxLength(120);
+        });
+
+        modelBuilder.Entity<EmailOtpChallenge>(entity =>
+        {
+            entity.HasKey(challenge => challenge.Id);
+            entity.HasIndex(challenge => new { challenge.Email, challenge.Flow, challenge.CreatedAtUtc });
+            entity.HasIndex(challenge => challenge.ExpiresAtUtc);
+            entity.HasIndex(challenge => new { challenge.Email, challenge.Flow, challenge.VerificationLockedUntilUtc });
+            entity.HasIndex(challenge => new { challenge.Email, challenge.Flow, challenge.InvalidatedAtUtc, challenge.ExpiresAtUtc });
+            entity.Property(challenge => challenge.Email).HasMaxLength(320).IsRequired();
+            entity.Property(challenge => challenge.Flow).HasMaxLength(40).IsRequired();
+            entity.Property(challenge => challenge.OtpHash).HasMaxLength(128);
+            entity.Property(challenge => challenge.OtpSalt).HasMaxLength(64);
+            entity.Property(challenge => challenge.ProviderSession).HasMaxLength(2048);
+            entity.Property(challenge => challenge.VerificationLockToken).HasMaxLength(64);
+            entity.Property(challenge => challenge.InvalidationReason).HasMaxLength(120);
+            entity.Property(challenge => challenge.ExternalSendStatus).HasMaxLength(40).IsRequired();
+            entity.Property(challenge => challenge.ExternalSendFailure).HasMaxLength(240);
+            entity.Property(challenge => challenge.IpAddress).HasMaxLength(128);
+            entity.Property(challenge => challenge.UserAgent).HasMaxLength(512);
+        });
+
+        modelBuilder.Entity<EmailOtpRateLimitBucket>(entity =>
+        {
+            entity.HasKey(bucket => bucket.Id);
+            entity.HasIndex(bucket => new { bucket.Email, bucket.Flow }).IsUnique();
+            entity.HasIndex(bucket => bucket.UpdatedAtUtc);
+            entity.Property(bucket => bucket.Email).HasMaxLength(320).IsRequired();
+            entity.Property(bucket => bucket.Flow).HasMaxLength(40).IsRequired();
+            entity.Property(bucket => bucket.Version).IsConcurrencyToken();
         });
     }
 
