@@ -81,6 +81,7 @@ public sealed class ProviderOnboardingController : ControllerBase
     [HttpPut("{applicationId:guid}/sections/{sectionKey}")]
     [ProducesResponseType(typeof(ProviderApplicationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SaveSection(
         Guid applicationId,
@@ -88,10 +89,18 @@ public sealed class ProviderOnboardingController : ControllerBase
         SaveProviderSectionRequest request,
         CancellationToken cancellationToken)
     {
-        var application = await GetOwnedMutableApplicationAsync(applicationId, cancellationToken);
+        var application = await GetOwnedApplicationAsync(applicationId, cancellationToken);
         if (application is null)
         {
             return NotFound();
+        }
+
+        if (!string.Equals(application.Status, "Draft", StringComparison.Ordinal))
+        {
+            return Problem(
+                title: "Provider application is not editable.",
+                detail: $"Current status is {application.Status}.",
+                statusCode: StatusCodes.Status409Conflict);
         }
 
         try
@@ -116,6 +125,15 @@ public sealed class ProviderOnboardingController : ControllerBase
         if (application is null)
         {
             return NotFound();
+        }
+
+        try
+        {
+            _sectionService.ValidateApplicationComplete(application);
+        }
+        catch (ProviderOnboardingValidationException exception)
+        {
+            return Problem(title: exception.Message, statusCode: StatusCodes.Status400BadRequest);
         }
 
         if (string.Equals(application.Status, "Submitted", StringComparison.Ordinal))
@@ -181,6 +199,16 @@ public sealed class ProviderOnboardingController : ControllerBase
 
     private async Task<ProviderOnboardingApplication?> GetOwnedMutableApplicationAsync(Guid applicationId, CancellationToken cancellationToken)
     {
+        var application = await GetOwnedApplicationAsync(applicationId, cancellationToken);
+        return application is not null &&
+            application.Status != "Approved" &&
+            application.Status != "Suspended"
+            ? application
+            : null;
+    }
+
+    private async Task<ProviderOnboardingApplication?> GetOwnedApplicationAsync(Guid applicationId, CancellationToken cancellationToken)
+    {
         var user = await EnsureCurrentUserAsync(cancellationToken);
         if (user is null)
         {
@@ -190,9 +218,7 @@ public sealed class ProviderOnboardingController : ControllerBase
         return await _db.ProviderOnboardingApplications
             .FirstOrDefaultAsync(item =>
                 item.Id == applicationId &&
-                item.UserId == user.Id &&
-                item.Status != "Approved" &&
-                item.Status != "Suspended",
+                item.UserId == user.Id,
                 cancellationToken);
     }
 
@@ -243,7 +269,7 @@ public sealed class ProviderOnboardingController : ControllerBase
             application.CreatedAtUtc,
             application.UpdatedAtUtc,
             application.SubmittedAtUtc,
-            BuildSections(application));
+            ProviderOnboardingSectionCatalog.BuildReviewSections(application));
     }
 
     private async Task<IActionResult?> TryNotifySubmittedAsync(
@@ -269,7 +295,7 @@ public sealed class ProviderOnboardingController : ControllerBase
         ProviderOnboardingApplication application,
         DateTimeOffset submittedAt)
     {
-        var sections = BuildSections(application);
+        var sections = ProviderOnboardingSectionCatalog.BuildReviewSections(application);
         var basicIdentity = sections.GetValueOrDefault("basicIdentity");
         var displayName = ReadOptionalString(basicIdentity, "displayName") ??
             ReadOptionalString(basicIdentity, "legalName") ??
@@ -282,67 +308,6 @@ public sealed class ProviderOnboardingController : ControllerBase
             ReadOptionalString(basicIdentity, "email"),
             submittedAt,
             sections);
-    }
-
-    private static IReadOnlyDictionary<string, JsonElement> BuildSections(ProviderOnboardingApplication application)
-    {
-        var sections = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
-
-        AddRootSection(sections, "basicIdentity", application.BasicProfileJson);
-        AddNestedSection(sections, application.BioJson, "bio", "bioAndApproach");
-        AddNestedSection(sections, application.BioJson, "specializations", "specializations");
-        AddNestedSection(sections, application.BioJson, "modalities", "therapyApproaches");
-        AddNestedSection(sections, application.SessionDetailsJson, "sessionDetails", "sessionDetails");
-        AddNestedSection(sections, application.SessionDetailsJson, "credentials", "credentials");
-        AddNestedSection(sections, application.SessionDetailsJson, "payout", "payout");
-
-        return sections;
-    }
-
-    private static void AddRootSection(IDictionary<string, JsonElement> sections, string sectionKey, string json)
-    {
-        if (TryParseObject(json, out var element) && element.EnumerateObject().Any())
-        {
-            sections[sectionKey] = element;
-        }
-    }
-
-    private static void AddNestedSection(IDictionary<string, JsonElement> sections, string json, string storedKey, string sectionKey)
-    {
-        if (!TryParseObject(json, out var root) ||
-            !root.TryGetProperty(storedKey, out var section) ||
-            section.ValueKind != JsonValueKind.Object ||
-            !section.EnumerateObject().Any())
-        {
-            return;
-        }
-
-        sections[sectionKey] = section.Clone();
-    }
-
-    private static bool TryParseObject(string json, out JsonElement element)
-    {
-        element = default;
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return false;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(json);
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                return false;
-            }
-
-            element = document.RootElement.Clone();
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
     }
 
     private static string? ReadOptionalString(JsonElement element, string propertyName)

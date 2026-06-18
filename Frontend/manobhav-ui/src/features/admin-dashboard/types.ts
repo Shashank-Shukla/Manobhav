@@ -118,6 +118,29 @@ export type ProviderApplication = {
   updatedAtUtc: string | null;
   submittedAtUtc: string | null;
   sections: Record<string, unknown>;
+  sectionReviews: Record<string, ProviderApplicationSectionReview>;
+};
+
+export const PROVIDER_APPLICATION_REQUIRED_REVIEW_SECTION_KEYS = [
+  'basicIdentity',
+  'bioAndApproach',
+  'specializations',
+  'therapyApproaches',
+  'sessionDetails',
+  'credentials',
+  'payout',
+] as const;
+
+export const PROVIDER_APPLICATION_SECTION_REVIEW_COMMENT_MAX_LENGTH = 2000;
+
+export type ProviderApplicationSectionReviewStatus = 'Approved' | 'Rejected';
+
+export type ProviderApplicationSectionReview = {
+  id: string;
+  sectionKey: string;
+  status: ProviderApplicationSectionReviewStatus;
+  comment: string | null;
+  reviewedAtUtc: string;
 };
 
 export type AdminNotification = {

@@ -7,6 +7,8 @@ public sealed record ProviderApplicationDto
 {
     private static readonly IReadOnlyDictionary<string, JsonElement> EmptySections =
         new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+    private static readonly IReadOnlyDictionary<string, ProviderApplicationSectionReviewDto> EmptySectionReviews =
+        new Dictionary<string, ProviderApplicationSectionReviewDto>(StringComparer.Ordinal);
 
     public ProviderApplicationDto(
         Guid id,
@@ -16,7 +18,8 @@ public sealed record ProviderApplicationDto
         DateTimeOffset createdAtUtc,
         DateTimeOffset? updatedAtUtc,
         DateTimeOffset? submittedAtUtc,
-        IReadOnlyDictionary<string, JsonElement>? sections = null)
+        IReadOnlyDictionary<string, JsonElement>? sections = null,
+        IReadOnlyDictionary<string, ProviderApplicationSectionReviewDto>? sectionReviews = null)
     {
         Id = id;
         UserId = userId;
@@ -26,6 +29,7 @@ public sealed record ProviderApplicationDto
         UpdatedAtUtc = updatedAtUtc;
         SubmittedAtUtc = submittedAtUtc;
         Sections = sections ?? EmptySections;
+        SectionReviews = sectionReviews ?? EmptySectionReviews;
     }
 
     public Guid Id { get; init; }
@@ -36,6 +40,22 @@ public sealed record ProviderApplicationDto
     public DateTimeOffset? UpdatedAtUtc { get; init; }
     public DateTimeOffset? SubmittedAtUtc { get; init; }
     public IReadOnlyDictionary<string, JsonElement> Sections { get; init; }
+    public IReadOnlyDictionary<string, ProviderApplicationSectionReviewDto> SectionReviews { get; init; }
+}
+
+public sealed record ProviderApplicationSectionReviewDto(
+    Guid Id,
+    string SectionKey,
+    string Status,
+    string? Comment,
+    DateTimeOffset ReviewedAtUtc);
+
+public sealed class ProviderApplicationSectionReviewRequest
+{
+    public const int MaxCommentLength = 2000;
+
+    public string? Status { get; init; }
+    public string? Comment { get; init; }
 }
 
 public sealed record ProviderTaxonomyOptionDto(string Key, string Label);

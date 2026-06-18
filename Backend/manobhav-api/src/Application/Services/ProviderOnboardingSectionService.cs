@@ -29,6 +29,25 @@ public sealed class ProviderOnboardingSectionService
 
     public IReadOnlySet<string> KnownSectionKeys => SectionKeys;
 
+    public void ValidateApplicationComplete(ProviderOnboardingApplication application)
+    {
+        var sections = ProviderOnboardingSectionCatalog.BuildReviewSections(application);
+        var missingSections = ProviderOnboardingSectionCatalog.GetMissingRequiredReviewSectionKeys(sections);
+        if (missingSections.Count > 0)
+        {
+            throw new ProviderOnboardingValidationException(
+                $"Provider application is incomplete. Missing required sections: {string.Join(", ", missingSections)}.");
+        }
+
+        ValidateBasicIdentity(DeserializeSection<ProviderBasicIdentitySection>(sections, ProviderOnboardingSectionCatalog.BasicIdentity));
+        ValidateBio(DeserializeSection<ProviderBioSection>(sections, ProviderOnboardingSectionCatalog.BioAndApproach));
+        ValidateSpecializations(DeserializeSection<ProviderSpecializationsSection>(sections, ProviderOnboardingSectionCatalog.Specializations));
+        ValidateModalities(DeserializeSection<ProviderModalitiesSection>(sections, ProviderOnboardingSectionCatalog.TherapyApproaches));
+        ValidateSessionDetails(DeserializeSection<ProviderSessionDetailsSection>(sections, ProviderOnboardingSectionCatalog.SessionDetails));
+        ValidateCredentials(DeserializeSection<ProviderCredentialsSection>(sections, ProviderOnboardingSectionCatalog.Credentials));
+        ValidatePayout(DeserializeSection<ProviderPayoutSection>(sections, ProviderOnboardingSectionCatalog.Payout));
+    }
+
     public void ApplySection(ProviderOnboardingApplication application, string sectionKey, SaveProviderSectionRequest request)
     {
         if (!SectionKeys.Contains(sectionKey))
@@ -236,6 +255,20 @@ public sealed class ProviderOnboardingSectionService
         if (value?.Length > maxLength)
         {
             throw new ProviderOnboardingValidationException($"{label} must be {maxLength} characters or fewer.");
+        }
+    }
+
+    private static TSection? DeserializeSection<TSection>(
+        IReadOnlyDictionary<string, JsonElement> sections,
+        string sectionKey)
+    {
+        try
+        {
+            return sections[sectionKey].Deserialize<TSection>(JsonOptions);
+        }
+        catch (JsonException)
+        {
+            throw new ProviderOnboardingValidationException($"{sectionKey} section is invalid.");
         }
     }
 

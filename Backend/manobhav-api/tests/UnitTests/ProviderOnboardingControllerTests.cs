@@ -90,6 +90,49 @@ public sealed class ProviderOnboardingControllerTests
         Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
     }
 
+    [Theory]
+    [InlineData("Submitted")]
+    [InlineData("Approved")]
+    [InlineData("Suspended")]
+    [InlineData("Rejected")]
+    public async Task SaveSection_RejectsNonDraftApplicationStatus(string status)
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        application.Status = status;
+        application.BasicProfileJson = """
+            {
+              "legalName": "Dr. Original Rao",
+              "displayName": "Original Rao",
+              "email": "original@example.com"
+            }
+            """;
+        await db.SaveChangesAsync();
+        var controller = CreateProviderController(db);
+
+        var result = await controller.SaveSection(
+            application.Id,
+            "basic-profile",
+            new SaveProviderSectionRequest
+            {
+                BasicIdentity = new ProviderBasicIdentitySection
+                {
+                    LegalName = "Dr. Edited Rao",
+                    DisplayName = "Edited Rao",
+                    Email = "edited@example.com"
+                }
+            },
+            CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
+        var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
+        Assert.Equal(status, saved!.Status);
+        using var json = JsonDocument.Parse(saved.BasicProfileJson);
+        Assert.Equal("Dr. Original Rao", json.RootElement.GetProperty("legalName").GetString());
+    }
+
     [Fact]
     public async Task GetMine_ReturnsSavedSectionsForDraftHydration()
     {
@@ -200,20 +243,77 @@ public sealed class ProviderOnboardingControllerTests
     }
 
     [Fact]
-    public async Task Submit_MarksDraftAsSubmitted()
+    public async Task Submit_RejectsIncompleteApplication()
     {
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddApplicationAsync(db, user.Id);
         application.BasicProfileJson = """
             {
-              "legalName": "Dr. Submitted Rao",
-              "displayName": "Submitted Rao",
-              "email": "submitted@example.com",
-              "phone": "+919999999999",
-              "location": "Mumbai"
+              "legalName": "Dr. Incomplete Rao",
+              "displayName": "Incomplete Rao",
+              "email": "incomplete@example.com"
             }
             """;
+        await db.SaveChangesAsync();
+        var notifier = new RecordingProviderOnboardingAdminNotifier();
+        var controller = CreateProviderController(db, notifier);
+
+        var result = await controller.Submit(application.Id, CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+        var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
+        Assert.Equal("Draft", saved!.Status);
+        Assert.Null(saved.SubmittedAtUtc);
+        Assert.Empty(notifier.Sent);
+    }
+
+    [Fact]
+    public async Task Submit_RejectsInvalidRequiredSectionFields()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        SeedCompleteProviderApplication(application);
+        application.SessionDetailsJson = """
+            {
+              "sessionDetails": {
+                "sessionLengthsMinutes": [60],
+                "availabilitySummary": "Weekdays",
+                "capacityPerWeek": 12
+              },
+              "credentials": {
+                "items": []
+              },
+              "payout": {
+                "payoutMode": "Bank",
+                "accountHolderName": "Submitted Rao",
+                "notes": "Verified later"
+              }
+            }
+            """;
+        await db.SaveChangesAsync();
+        var notifier = new RecordingProviderOnboardingAdminNotifier();
+        var controller = CreateProviderController(db, notifier);
+
+        var result = await controller.Submit(application.Id, CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+        var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
+        Assert.Equal("Draft", saved!.Status);
+        Assert.Null(saved.SubmittedAtUtc);
+        Assert.Empty(notifier.Sent);
+    }
+
+    [Fact]
+    public async Task Submit_MarksDraftAsSubmitted()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        SeedCompleteProviderApplication(application);
         await db.SaveChangesAsync();
         var notifier = new RecordingProviderOnboardingAdminNotifier();
         var controller = CreateProviderController(db, notifier);
@@ -239,6 +339,7 @@ public sealed class ProviderOnboardingControllerTests
         var user = await AddUserAsync(db);
         var application = await AddApplicationAsync(db, user.Id);
         var submittedAt = DateTimeOffset.UtcNow.AddMinutes(-5);
+        SeedCompleteProviderApplication(application);
         application.Status = "Submitted";
         application.SubmittedAtUtc = submittedAt;
         await db.SaveChangesAsync();
@@ -262,6 +363,7 @@ public sealed class ProviderOnboardingControllerTests
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddApplicationAsync(db, user.Id);
+        SeedCompleteProviderApplication(application);
         var notifier = new FailingProviderOnboardingAdminNotifier();
         var controller = CreateProviderController(db, notifier);
 
@@ -557,6 +659,60 @@ public sealed class ProviderOnboardingControllerTests
         db.ProviderOnboardingApplications.Add(application);
         await db.SaveChangesAsync();
         return application;
+    }
+
+    private static void SeedCompleteProviderApplication(ProviderOnboardingApplication application)
+    {
+        application.BasicProfileJson = """
+            {
+              "legalName": "Dr. Submitted Rao",
+              "displayName": "Submitted Rao",
+              "email": "submitted@example.com",
+              "phone": "+919999999999",
+              "location": "Mumbai"
+            }
+            """;
+        application.BioJson = """
+            {
+              "bio": {
+                "shortBio": "Trauma informed therapist",
+                "longBio": "Long bio",
+                "approach": "ACT and mindfulness",
+                "languages": ["English", "Hindi"]
+              },
+              "specializations": {
+                "focusAreas": ["Anxiety"],
+                "ageGroups": ["Adults"],
+                "therapyGoals": ["Stress"]
+              },
+              "modalities": {
+                "modalities": ["ACT"],
+                "deliveryModes": ["Online"]
+              }
+            }
+            """;
+        application.SessionDetailsJson = """
+            {
+              "sessionDetails": {
+                "sessionLengthsMinutes": [60],
+                "availabilitySummary": "Weekdays",
+                "capacityPerWeek": 12
+              },
+              "credentials": {
+                "items": [{
+                  "credentialType": "License",
+                  "title": "Clinical Psychologist",
+                  "institution": "RCI",
+                  "licenseNumber": "A123"
+                }]
+              },
+              "payout": {
+                "payoutMode": "Bank",
+                "accountHolderName": "Submitted Rao",
+                "notes": "Verified later"
+              }
+            }
+            """;
     }
 
     private static ApplicationDbContext CreateDbContext()

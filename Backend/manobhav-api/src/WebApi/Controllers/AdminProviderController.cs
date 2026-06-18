@@ -1,4 +1,5 @@
 using Application.DTOs;
+using Application.Services;
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -13,6 +14,11 @@ namespace WebApi.Controllers;
 [Route("api/admin/provider-applications")]
 public sealed class AdminProviderController : ControllerBase
 {
+    private const string SubmittedStatus = "Submitted";
+    private const string ApprovedStatus = "Approved";
+    private const string RejectedStatus = "Rejected";
+    private const string ProviderRole = "Provider";
+
     private readonly ApplicationDbContext _db;
 
     public AdminProviderController(ApplicationDbContext db)
@@ -25,6 +31,7 @@ public sealed class AdminProviderController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<ProviderApplicationDto>>> List(CancellationToken cancellationToken)
     {
         var applications = await _db.ProviderOnboardingApplications
+            .Include(application => application.SectionReviews)
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .Take(100)
@@ -38,6 +45,7 @@ public sealed class AdminProviderController : ControllerBase
     public async Task<ActionResult<ProviderApplicationDto>> Get(Guid applicationId, CancellationToken cancellationToken)
     {
         var application = await _db.ProviderOnboardingApplications
+            .Include(item => item.SectionReviews)
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.Id == applicationId, cancellationToken);
         if (application is null)
@@ -50,21 +58,137 @@ public sealed class AdminProviderController : ControllerBase
 
     [HttpPost("{applicationId:guid}/approve")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Approve(Guid applicationId, CancellationToken cancellationToken)
     {
-        var application = await _db.ProviderOnboardingApplications.FirstOrDefaultAsync(item => item.Id == applicationId, cancellationToken);
+        var application = await _db.ProviderOnboardingApplications
+            .Include(item => item.SectionReviews)
+            .FirstOrDefaultAsync(item => item.Id == applicationId, cancellationToken);
         if (application is null)
         {
             return NotFound();
         }
 
-        application.Status = "Approved";
-        application.ApprovedAtUtc = DateTimeOffset.UtcNow;
-        application.ReviewedAtUtc = DateTimeOffset.UtcNow;
-        await EnsureRoleAsync(application.UserId, "Provider", cancellationToken);
+        if (!string.Equals(application.Status, SubmittedStatus, StringComparison.Ordinal))
+        {
+            return ProviderApplicationStatusConflict(application);
+        }
+
+        var sections = ProviderOnboardingSectionCatalog.BuildReviewSections(application);
+        var missingSections = ProviderOnboardingSectionCatalog.GetMissingRequiredReviewSectionKeys(sections);
+        if (missingSections.Count > 0)
+        {
+            return Problem(
+                title: "Provider application must include every required review section before final approval.",
+                detail: $"Missing required sections: {string.Join(", ", missingSections)}.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        if (!AllRequiredSectionsApproved(application))
+        {
+            return Problem(
+                title: "Every required provider application section must be approved before final approval.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        application.Status = ApprovedStatus;
+        application.ApprovedAtUtc = now;
+        application.ReviewedAtUtc = now;
+        application.UpdatedAtUtc = now;
+        await EnsureRoleAsync(application.UserId, ProviderRole, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         return NoContent();
+    }
+
+    [HttpPut("{applicationId:guid}/sections/{sectionKey}/review")]
+    [ProducesResponseType(typeof(ProviderApplicationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProviderApplicationDto>> SaveSectionReview(
+        Guid applicationId,
+        string sectionKey,
+        ProviderApplicationSectionReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        var application = await _db.ProviderOnboardingApplications
+            .Include(item => item.SectionReviews)
+            .FirstOrDefaultAsync(item => item.Id == applicationId, cancellationToken);
+        if (application is null)
+        {
+            return NotFound();
+        }
+
+        if (!string.Equals(application.Status, SubmittedStatus, StringComparison.Ordinal))
+        {
+            return ProviderApplicationStatusConflict(application);
+        }
+
+        var sections = ProviderOnboardingSectionCatalog.BuildReviewSections(application);
+        if (!ProviderOnboardingSectionCatalog.IsRequiredReviewSectionKey(sectionKey) || !sections.ContainsKey(sectionKey))
+        {
+            return Problem(
+                title: "Provider application section is not available for review.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var status = NormalizeSectionReviewStatus(request.Status);
+        if (status is null)
+        {
+            return Problem(
+                title: "Section review status must be Approved or Rejected.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var comment = NormalizeSectionReviewComment(request.Comment);
+        if (comment?.Length > ProviderApplicationSectionReviewRequest.MaxCommentLength)
+        {
+            return Problem(
+                title: $"Section review comment must be {ProviderApplicationSectionReviewRequest.MaxCommentLength} characters or fewer.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        if (string.Equals(status, RejectedStatus, StringComparison.Ordinal) && comment is null)
+        {
+            return Problem(
+                title: "Rejected provider application sections require a review comment.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var review = application.SectionReviews.FirstOrDefault(item => string.Equals(item.SectionKey, sectionKey, StringComparison.Ordinal));
+        var createdReview = review is null;
+        if (review is null)
+        {
+            review = new ProviderApplicationSectionReview
+            {
+                ProviderApplicationId = application.Id,
+                SectionKey = sectionKey,
+                CreatedAtUtc = now
+            };
+            _db.ProviderApplicationSectionReviews.Add(review);
+        }
+
+        review.Status = status;
+        review.Comment = comment;
+        review.ReviewedAtUtc = now;
+        review.UpdatedAtUtc = review.CreatedAtUtc == now ? null : now;
+        application.UpdatedAtUtc = now;
+
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException) when (createdReview)
+        {
+            await SaveSectionReviewAfterConcurrentInsertAsync(application, review, status, comment, now, cancellationToken);
+        }
+
+        var updatedApplication = await LoadApplicationForDetailAsync(applicationId, cancellationToken);
+        return Ok(ToDetailDto(updatedApplication));
     }
 
     [HttpPost("{applicationId:guid}/needs-changes")]
@@ -77,10 +201,38 @@ public sealed class AdminProviderController : ControllerBase
 
     [HttpPost("{applicationId:guid}/reject")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Reject(Guid applicationId, CancellationToken cancellationToken)
     {
-        return await SetStatusAsync(applicationId, "Rejected", cancellationToken);
+        var application = await _db.ProviderOnboardingApplications
+            .Include(item => item.SectionReviews)
+            .FirstOrDefaultAsync(item => item.Id == applicationId, cancellationToken);
+        if (application is null)
+        {
+            return NotFound();
+        }
+
+        if (!string.Equals(application.Status, SubmittedStatus, StringComparison.Ordinal))
+        {
+            return ProviderApplicationStatusConflict(application);
+        }
+
+        if (!HasRejectedRequiredSectionWithComment(application))
+        {
+            return Problem(
+                title: "At least one provider application section must be rejected with a comment before final rejection.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        application.Status = RejectedStatus;
+        application.ReviewedAtUtc = now;
+        application.UpdatedAtUtc = now;
+        application.RejectedAtUtc = now;
+        await _db.SaveChangesAsync(cancellationToken);
+        return NoContent();
     }
 
     [HttpPost("{applicationId:guid}/suspend")]
@@ -158,6 +310,7 @@ public sealed class AdminProviderController : ControllerBase
 
     private static ProviderApplicationDto ToDetailDto(ProviderOnboardingApplication application)
     {
+        var sections = ProviderOnboardingSectionCatalog.BuildReviewSections(application);
         return new ProviderApplicationDto(
             application.Id,
             application.UserId,
@@ -166,67 +319,102 @@ public sealed class AdminProviderController : ControllerBase
             application.CreatedAtUtc,
             application.UpdatedAtUtc,
             application.SubmittedAtUtc,
-            BuildSections(application));
+            sections,
+            BuildSectionReviews(application, sections));
     }
 
-    private static IReadOnlyDictionary<string, JsonElement> BuildSections(ProviderOnboardingApplication application)
+    private static IReadOnlyDictionary<string, ProviderApplicationSectionReviewDto> BuildSectionReviews(
+        ProviderOnboardingApplication application,
+        IReadOnlyDictionary<string, JsonElement> sections)
     {
-        var sections = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
-
-        AddRootSection(sections, "basicIdentity", application.BasicProfileJson);
-        AddNestedSection(sections, application.BioJson, "bio", "bioAndApproach");
-        AddNestedSection(sections, application.BioJson, "specializations", "specializations");
-        AddNestedSection(sections, application.BioJson, "modalities", "therapyApproaches");
-        AddNestedSection(sections, application.SessionDetailsJson, "sessionDetails", "sessionDetails");
-        AddNestedSection(sections, application.SessionDetailsJson, "credentials", "credentials");
-        AddNestedSection(sections, application.SessionDetailsJson, "payout", "payout");
-
-        return sections;
+        var sectionKeys = new HashSet<string>(sections.Keys, StringComparer.Ordinal);
+        return application.SectionReviews
+            .Where(review => sectionKeys.Contains(review.SectionKey))
+            .ToDictionary(
+                review => review.SectionKey,
+                review => new ProviderApplicationSectionReviewDto(
+                    review.Id,
+                    review.SectionKey,
+                    review.Status,
+                    review.Comment,
+                    review.ReviewedAtUtc),
+                StringComparer.Ordinal);
     }
 
-    private static void AddRootSection(IDictionary<string, JsonElement> sections, string sectionKey, string json)
+    private static bool AllRequiredSectionsApproved(ProviderOnboardingApplication application)
     {
-        if (TryParseObject(json, out var element) && element.EnumerateObject().Any())
-        {
-            sections[sectionKey] = element;
-        }
+        var approvedSectionKeys = application.SectionReviews
+            .Where(review => string.Equals(review.Status, ApprovedStatus, StringComparison.Ordinal))
+            .Select(review => review.SectionKey)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return ProviderOnboardingSectionCatalog.RequiredReviewSectionKeys.All(approvedSectionKeys.Contains);
     }
 
-    private static void AddNestedSection(IDictionary<string, JsonElement> sections, string json, string storedKey, string sectionKey)
+    private static bool HasRejectedRequiredSectionWithComment(ProviderOnboardingApplication application)
     {
-        if (!TryParseObject(json, out var root) ||
-            !root.TryGetProperty(storedKey, out var section) ||
-            section.ValueKind != JsonValueKind.Object ||
-            !section.EnumerateObject().Any())
-        {
-            return;
-        }
-
-        sections[sectionKey] = section.Clone();
+        return application.SectionReviews.Any(review =>
+            ProviderOnboardingSectionCatalog.IsRequiredReviewSectionKey(review.SectionKey) &&
+            string.Equals(review.Status, RejectedStatus, StringComparison.Ordinal) &&
+            !string.IsNullOrWhiteSpace(review.Comment));
     }
 
-    private static bool TryParseObject(string json, out JsonElement element)
+    private static string? NormalizeSectionReviewStatus(string? status)
     {
-        element = default;
-        if (string.IsNullOrWhiteSpace(json))
+        return status?.Trim() switch
         {
-            return false;
+            ApprovedStatus => ApprovedStatus,
+            RejectedStatus => RejectedStatus,
+            _ => null
+        };
+    }
+
+    private static string? NormalizeSectionReviewComment(string? comment)
+    {
+        var trimmed = comment?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    private ObjectResult ProviderApplicationStatusConflict(ProviderOnboardingApplication application)
+    {
+        return Problem(
+            title: "Provider application is not open for admin review.",
+            detail: $"Current status is {application.Status}.",
+            statusCode: StatusCodes.Status409Conflict);
+    }
+
+    private async Task SaveSectionReviewAfterConcurrentInsertAsync(
+        ProviderOnboardingApplication application,
+        ProviderApplicationSectionReview insertedReview,
+        string status,
+        string? comment,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        _db.Entry(insertedReview).State = EntityState.Detached;
+        var existingReview = await _db.ProviderApplicationSectionReviews
+            .FirstOrDefaultAsync(
+                item => item.ProviderApplicationId == application.Id &&
+                    item.SectionKey == insertedReview.SectionKey,
+                cancellationToken);
+        if (existingReview is null)
+        {
+            throw new DbUpdateException("Concurrent provider application section review insert could not be resolved.");
         }
 
-        try
-        {
-            using var document = JsonDocument.Parse(json);
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                return false;
-            }
+        existingReview.Status = status;
+        existingReview.Comment = comment;
+        existingReview.ReviewedAtUtc = now;
+        existingReview.UpdatedAtUtc = now;
+        application.UpdatedAtUtc = now;
+        await _db.SaveChangesAsync(cancellationToken);
+    }
 
-            element = document.RootElement.Clone();
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
+    private async Task<ProviderOnboardingApplication> LoadApplicationForDetailAsync(Guid applicationId, CancellationToken cancellationToken)
+    {
+        return await _db.ProviderOnboardingApplications
+            .Include(item => item.SectionReviews)
+            .AsNoTracking()
+            .FirstAsync(item => item.Id == applicationId, cancellationToken);
     }
 }

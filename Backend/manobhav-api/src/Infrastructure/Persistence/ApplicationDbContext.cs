@@ -38,6 +38,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProviderTaxonomyTerm> ProviderTaxonomyTerms => Set<ProviderTaxonomyTerm>();
     public DbSet<ProviderApplicationTaxonomyTerm> ProviderApplicationTaxonomyTerms => Set<ProviderApplicationTaxonomyTerm>();
     public DbSet<ProviderDocument> ProviderDocuments => Set<ProviderDocument>();
+    public DbSet<ProviderApplicationSectionReview> ProviderApplicationSectionReviews => Set<ProviderApplicationSectionReview>();
     public DbSet<ProviderReview> ProviderReviews => Set<ProviderReview>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<VisitorFlowQuestion> VisitorFlowQuestions => Set<VisitorFlowQuestion>();
@@ -380,6 +381,19 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(application => application.ReviewedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProviderApplicationSectionReview>(entity =>
+        {
+            entity.HasKey(review => review.Id);
+            entity.HasIndex(review => new { review.ProviderApplicationId, review.SectionKey }).IsUnique();
+            entity.Property(review => review.SectionKey).HasMaxLength(120).IsRequired();
+            entity.Property(review => review.Status).HasMaxLength(60).IsRequired();
+            entity.Property(review => review.Comment).HasMaxLength(2000);
+            entity.HasOne(review => review.Application)
+                .WithMany(application => application.SectionReviews)
+                .HasForeignKey(review => review.ProviderApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ProviderCredential>(entity =>

@@ -19,4 +19,5 @@ public sealed class ProviderOnboardingApplication
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? UpdatedAtUtc { get; set; }
     public User User { get; set; } = null!;
+    public List<ProviderApplicationSectionReview> SectionReviews { get; set; } = [];
 }
