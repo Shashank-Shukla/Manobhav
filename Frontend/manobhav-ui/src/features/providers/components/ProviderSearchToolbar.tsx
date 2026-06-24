@@ -20,8 +20,7 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react';
-import SearchIcon from '@mui/icons-material/Search';
-import { CalendarRange, Filter, SortDesc } from 'lucide-react';
+import { CalendarRange, Filter, Search, SortDesc } from 'lucide-react';
 
 type ProviderSearchToolbarProps = {
   dateFrom: string;
@@ -62,7 +61,7 @@ export function ProviderSearchToolbar({
             rounded="md"
           >
             <InputRightElement pointerEvents="none">
-              <SearchIcon style={{ fontSize: 16, color: '#9CA3AF' }} />
+              <Search size={16} color="#9CA3AF" />
             </InputRightElement>
             <Input
               variant="outline"

@@ -27,15 +27,19 @@ export function Button({
   onClick,
   icon: Icon,
   className = '',
+  style,
   type = 'button',
   ...rest
 }: ButtonProps) {
+  const variantStyle = getButtonStyle(variant);
+  const mergedStyle = style !== undefined ? { ...variantStyle, ...style } : variantStyle;
+
   return (
     <button
       type={type}
       onClick={onClick}
       className={`${baseStyle} ${variants[variant]} ${className}`}
-      style={getButtonStyle(variant)}
+      style={mergedStyle}
       {...rest}
     >
       {children}
