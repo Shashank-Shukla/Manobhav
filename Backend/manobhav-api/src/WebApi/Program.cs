@@ -243,6 +243,15 @@ builder.Services.AddResponseCompression(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (db.Database.IsRelational())
+    {
+        db.Database.Migrate();
+    }
+}
+
 app.UseExceptionHandler(exceptionApp =>
 {
     exceptionApp.Run(async context =>
