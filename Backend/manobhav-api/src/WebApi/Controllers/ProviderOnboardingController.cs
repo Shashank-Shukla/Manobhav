@@ -305,9 +305,7 @@ public sealed class ProviderOnboardingController : ControllerBase
             application.Id,
             application.UserId,
             displayName,
-            ReadOptionalString(basicIdentity, "email"),
-            submittedAt,
-            sections);
+            submittedAt);
     }
 
     private static string? ReadOptionalString(JsonElement element, string propertyName)

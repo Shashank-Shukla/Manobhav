@@ -51,6 +51,30 @@ public sealed class WebApiPipelineTests
     }
 
     [Fact]
+    public async Task GetUserById_RequiresAdminGroup()
+    {
+        await using var factory = new ManobhavApiFactory();
+        var userId = Guid.NewGuid();
+        await factory.SeedAsync(db => db.Users.Add(new User
+        {
+            Id = userId,
+            CognitoSubject = "seeded-user-subject",
+            Email = "seeded@example.com",
+            Name = "Seeded User"
+        }));
+        using var client = factory.CreateHttpsClient();
+
+        var anonymous = await client.GetAsync($"/api/users/{userId}");
+        var nonAdmin = await client.SendAsync(CreateAuthenticatedRequest(HttpMethod.Get, $"/api/users/{userId}", "Patient"));
+        var admin = await client.SendAsync(CreateAuthenticatedRequest(HttpMethod.Get, $"/api/users/{userId}", "Admin"));
+
+        // Closes the IDOR: a non-admin authenticated user cannot read arbitrary user records.
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, nonAdmin.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, admin.StatusCode);
+    }
+
+    [Fact]
     public async Task ProviderOnboardingStart_RequiresAuthenticatedUser()
     {
         await using var factory = new ManobhavApiFactory();

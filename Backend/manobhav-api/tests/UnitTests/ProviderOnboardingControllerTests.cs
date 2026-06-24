@@ -328,8 +328,6 @@ public sealed class ProviderOnboardingControllerTests
         Assert.Equal(application.Id, sent.ApplicationId);
         Assert.Equal(user.Id, sent.UserId);
         Assert.Equal("Submitted Rao", sent.ProviderDisplayName);
-        Assert.Equal("submitted@example.com", sent.ProviderEmail);
-        Assert.Equal("Submitted Rao", sent.Sections["basicIdentity"].GetProperty("displayName").GetString());
     }
 
     [Fact]
@@ -565,50 +563,72 @@ public sealed class ProviderOnboardingControllerTests
     }
 
     [Fact]
-    public void ProviderOnboardingNotificationOptions_DefaultsIncludeRequiredAdminRecipients()
+    public void ProviderOnboardingNotificationOptions_HaveNoHardcodedRecipientsByDefault()
     {
         var options = new ProviderOnboardingNotificationOptions();
 
-        Assert.Contains("shashankshowstoper@gmail.com", options.AdminRecipients);
-        Assert.Contains("manobhavcounsellingservices@gmail.com", options.AdminRecipients);
+        // Recipients must come from configuration (SSM); no personal inboxes baked in.
+        Assert.Empty(options.AdminRecipients);
+        Assert.Empty(options.GetEffectiveAdminRecipients());
         Assert.Equal("no-reply@manobhav.co.in", options.FromEmail);
         Assert.Equal("Manobhav", options.FromDisplayName);
         Assert.Equal("ap-south-2", options.AwsRegion);
     }
 
     [Fact]
-    public async Task SesProviderOnboardingAdminNotifier_SendsEmailWithDefaultSenderAndAdminRecipients()
+    public async Task SesProviderOnboardingAdminNotifier_SendsMinimalEmailToConfiguredRecipients()
     {
         var sesClient = new RecordingProviderOnboardingSesClient();
         var notifier = new SesProviderOnboardingAdminNotifier(
             sesClient,
-            Options.Create(new ProviderOnboardingNotificationOptions()),
+            Options.Create(new ProviderOnboardingNotificationOptions
+            {
+                AdminRecipients = ["provider-reviews@manobhav.co.in"]
+            }),
             NullLogger<SesProviderOnboardingAdminNotifier>.Instance);
         var applicationId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        var sections = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
-        {
-            ["basicIdentity"] = JsonDocument.Parse("""{"displayName":"Dr. Asha Rao","email":"asha@example.com"}""").RootElement.Clone()
-        };
 
         await notifier.NotifySubmittedAsync(
             new ProviderOnboardingAdminNotification(
                 applicationId,
                 userId,
                 "Dr. Asha Rao",
-                "asha@example.com",
-                DateTimeOffset.Parse("2026-06-18T00:00:00Z"),
-                sections),
+                DateTimeOffset.Parse("2026-06-18T00:00:00Z")),
             CancellationToken.None);
 
         var email = Assert.Single(sesClient.Sent);
         Assert.Contains("Manobhav", email.FromEmailAddress, StringComparison.Ordinal);
         Assert.Contains("no-reply@manobhav.co.in", email.FromEmailAddress, StringComparison.Ordinal);
-        Assert.Contains("shashankshowstoper@gmail.com", email.ToAddresses);
-        Assert.Contains("manobhavcounsellingservices@gmail.com", email.ToAddresses);
+        Assert.Equal("provider-reviews@manobhav.co.in", Assert.Single(email.ToAddresses));
+        Assert.DoesNotContain("shashankshowstoper@gmail.com", email.ToAddresses);
+        Assert.DoesNotContain("manobhavcounsellingservices@gmail.com", email.ToAddresses);
         Assert.Contains("Dr. Asha Rao", email.Subject, StringComparison.Ordinal);
         Assert.Contains(applicationId.ToString(), email.TextBody, StringComparison.Ordinal);
-        Assert.Contains("asha@example.com", email.TextBody, StringComparison.Ordinal);
+        // Applicant contact details and credentials must never be in the email body.
+        Assert.DoesNotContain("asha@example.com", email.TextBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("licenseNumber", email.TextBody, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SesProviderOnboardingAdminNotifier_ThrowsAndSendsNothingWhenNoRecipientsConfigured()
+    {
+        var sesClient = new RecordingProviderOnboardingSesClient();
+        var notifier = new SesProviderOnboardingAdminNotifier(
+            sesClient,
+            Options.Create(new ProviderOnboardingNotificationOptions()),
+            NullLogger<SesProviderOnboardingAdminNotifier>.Instance);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            notifier.NotifySubmittedAsync(
+                new ProviderOnboardingAdminNotification(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    "Dr. Asha Rao",
+                    DateTimeOffset.UtcNow),
+                CancellationToken.None));
+
+        Assert.Empty(sesClient.Sent);
     }
 
     private static ProviderOnboardingController CreateProviderController(
