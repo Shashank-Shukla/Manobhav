@@ -4,7 +4,7 @@ import {
   IconButton,
   Input,
   InputGroup,
-  InputLeftElement,
+  InputRightElement,
   Menu,
   MenuButton,
   MenuItem,
@@ -20,7 +20,8 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react';
-import { CalendarRange, Filter, Search, SortDesc } from 'lucide-react';
+import SearchIcon from '@mui/icons-material/Search';
+import { CalendarRange, Filter, SortDesc } from 'lucide-react';
 
 type ProviderSearchToolbarProps = {
   dateFrom: string;
@@ -60,9 +61,9 @@ export function ProviderSearchToolbar({
             border="1px solid rgba(0,0,0,0.05)"
             rounded="md"
           >
-            <InputLeftElement pointerEvents="none">
-              <Search size={16} color="#9CA3AF" />
-            </InputLeftElement>
+            <InputRightElement pointerEvents="none">
+              <SearchIcon style={{ fontSize: 16, color: '#9CA3AF' }} />
+            </InputRightElement>
             <Input
               variant="outline"
               placeholder="Search providers..."

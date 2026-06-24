@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
 import { useNavigate } from 'react-router-dom';
 import { Text } from '../../shared/primitives/Text';
 import { Button } from '../../shared/primitives/Button';
@@ -62,8 +63,8 @@ const emptyTaxonomy: ProviderTaxonomy = {
 const providerStages: ProviderStage[] = [
   {
     key: 'basic-profile',
-    title: 'Basic identity',
-    helper: 'Legal name, professional display name, contact preferences.',
+    title: 'Your profile',
+    helper: 'Your legal name, display name, and contact details.',
     fields: [
       { key: 'legalName', label: 'Legal name', required: true },
       { key: 'displayName', label: 'Display name', required: true },
@@ -75,7 +76,7 @@ const providerStages: ProviderStage[] = [
   {
     key: 'bio',
     title: 'Bio and approach',
-    helper: 'Therapeutic approach, languages, tone, short and long bio.',
+    helper: 'Your therapeutic approach, languages, and background.',
     fields: [
       { key: 'shortBio', label: 'Short bio', kind: 'textarea', required: true },
       { key: 'longBio', label: 'Long bio', kind: 'textarea' },
@@ -85,8 +86,8 @@ const providerStages: ProviderStage[] = [
   },
   {
     key: 'specializations',
-    title: 'Specializations and tags',
-    helper: 'Focus areas, age groups, therapy goals, taxonomy terms.',
+    title: 'Specializations',
+    helper: 'Your focus areas, age groups, and therapy goals.',
     fields: [
       {
         key: 'focusAreas',
@@ -101,7 +102,7 @@ const providerStages: ProviderStage[] = [
   },
   {
     key: 'modalities',
-    title: 'Modalities',
+    title: 'How you work',
     helper: 'Online, in-person, individual, couples, group, or hybrid care.',
     fields: [
       {
@@ -116,7 +117,7 @@ const providerStages: ProviderStage[] = [
   },
   {
     key: 'session-details',
-    title: 'Session details and availability',
+    title: 'Session details',
     helper: 'Session lengths, availability summary, and weekly capacity.',
     fields: [
       { key: 'sessionLengthsMinutes', label: 'Session lengths in minutes', placeholder: '45, 60', required: true },
@@ -126,8 +127,8 @@ const providerStages: ProviderStage[] = [
   },
   {
     key: 'credentials',
-    title: 'Credentials and private uploads',
-    helper: 'Add credential details for review.',
+    title: 'Your credentials',
+    helper: 'Add your credentials for our review.',
     fields: [
       { key: 'credentialType', label: 'Credential type', required: true },
       { key: 'credentialTitle', label: 'Credential title', required: true },
@@ -138,8 +139,8 @@ const providerStages: ProviderStage[] = [
   },
   {
     key: 'payout',
-    title: 'Payout details',
-    helper: 'Add payout preferences for account setup after approval.',
+    title: 'Payment details',
+    helper: 'Your preferred payout method, set up after approval.',
     fields: [
       { key: 'payoutMode', label: 'Payout mode', required: true },
       { key: 'accountHolderName', label: 'Account holder name' },
@@ -149,7 +150,7 @@ const providerStages: ProviderStage[] = [
   {
     key: 'review',
     title: 'Review and submit',
-    helper: 'Submit for admin approval. Publishing remains a separate admin decision.',
+    helper: 'Submit your application for review. Our team will be in touch once they\'ve looked it over.',
     fields: [],
   },
 ];
@@ -193,7 +194,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
       })
       .catch((failure: unknown) => {
         setStatus('error');
-        setError(getErrorMessage(failure, 'Unable to load provider onboarding.'));
+        setError(getErrorMessage(failure, 'We couldn\'t load your application. Please refresh the page.'));
       });
 
     return () => controller.abort();
@@ -262,7 +263,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
         setFieldErrors({});
         purgeLegacyBrowserStorageDrafts();
       },
-      'Unable to save provider section.',
+      'We couldn\'t save this section. Please check your entries and try again.',
       setError,
       setIsSaving,
     );
@@ -277,7 +278,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
         purgeLegacyBrowserStorageDrafts();
         navigate('/dashboard/provider', { replace: true });
       },
-      'Unable to submit provider application.',
+      'We couldn\'t submit your application. Please try again.',
       setError,
       setIsSaving,
     );
@@ -525,8 +526,8 @@ function ProviderStageBody({
 function ProviderOnboardingStatus({ error, status }: { error: string; status: 'loading' | 'error' }) {
   return (
     <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-      <Text variant="h2">{status === 'loading' ? 'Loading provider onboarding' : 'Provider onboarding unavailable'}</Text>
-      <p className="text-sm text-gray-600">{status === 'loading' ? 'Preparing your provider application.' : error}</p>
+      <Text variant="h2">{status === 'loading' ? 'Setting up your application' : 'We ran into an issue'}</Text>
+      <p className="text-sm text-gray-600">{status === 'loading' ? 'Just a moment — we\'re getting things ready.' : error}</p>
     </div>
   );
 }
@@ -594,24 +595,37 @@ function StageFieldControl({
     );
   }
 
+  const isTextarea = field.kind === 'textarea';
   const id = `provider-${field.key}`;
-  const errorId = `${id}-error`;
+  const inputType = isTextarea ? undefined : field.kind === 'email' ? 'email' : field.kind === 'number' ? 'number' : 'text';
+
   return (
-    <label className={field.kind === 'textarea' ? 'space-y-2 md:col-span-2' : 'space-y-2'} htmlFor={id}>
-      <span className="block text-sm font-semibold text-gray-700">
-        {field.label}
-        {field.required && <span className="ml-1 text-rose-600">*</span>}
-      </span>
-      <StageInput
-        describedBy={error ? errorId : undefined}
+    <div className={isTextarea ? 'md:col-span-2' : ''}>
+      <TextField
         error={Boolean(error)}
-        field={field}
+        fullWidth
+        helperText={error}
         id={id}
-        onChange={(value) => onChange(value)}
+        label={field.label}
+        multiline={isTextarea}
+        minRows={isTextarea ? 3 : undefined}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={field.placeholder}
+        required={Boolean(field.required)}
+        type={inputType}
         value={getDraftString(draft, field.key)}
+        variant="outlined"
+        slotProps={field.kind === 'number' ? { htmlInput: { min: 1, step: 1 } } : undefined}
+        sx={{
+          '& .MuiFormLabel-asterisk': { color: '#e11d48' },
+          '& .MuiOutlinedInput-root': {
+            borderRadius: '8px',
+            '&.Mui-focused fieldset': { borderColor: '#9CAF88' },
+          },
+          '& .MuiInputLabel-root.Mui-focused': { color: '#7A8C6A' },
+        }}
       />
-      {error && <p id={errorId} className="text-sm font-medium text-rose-700">{error}</p>}
-    </label>
+    </div>
   );
 }
 
@@ -668,55 +682,6 @@ function ChipFieldControl({
   );
 }
 
-function StageInput({
-  describedBy,
-  error,
-  field,
-  id,
-  onChange,
-  value,
-}: {
-  describedBy?: string;
-  error: boolean;
-  field: ProviderStageField;
-  id: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  const className = getInputClassName(error);
-  if (field.kind === 'textarea') {
-    return (
-      <textarea
-        aria-describedby={describedBy}
-        aria-invalid={error}
-        className={`${className} min-h-28`}
-        id={id}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={field.placeholder}
-        value={value}
-      />
-    );
-  }
-
-  return (
-    <input
-      aria-describedby={describedBy}
-      aria-invalid={error}
-      className={className}
-      id={id}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={field.placeholder}
-      type={field.kind ?? 'text'}
-      value={value}
-    />
-  );
-}
-
-function getInputClassName(error: boolean): string {
-  const border = error ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-[#9CAF88]';
-  return `w-full rounded-lg border ${border} bg-white px-4 py-3 text-sm outline-none`;
-}
-
 function getChipSx(selected: boolean) {
   if (!selected) {
     return {
@@ -744,7 +709,7 @@ function ReviewSubmit({
   return (
     <div className="mt-5 space-y-4">
       <p className="text-sm text-gray-600">
-        Submit when the provider draft is ready for admin review. Profile approval does not automatically publish the public profile.
+        When you're ready, submit your application for review. Our team will approve your profile before it goes live.
       </p>
       <Button variant="primary" disabled={isSaving} onClick={() => void onSubmit()}>
         {isSaving ? 'Sending...' : 'Send for admin review'}
@@ -786,12 +751,32 @@ function createStageDraft(fields: ProviderStageField[]): Record<string, DraftVal
 
 function validateStage(stage: ProviderStage, draft: Record<string, DraftValue>): FieldErrors {
   return stage.fields.reduce((errors, field) => {
-    if (field.required && isMissingValue(draft[field.key])) {
+    const value = draft[field.key];
+
+    if (field.required && isMissingValue(value)) {
       return { ...errors, [field.key]: `${field.label} is required.` };
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      if (field.kind === 'email' && !isValidEmail(value.trim())) {
+        return { ...errors, [field.key]: 'Please enter a valid email address.' };
+      }
+      if (field.kind === 'number' && !isValidPositiveNumber(value.trim())) {
+        return { ...errors, [field.key]: `${field.label} must be a valid number greater than 0.` };
+      }
     }
 
     return errors;
   }, {} as FieldErrors);
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidPositiveNumber(value: string): boolean {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0;
 }
 
 function isMissingValue(value: DraftValue | undefined): boolean {
@@ -1264,7 +1249,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  return error instanceof Error ? error.message : fallbackMessage;
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('csrf') || msg.includes('token validation')) {
+      return 'Your session may have expired. Please refresh the page and try again.';
+    }
+    return error.message;
+  }
+  return fallbackMessage;
 }
 
 export default OnboardingProviderPage;

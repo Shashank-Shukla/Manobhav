@@ -63,11 +63,11 @@ describe('EmailOtpAuthPanel', () => {
     expect(screen.getByRole('textbox', { name: /one-time code/i })).toHaveFocus();
   });
 
-  it('shows the exact duplicate sign-up message from ProblemDetails', async () => {
+  it('shows a friendly redirect message on duplicate sign-up (409)', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const duplicateMessage = "We believe you've already registered with us, you might want to try Signing in.";
+    const apiMessage = "We believe you've already registered with us, you might want to try Signing in.";
     vi.mocked(requestEmailOtp).mockRejectedValue(
-      new ApiError(duplicateMessage, 409, { title: duplicateMessage, status: 409 }),
+      new ApiError(apiMessage, 409, { title: apiMessage, status: 409 }),
     );
     renderPanel();
 
@@ -75,7 +75,7 @@ describe('EmailOtpAuthPanel', () => {
     await user.type(screen.getByRole('textbox', { name: /email address/i }), 'person@example.com');
     await user.click(screen.getByRole('button', { name: /send verification code/i }));
 
-    expect(await screen.findByText(duplicateMessage)).toBeInTheDocument();
+    expect(await screen.findByText(/already registered.*sign in/i)).toBeInTheDocument();
   });
 
   it('disables resend until the server resend time elapses without layout shift', async () => {

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -48,7 +48,7 @@ describe('provider onboarding route', () => {
   it('renders form content without the provider onboarding header or back button', async () => {
     renderProviderPage();
 
-    expect(await screen.findByRole('heading', { name: /basic identity/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /your profile/i })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /provider onboarding/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^back$/i })).not.toBeInTheDocument();
   });
@@ -67,11 +67,10 @@ describe('provider onboarding route', () => {
     renderProviderPage();
 
     const legalName = await screen.findByLabelText(/legal name/i);
-    const legalNameLabel = legalName.closest('label');
 
     expect(screen.getByRole('button', { name: /bio and approach/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /specializations and tags/i })).toBeDisabled();
-    expect(within(legalNameLabel as HTMLElement).getByText('*')).toHaveClass('text-rose-600');
+    expect(screen.getByRole('button', { name: /specializations/i })).toBeDisabled();
+    expect(legalName).toBeRequired();
 
     await user.click(screen.getByRole('button', { name: /save and continue/i }));
 
@@ -105,11 +104,11 @@ describe('provider onboarding route', () => {
       },
       currentStep: 'bio',
     });
-    expect(screen.getByRole('button', { name: /basic identity/i })).toHaveClass('bg-[#EEF4EA]');
-    expect(screen.getByRole('button', { name: /basic identity/i })).not.toBeDisabled();
-    expect(screen.getByRole('button', { name: /specializations and tags/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /your profile/i })).toHaveClass('bg-[#EEF4EA]');
+    expect(screen.getByRole('button', { name: /your profile/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /specializations/i })).toBeDisabled();
 
-    await user.click(screen.getByRole('button', { name: /basic identity/i }));
+    await user.click(screen.getByRole('button', { name: /your profile/i }));
 
     expect(screen.getByDisplayValue('Dr. Asha Rao')).toBeInTheDocument();
   });
@@ -199,7 +198,7 @@ describe('provider onboarding route', () => {
 
     renderProviderPage();
 
-    expect(await screen.findByRole('heading', { name: /basic identity/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /your profile/i })).toBeInTheDocument();
     expect(window.localStorage.getItem(draftStorageKey)).toBeNull();
     expect(window.localStorage.getItem(`${draftStoragePrefix}:legacy-application`)).toBeNull();
     expect(window.sessionStorage.getItem(draftStorageKey)).toBeNull();
@@ -322,7 +321,7 @@ describe('provider onboarding route', () => {
     applicationResponse = { ...application, currentStep: 'credentials' };
     renderProviderPage();
 
-    expect(await screen.findByRole('heading', { name: /credentials and private uploads/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /your credentials/i })).toBeInTheDocument();
     expect(screen.queryByText(/s3/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/pre-?sign/i)).not.toBeInTheDocument();
   });

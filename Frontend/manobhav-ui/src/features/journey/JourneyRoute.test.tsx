@@ -95,7 +95,7 @@ describe('patient journey intake inputs', () => {
     await user.click(screen.getByRole('button', { name: /next question/i }));
 
     expect(await screen.findByText(/acknowledge policy/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('checkbox', { name: /i acknowledge/i }));
+    await user.click(screen.getByRole('checkbox', { name: /i acknowledge and consent/i }));
     await user.click(screen.getByRole('button', { name: /next question/i }));
 
     await waitFor(() => expect(answerBodies).toHaveLength(6));
@@ -188,7 +188,7 @@ describe('patient journey intake inputs', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
     await user.hover(disabledSubmit);
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('tooltip')).toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: /read terms and consent/i }));
     expect(await screen.findByRole('dialog', { name: /consent, policies & confidentiality/i })).toBeInTheDocument();
@@ -355,7 +355,7 @@ async function completeJourneyQuestions(user: ReturnType<typeof userEvent.setup>
   await user.click(screen.getByRole('button', { name: /next question/i }));
 
   expect(await screen.findByText(/acknowledge policy/i)).toBeInTheDocument();
-  await user.click(screen.getByRole('checkbox', { name: /i acknowledge/i }));
+  await user.click(screen.getByRole('checkbox', { name: /i acknowledge and consent/i }));
   await user.click(screen.getByRole('button', { name: /next question/i }));
 }
 

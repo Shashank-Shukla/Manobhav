@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, vi } from 'vitest';
+
+vi.mock('@mui/icons-material/Search', () => ({
+  default: () => null,
+}));
 import { cleanup } from '@testing-library/react';
 import { resetRuntimeConfigForTests, setRuntimeConfigForTests } from '../shared/config/runtimeConfig';
 

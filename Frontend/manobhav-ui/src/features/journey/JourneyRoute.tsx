@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { WheelEvent, CSSProperties } from 'react';
+import Tooltip from '@mui/material/Tooltip';
 import { ArrowDown, ArrowLeft, ArrowUp } from 'lucide-react';
 import { Text } from '../../shared/primitives/Text';
 import { Button } from '../../shared/primitives/Button';
@@ -723,7 +724,7 @@ function renderAcknowledgementInput({ answer, onChange }: QuestionInputProps) {
         type="checkbox"
       />
       <ChoiceMarker selected={answer === true} type="checkbox" />
-      <span className="min-w-0 flex-1">I acknowledge</span>
+      <span className="min-w-0 flex-1">I acknowledge and consent to the terms and conditions.</span>
     </label>
   );
 }
@@ -841,17 +842,24 @@ function SubmitButton({
     : undefined;
 
   return (
-    <span className={wrapperClassName} data-testid={isConsentIncomplete ? 'disabled-consent-submit' : undefined}>
-      <Button
-        className={buttonClassName}
-        disabled={isDisabled}
-        onClick={() => void onSubmit()}
-        style={buttonStyle}
-        variant="primary"
-      >
-        {isSavingStep ? 'Saving...' : 'Submit'}
-      </Button>
-    </span>
+    <Tooltip
+      arrow
+      enterDelay={0}
+      placement="bottom"
+      title={isConsentIncomplete ? 'Please read and agree to the terms above to continue.' : ''}
+    >
+      <span className={wrapperClassName} data-testid={isConsentIncomplete ? 'disabled-consent-submit' : undefined}>
+        <Button
+          className={buttonClassName}
+          disabled={isDisabled}
+          onClick={() => void onSubmit()}
+          style={buttonStyle}
+          variant="primary"
+        >
+          {isSavingStep ? 'Saving...' : 'Submit'}
+        </Button>
+      </span>
+    </Tooltip>
   );
 }
 

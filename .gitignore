@@ -47,6 +47,7 @@ secrets.json
 .tools/
 .codex/
 .worktrees/
+.claude/
 *.targets
 *.cache
 

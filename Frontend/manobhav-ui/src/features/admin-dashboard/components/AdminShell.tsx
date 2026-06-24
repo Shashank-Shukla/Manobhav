@@ -14,7 +14,7 @@ import {
   IconButton,
   Input,
   InputGroup,
-  InputLeftElement,
+  InputRightElement,
   Menu,
   MenuButton,
   MenuItem,
@@ -23,7 +23,8 @@ import {
   Text,
   useDisclosure,
 } from '@chakra-ui/react';
-import { Bell, Home, Menu as MenuIcon, Search, Settings } from 'lucide-react';
+import SearchIcon from '@mui/icons-material/Search';
+import { Bell, Home, Menu as MenuIcon, Settings } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import { adminModules } from '../data';
 import { getAdminNotifications, markAdminNotificationRead } from '../adminDashboardApi';
@@ -107,9 +108,9 @@ export function AdminShell({
 
           <HStack spacing={3} align="center">
             <InputGroup display={{ base: 'none', md: 'block' }} w={{ md: '260px', xl: '340px' }}>
-              <InputLeftElement pointerEvents="none">
-                <Search size={17} color={adminTheme.grey.dark} />
-              </InputLeftElement>
+              <InputRightElement pointerEvents="none">
+                <SearchIcon style={{ fontSize: 17, color: adminTheme.grey.dark }} />
+              </InputRightElement>
               <Input
                 value={search}
                 onChange={(event) => onSearchChange(event.target.value)}
@@ -147,9 +148,9 @@ export function AdminShell({
           </HStack>
 
           <InputGroup display={{ base: 'block', md: 'none' }}>
-            <InputLeftElement pointerEvents="none">
-              <Search size={17} color={adminTheme.grey.dark} />
-            </InputLeftElement>
+            <InputRightElement pointerEvents="none">
+              <SearchIcon style={{ fontSize: 17, color: adminTheme.grey.dark }} />
+            </InputRightElement>
             <Input
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}

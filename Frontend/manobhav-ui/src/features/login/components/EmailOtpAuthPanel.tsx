@@ -71,6 +71,11 @@ export function EmailOtpAuthPanel({ choiceLabel, initialFlow, onAuthenticated }:
       setOtp('');
       setStep('otp');
     } catch (err) {
+      if (flow === 'sign-up' && err instanceof ApiError && err.status === 409) {
+        setError("Looks like you're already registered! Head to Sign In to continue.");
+        setMessage('');
+        return;
+      }
       applyApiError(err, 'Unable to send OTP. Please try again.');
     } finally {
       setIsSubmitting(false);
