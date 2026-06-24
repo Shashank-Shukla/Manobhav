@@ -52,6 +52,10 @@ public sealed class CognitoEmailOtpAuthService(
         {
             return false;
         }
+        catch (AmazonCognitoIdentityProviderException exception)
+        {
+            throw new CognitoEmailOtpException(exception.Message, exception.GetType().Name);
+        }
     }
 
     public async Task CreatePasswordlessUserAsync(string email, CancellationToken cancellationToken)

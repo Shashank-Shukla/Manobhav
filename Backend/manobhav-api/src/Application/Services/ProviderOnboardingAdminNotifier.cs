@@ -4,7 +4,7 @@ namespace Application.Services;
 
 public sealed class ProviderOnboardingNotificationOptions
 {
-    public const string DefaultAwsRegion = "ap-south-1";
+    public const string DefaultAwsRegion = "ap-south-2";
 
     public static readonly IReadOnlyList<string> DefaultAdminRecipients =
     [

@@ -573,7 +573,7 @@ public sealed class ProviderOnboardingControllerTests
         Assert.Contains("manobhavcounsellingservices@gmail.com", options.AdminRecipients);
         Assert.Equal("no-reply@manobhav.co.in", options.FromEmail);
         Assert.Equal("Manobhav", options.FromDisplayName);
-        Assert.Equal("ap-south-1", options.AwsRegion);
+        Assert.Equal("ap-south-2", options.AwsRegion);
     }
 
     [Fact]
