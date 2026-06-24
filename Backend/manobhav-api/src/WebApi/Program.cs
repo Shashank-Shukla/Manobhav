@@ -81,6 +81,7 @@ builder.Services.AddApplicationServices();      // register MediatR, validators,
 builder.Services.AddInfrastructureServices(builder.Configuration); // DbContext, repos
 builder.Services.AddSingleton(visitorAnalyticsOptions);
 builder.Services.AddSingleton(authOptions);
+builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 builder.Services.Configure<ProviderOnboardingNotificationOptions>(
     builder.Configuration.GetSection("ProviderOnboarding:AdminNotifications"));
 builder.Services.AddSingleton<AuthCookieManager>();
