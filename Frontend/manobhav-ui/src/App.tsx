@@ -70,7 +70,8 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [flow, setFlow] = useState<FlowStep>('home');
-  useVisitorAnalytics(location.pathname);
+  const isVisitorAuthenticated = getStoredAuthSession() !== null;
+  useVisitorAnalytics(location.pathname, isVisitorAuthenticated);
   const layout = getRouteLayout(location.pathname, flow);
 
   const handleBook = () => {

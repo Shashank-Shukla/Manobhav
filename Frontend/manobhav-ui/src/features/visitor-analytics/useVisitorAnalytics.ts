@@ -17,12 +17,14 @@ export const VISITOR_ID_KEY = 'manobhav-visitor-id';
 let pendingVisitorPromise: Promise<string | null> | null = null;
 let currentVisitorId: string | null = null;
 
-export function useVisitorAnalytics(pathname: string) {
+export function useVisitorAnalytics(pathname: string, isAuthenticated = false) {
   const visitorIdRef = useRef<string | null>(currentVisitorId);
   const lastPathRef = useRef('');
 
   useEffect(() => {
-    if (visitorIdRef.current) {
+    // Track only anonymous visitors. Once a visitor converts to an authenticated
+    // user (patient/provider) we stop creating sessions and recording events.
+    if (isAuthenticated || visitorIdRef.current) {
       return;
     }
 
@@ -55,12 +57,12 @@ export function useVisitorAnalytics(pathname: string) {
       });
 
     return () => controller.abort();
-  }, [pathname]);
+  }, [pathname, isAuthenticated]);
 
   useEffect(() => {
     const config = readVisitorAnalyticsConfig();
     const visitorId = visitorIdRef.current;
-    if (!visitorId || !canStartFullCapture(config) || lastPathRef.current === pathname) {
+    if (isAuthenticated || !visitorId || !canStartFullCapture(config) || lastPathRef.current === pathname) {
       return;
     }
 
@@ -71,7 +73,7 @@ export function useVisitorAnalytics(pathname: string) {
       targetKey: pathname,
       properties: { pathLength: pathname.length },
     }).catch((error: unknown) => reportAnalyticsFailure('Route analytics failed.', error));
-  }, [pathname]);
+  }, [pathname, isAuthenticated]);
 }
 
 export function getStoredVisitorId(): string | null {
