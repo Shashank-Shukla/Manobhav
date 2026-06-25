@@ -45,7 +45,7 @@ type CognitoAuthConfig = {
 const STATE_KEY = 'manobhav-auth-state';
 const VERIFIER_KEY = 'manobhav-auth-code-verifier';
 const RETURN_TO_KEY = 'manobhav-auth-return-to';
-const DEFAULT_POST_LOGIN_RETURN_TO = '/dashboard/patient';
+const DEFAULT_POST_LOGIN_RETURN_TO = '/dashboard';
 
 let cachedSession: AuthSession | null = null;
 
@@ -67,6 +67,28 @@ export function getStoredAuthSession(): AuthSession | null {
 
 export function isAdminSession(session: AuthSession | null, adminGroup = readAuthConfig().adminGroup): boolean {
   return isActiveSession(session) && session.groups.some((group) => group === adminGroup);
+}
+
+/**
+ * Role-based dashboard path for an authenticated session: Admin > Provider /
+ * ProviderApplicant > Patient. Shared by the NavBar profile menu and the
+ * /dashboard role redirect so routing logic lives in exactly one place.
+ */
+export function resolveDashboardPath(session: AuthSession | null): string {
+  if (isAdminSession(session)) {
+    return '/dashboard/admin';
+  }
+
+  return hasProviderRole(session) ? '/dashboard/provider' : '/dashboard/patient';
+}
+
+function hasProviderRole(session: AuthSession | null): boolean {
+  return Boolean(
+    session?.groups.some((group) => {
+      const normalized = group.trim().toLowerCase();
+      return normalized === 'provider' || normalized === 'providerapplicant';
+    }),
+  );
 }
 
 export async function fetchAuthSession(signal?: AbortSignal): Promise<AuthSession | null> {
@@ -257,7 +279,7 @@ function readAndClearReturnTo(): string {
 }
 
 function normalizePostLoginReturnTo(returnTo: string | null): string {
-  if (!isSafePostLoginReturnTo(returnTo) || returnTo === '/dashboard') {
+  if (!isSafePostLoginReturnTo(returnTo)) {
     return DEFAULT_POST_LOGIN_RETURN_TO;
   }
 

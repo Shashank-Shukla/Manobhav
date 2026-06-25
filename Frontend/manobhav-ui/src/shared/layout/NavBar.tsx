@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { useAuthSession } from '../auth/useAuthSession';
-import { isAdminSession, logout, type AuthSession } from '../auth/cognitoAuth';
+import { logout, resolveDashboardPath, type AuthSession } from '../auth/cognitoAuth';
 import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
 import { theme } from '../../utils/theme';
@@ -141,7 +141,7 @@ function AuthNavAction({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
-  const path = isAuthenticated ? getDashboardPath(session) : '/login';
+  const path = isAuthenticated ? resolveDashboardPath(session) : '/login';
   const handleClick = () => navigateFromMobile(path, onNavigate, onClose);
 
   useEffect(() => {
@@ -390,23 +390,6 @@ function handleNavClick(
 function navigateFromMobile(path: string, onNavigate: (path: string) => void, onClose?: () => void): void {
   onClose?.();
   onNavigate(path);
-}
-
-function getDashboardPath(session: AuthSession | null): string {
-  if (isAdminSession(session)) {
-    return '/dashboard/admin';
-  }
-
-  return hasProviderDashboardRole(session) ? '/dashboard/provider' : '/dashboard/patient';
-}
-
-function hasProviderDashboardRole(session: AuthSession | null): boolean {
-  return Boolean(
-    session?.groups.some((group) => {
-      const normalized = group.trim().toLowerCase();
-      return normalized === 'provider' || normalized === 'providerapplicant';
-    }),
-  );
 }
 
 function getProfileButtonClassName(variant: 'desktop' | 'mobile'): string {

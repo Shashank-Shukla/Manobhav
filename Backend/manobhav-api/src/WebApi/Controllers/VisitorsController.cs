@@ -80,14 +80,13 @@ public sealed class VisitorsController : ControllerBase
             return Problem(title: "Visitor session cookie is required.", statusCode: StatusCodes.Status400BadRequest);
         }
 
-        return await RecordEvent(visitorId, request, cancellationToken);
+        return await RecordEventForVisitorAsync(visitorId, request, cancellationToken);
     }
 
-    [AllowAnonymous]
-    [HttpPost("{visitorId:guid}/events")]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> RecordEvent(Guid visitorId, VisitorEventRequest request, CancellationToken cancellationToken)
+    // Private helper only. The visitor id is taken from the HttpOnly mbv_vid cookie,
+    // never from a caller-supplied route value, so events cannot be spoofed onto an
+    // arbitrary visitor session.
+    private async Task<IActionResult> RecordEventForVisitorAsync(Guid visitorId, VisitorEventRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -115,15 +114,6 @@ public sealed class VisitorsController : ControllerBase
             return Problem(title: "Visitor session cookie is required.", statusCode: StatusCodes.Status400BadRequest);
         }
 
-        return await LinkVisitor(visitorId, cancellationToken);
-    }
-
-    [Authorize]
-    [HttpPost("{visitorId:guid}/conversion")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> LinkToAuthenticatedUser(Guid visitorId, CancellationToken cancellationToken)
-    {
         return await LinkVisitor(visitorId, cancellationToken);
     }
 

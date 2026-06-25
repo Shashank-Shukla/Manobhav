@@ -1,6 +1,5 @@
 using System.Net.Mail;
 using System.Text;
-using System.Text.Json;
 using Amazon.SimpleEmailV2;
 using Amazon.SimpleEmailV2.Model;
 using Application.Services;
@@ -107,22 +106,19 @@ public sealed class SesProviderOnboardingAdminNotifier(
 
     private static string BuildBody(ProviderOnboardingAdminNotification notification)
     {
-        var builder = new StringBuilder()
-            .AppendLine("A provider application has been sent for admin review.")
+        // Intentionally minimal: only non-sensitive identifiers go over email.
+        // Applicant contact details, credentials, and documents are never emailed;
+        // reviewers open the secured admin dashboard to see them.
+        return new StringBuilder()
+            .AppendLine("A provider application has been submitted for admin review.")
             .AppendLine()
             .AppendLine($"Application ID: {notification.ApplicationId}")
             .AppendLine($"User ID: {notification.UserId}")
             .AppendLine($"Provider: {GetProviderName(notification)}")
-            .AppendLine($"Email: {notification.ProviderEmail ?? "Not provided"}")
             .AppendLine($"Submitted at UTC: {notification.SubmittedAtUtc:O}")
             .AppendLine()
-            .AppendLine("Persisted provider details:")
-            .AppendLine(JsonSerializer.Serialize(notification.Sections, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            }));
-
-        return builder.ToString();
+            .AppendLine("Open the Manobhav admin dashboard to review this application. Applicant contact details, credentials, and uploaded documents are intentionally omitted from this email and remain only in the secured system.")
+            .ToString();
     }
 
     private static string FormatFromAddress(ProviderOnboardingNotificationOptions settings)

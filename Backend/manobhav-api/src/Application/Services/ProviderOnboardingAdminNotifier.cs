@@ -1,18 +1,16 @@
-using System.Text.Json;
-
 namespace Application.Services;
 
 public sealed class ProviderOnboardingNotificationOptions
 {
     public const string DefaultAwsRegion = "ap-south-2";
 
-    public static readonly IReadOnlyList<string> DefaultAdminRecipients =
-    [
-        "shashankshowstoper@gmail.com",
-        "manobhavcounsellingservices@gmail.com"
-    ];
-
-    public IReadOnlyList<string> AdminRecipients { get; init; } = [.. DefaultAdminRecipients];
+    /// <summary>
+    /// Admin notification recipients. These MUST be supplied via configuration
+    /// (e.g. SSM at <c>ProviderOnboarding:AdminNotifications:AdminRecipients</c>).
+    /// There are intentionally no hardcoded recipient defaults so applicant data
+    /// can never be emailed to an unmanaged personal inbox.
+    /// </summary>
+    public IReadOnlyList<string> AdminRecipients { get; init; } = [];
     public string FromEmail { get; init; } = "no-reply@manobhav.co.in";
     public string FromDisplayName { get; init; } = "Manobhav";
     public string AwsRegion { get; init; } = DefaultAwsRegion;
@@ -20,7 +18,6 @@ public sealed class ProviderOnboardingNotificationOptions
     public IReadOnlyList<string> GetEffectiveAdminRecipients()
     {
         return AdminRecipients
-            .Concat(DefaultAdminRecipients)
             .Where(recipient => !string.IsNullOrWhiteSpace(recipient))
             .Select(recipient => recipient.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -32,9 +29,7 @@ public sealed record ProviderOnboardingAdminNotification(
     Guid ApplicationId,
     Guid UserId,
     string ProviderDisplayName,
-    string? ProviderEmail,
-    DateTimeOffset SubmittedAtUtc,
-    IReadOnlyDictionary<string, JsonElement> Sections);
+    DateTimeOffset SubmittedAtUtc);
 
 public interface IProviderOnboardingAdminNotifier
 {

@@ -73,7 +73,7 @@ describe('cognito auth helpers', () => {
     expect(window.sessionStorage.getItem('manobhav-auth-code-verifier')).toBeNull();
   });
 
-  it('falls back to the patient dashboard when the callback has no stored return target', async () => {
+  it('routes to the dashboard role-router when the callback has no stored return target', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
@@ -85,10 +85,10 @@ describe('cognito auth helpers', () => {
 
     const returnTo = await completeCognitoRedirect('https://app.example.com/callback?code=auth-code&state=state-1');
 
-    expect(returnTo).toBe('/dashboard/patient');
+    expect(returnTo).toBe('/dashboard');
   });
 
-  it('maps the stored dashboard chooser return target to the patient dashboard', async () => {
+  it('allows the dashboard role-router as the stored return target', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
@@ -101,7 +101,7 @@ describe('cognito auth helpers', () => {
 
     const returnTo = await completeCognitoRedirect('https://app.example.com/callback?code=auth-code&state=state-1');
 
-    expect(returnTo).toBe('/dashboard/patient');
+    expect(returnTo).toBe('/dashboard');
   });
 
   it('preserves provider onboarding as the stored post-login return target', async () => {
@@ -120,7 +120,7 @@ describe('cognito auth helpers', () => {
     expect(returnTo).toBe('/onboarding/provider');
   });
 
-  it('falls back to the patient dashboard when the stored return target is unsafe', async () => {
+  it('routes to the dashboard role-router when the stored return target is unsafe', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
@@ -133,7 +133,7 @@ describe('cognito auth helpers', () => {
 
     const returnTo = await completeCognitoRedirect('https://app.example.com/callback?code=auth-code&state=state-1');
 
-    expect(returnTo).toBe('/dashboard/patient');
+    expect(returnTo).toBe('/dashboard');
   });
 
   it('requests an email OTP through the backend auth API and returns challenge metadata', async () => {
