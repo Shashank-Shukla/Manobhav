@@ -788,14 +788,29 @@ function SubmitStep({
       <p className="max-w-xl text-center text-sm leading-6 text-gray-700">
         Please read the consent terms before submitting your intake.
       </p>
-      <button
-        className="border-0 bg-transparent p-0 text-sm font-semibold text-[#6F805F] underline underline-offset-4 hover:text-[#4F6144]"
-        onClick={() => setConsentDialogOpen(true)}
-        type="button"
-      >
-        Read terms and consent
-      </button>
-      {policyAcknowledged && <p className="text-sm font-medium text-[#4F6144]">Consent completed.</p>}
+      {policyAcknowledged ? (
+        <p
+          className="flex items-center gap-2 text-sm font-semibold text-[#4F6144]"
+          data-testid="consent-completed"
+          role="status"
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-5 w-5 items-center justify-center rounded-full bg-[#4F6144] text-xs font-bold text-white"
+          >
+            ✓
+          </span>
+          Terms read and consent recorded
+        </p>
+      ) : (
+        <button
+          className="border-0 bg-transparent p-0 text-sm font-semibold text-[#6F805F] underline underline-offset-4 hover:text-[#4F6144]"
+          onClick={() => setConsentDialogOpen(true)}
+          type="button"
+        >
+          Read terms and consent
+        </button>
+      )}
       {consentDialogOpen && (
         <ConsentDialog
           onClose={() => setConsentDialogOpen(false)}

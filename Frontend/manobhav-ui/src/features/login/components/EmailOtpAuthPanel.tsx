@@ -248,6 +248,17 @@ export function EmailOtpAuthPanel({ choiceLabel, initialFlow, onAuthenticated }:
           setError('');
         }}
         onKeyDown={handleOtpKeyDown}
+        sendButton={
+          <IconButton
+            aria-label="Submit verification code"
+            disabled={isSubmitting}
+            edge="end"
+            onClick={() => void verifyOtp()}
+            sx={{ color: '#7A8C6A', '&:hover': { backgroundColor: 'rgba(156, 175, 136, 0.16)' } }}
+          >
+            <SendHorizontal aria-hidden="true" size={20} />
+          </IconButton>
+        }
         value={otp}
       />
       <div className="flex min-h-10 items-center justify-between gap-3 text-sm">
