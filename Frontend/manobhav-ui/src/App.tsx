@@ -1,11 +1,12 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { NavBar } from './shared/layout/NavBar';
 import { Footer } from './shared/layout/Footer';
 import { SimpleFooter } from './shared/layout/SimpleFooter';
 import { AdminRouteGuard } from './shared/auth/AdminRouteGuard';
 import { AuthRouteGuard } from './shared/auth/AuthRouteGuard';
-import { getStoredAuthSession } from './shared/auth/cognitoAuth';
+import { getStoredAuthSession, resolveDashboardPath } from './shared/auth/cognitoAuth';
+import { useAuthSession } from './shared/auth/useAuthSession';
 import { useVisitorAnalytics } from './features/visitor-analytics';
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage || m.default })));
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage || m.default })));
@@ -132,7 +133,7 @@ function AppRoutes({
       <Route path="/onboarding" element={<OnboardingChooser onProvider={() => navigate('/onboarding/provider')} onPatient={() => navigate('/onboarding/patient')} />} />
       <Route path="/onboarding/provider" element={<AuthenticatedBoundedRoute context="route-provider-onboarding" navigate={navigate} returnTo="/onboarding/provider"><OnboardingProviderPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
       <Route path="/onboarding/patient" element={<AuthenticatedBoundedRoute context="route-patient-onboarding" navigate={navigate} returnTo="/onboarding/patient"><OnboardingPatientPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
-      <Route path="/dashboard" element={<DashboardRouteElement navigate={navigate} />} />
+      <Route path="/dashboard" element={<DashboardRouteElement />} />
       <Route path="/dashboard/provider" element={<AuthenticatedBoundedRoute context="route-provider-dashboard" navigate={navigate} returnTo="/dashboard/provider"><DashboardProviderPage /></AuthenticatedBoundedRoute>} />
       <Route path="/dashboard/patient" element={<AuthenticatedBoundedRoute context="route-patient-dashboard" navigate={navigate} returnTo="/dashboard/patient"><DashboardPatientPage /></AuthenticatedBoundedRoute>} />
       <Route path="/dashboard/admin" element={<AdminDashboardRouteElement />} />
@@ -224,14 +225,22 @@ function ProvidersRouteElement({ navigate, onBook }: { navigate: (path: string) 
   );
 }
 
-function DashboardRouteElement({ navigate }: { navigate: (path: string) => void }) {
-  return (
-    <DashboardChooser
-      onProvider={() => navigate('/dashboard/provider')}
-      onPatient={() => navigate('/dashboard/patient')}
-      onAdmin={() => navigate('/dashboard/admin')}
-    />
-  );
+function DashboardRouteElement() {
+  const { session, loading } = useAuthSession();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">
+        Loading your dashboard…
+      </div>
+    );
+  }
+
+  if (!session?.isAuthenticated) {
+    return <Navigate replace to={`/login?returnTo=${encodeURIComponent('/dashboard')}`} />;
+  }
+
+  return <Navigate replace to={resolveDashboardPath(session)} />;
 }
 
 function AdminDashboardRouteElement() {
@@ -319,34 +328,6 @@ function OnboardingChooser({ onProvider, onPatient }: { onProvider: () => void; 
         </Button>
         <Button variant="secondary" onClick={onPatient}>
           Patient / User
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function DashboardChooser({
-  onProvider,
-  onPatient,
-  onAdmin,
-}: {
-  onProvider: () => void;
-  onPatient: () => void;
-  onAdmin: () => void;
-}) {
-  return (
-    <div className="max-w-5xl mx-auto py-16 px-6 flex flex-col gap-6 text-center">
-      <h1 className="text-3xl font-bold">Dashboard area</h1>
-      <p className="text-gray-600">Select the dashboard you want to explore.</p>
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button variant="primary" onClick={onProvider}>
-          Provider dashboard
-        </Button>
-        <Button variant="secondary" onClick={onPatient}>
-          Patient dashboard
-        </Button>
-        <Button variant="outline" onClick={onAdmin}>
-          Admin dashboard
         </Button>
       </div>
     </div>
