@@ -106,7 +106,7 @@ describe('ProviderDashboardRoute data wiring', () => {
     const profileBlock = await screen.findByRole('group', { name: /provider profile/i });
     expect(within(profileBlock).getByText('Dr. Asha Rao')).toBeInTheDocument();
     expect(within(profileBlock).getByRole('link', { name: /view profile/i })).toHaveAttribute('href', '/dashboard#dashboard-overview');
-    expect(within(profileBlock).getByRole('img', { name: /Dr. Asha Rao avatar/i })).toBeInTheDocument();
+    expect(within(profileBlock).getByRole('button', { name: /open provider account menu/i })).toHaveTextContent('AR');
 
     const snapshot = screen.getByRole('region', { name: /dashboard activity/i });
     const totalCard = within(snapshot).getByText('Total sessions').closest('article') as HTMLElement;

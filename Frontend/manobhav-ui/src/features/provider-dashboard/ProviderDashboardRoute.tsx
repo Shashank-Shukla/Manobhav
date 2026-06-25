@@ -12,6 +12,7 @@ type LoadState =
 
 export function DashboardProviderPage() {
   const state = useProviderDashboard();
+  const [navExpanded, setNavExpanded] = useState(false);
 
   if (state.status !== 'ready') {
     return <ProviderDashboardStatus status={state.status} />;
@@ -19,10 +20,14 @@ export function DashboardProviderPage() {
 
   return (
     <div
-      className="grid min-h-screen grid-cols-1 lg:grid-cols-[5rem_minmax(0,1fr)_23rem]"
+      className={`grid min-h-screen grid-cols-1 transition-[grid-template-columns] duration-300 ${
+        navExpanded
+          ? 'lg:grid-cols-[15rem_minmax(0,1fr)_23rem]'
+          : 'lg:grid-cols-[5rem_minmax(0,1fr)_23rem]'
+      }`}
       style={{ backgroundColor: theme.colors.smokeWhite, fontFamily: theme.font }}
     >
-      <ProviderDashboardSidebar />
+      <ProviderDashboardSidebar onExpandedChange={setNavExpanded} />
       <ProviderDashboardMain data={state.data} />
       <ProviderDashboardAside data={state.data} />
     </div>

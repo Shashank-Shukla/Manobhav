@@ -23,8 +23,14 @@ public sealed class ProviderControllerTests
 
         var now = DateTimeOffset.UtcNow;
         var todayStart = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
-        db.Appointments.Add(ScheduledAppointment(profile.Id, patient.Id, todayStart.AddHours(10)));
+        // Start-of-today appointment: always inside the "today" window yet already in the past, so it
+        // appears in TodayAppointments without contributing to UpcomingCount.
+        db.Appointments.Add(ScheduledAppointment(profile.Id, patient.Id, todayStart));
         db.Appointments.Add(CompletedAppointment(profile.Id, patient.Id, now.AddDays(-3)));
+        // Two future-day appointments keep UpcomingCount deterministic regardless of the wall-clock
+        // time the test runs at. (The previous "today at 10:00" appointment only counted as upcoming
+        // before 10:00 UTC, which made this test fail on CI later in the day.)
+        db.Appointments.Add(ScheduledAppointment(profile.Id, patient.Id, now.AddDays(1)));
         db.Appointments.Add(ScheduledAppointment(profile.Id, patient.Id, now.AddDays(2)));
         await db.SaveChangesAsync();
 

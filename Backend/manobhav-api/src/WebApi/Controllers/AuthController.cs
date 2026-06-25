@@ -34,7 +34,8 @@ public sealed class AuthController(
 
         var tokens = await tokenExchange.ExchangeCodeAsync(request!, cancellationToken);
         var session = cookies.SignIn(Response, tokens);
-        session = await EnrichWithDatabaseRolesAsync(session, AuthCookieManager.ReadSubjectFromAccessToken(tokens.AccessToken), cancellationToken);
+        await SyncUserFromIdTokenAsync(tokens.IdToken, cancellationToken);
+        session = await BuildEnrichedSessionAsync(session, AuthCookieManager.ReadSubjectFromAccessToken(tokens.AccessToken), cancellationToken);
         return Ok(session);
     }
 
@@ -93,7 +94,8 @@ public sealed class AuthController(
             var session = result.Tokens is null ? null : cookies.SignIn(Response, result.Tokens);
             if (session is not null && result.Tokens is not null)
             {
-                session = await EnrichWithDatabaseRolesAsync(
+                await SyncUserFromIdTokenAsync(result.Tokens.IdToken, cancellationToken);
+                session = await BuildEnrichedSessionAsync(
                     session,
                     AuthCookieManager.ReadSubjectFromAccessToken(result.Tokens.AccessToken),
                     cancellationToken);
@@ -133,7 +135,7 @@ public sealed class AuthController(
     public async Task<ActionResult<AuthSessionResponse>> Session(CancellationToken cancellationToken = default)
     {
         var session = cookies.CreateSession(User);
-        session = await EnrichWithDatabaseRolesAsync(session, User.FindFirst("sub")?.Value, cancellationToken);
+        session = await BuildEnrichedSessionAsync(session, User.FindFirst("sub")?.Value, cancellationToken);
         return Ok(session);
     }
 
@@ -146,14 +148,58 @@ public sealed class AuthController(
     }
 
     /// <summary>
-    /// Provider classification lives in the database <c>UserRole</c> table (e.g. "Provider",
-    /// "ProviderApplicant"), while Cognito only carries groups such as "Admin". The frontend role
-    /// router decides which dashboard to show from <see cref="AuthSessionResponse.Groups"/>, so we
-    /// merge the user's active database roles into the session groups here. These groups are used by
-    /// the client for UI routing only — backend authorization continues to rely on the Cognito
+    /// Mirrors the just-signed-in Cognito account into the database from the ID token (which carries
+    /// email and name, unlike the access token). This keeps the <c>Users</c> table — the source for
+    /// the admin patient roster and the dashboard avatar — populated for every account, not only
+    /// those that later book or onboard.
+    /// </summary>
+    private async Task SyncUserFromIdTokenAsync(string? idToken, CancellationToken cancellationToken)
+    {
+        if (db is null)
+        {
+            return;
+        }
+
+        var (subject, email, name) = AuthCookieManager.ReadProfileFromIdToken(idToken);
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            return;
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(item => item.CognitoSubject == subject, cancellationToken);
+        if (user is null)
+        {
+            user = new Domain.Entities.User { CognitoSubject = subject, Email = email, DisplayName = name };
+            await db.Users.AddAsync(user, cancellationToken);
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(user.Email) && !string.IsNullOrWhiteSpace(email))
+            {
+                user.Email = email;
+            }
+
+            if (string.IsNullOrWhiteSpace(user.DisplayName) && !string.IsNullOrWhiteSpace(name))
+            {
+                user.DisplayName = name;
+            }
+
+            user.LastLoginAtUtc = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Resolves the database user for the session, ensures a row exists (so even accounts that have
+    /// never acted appear in admin rosters), and returns the session augmented with the user's
+    /// database roles and profile. Provider classification lives in the <c>UserRole</c> table while
+    /// Cognito only carries groups such as "Admin"; the frontend role router reads
+    /// <see cref="AuthSessionResponse.Groups"/>, so active database roles are merged in here. These
+    /// groups drive UI routing only — backend authorization still relies on the Cognito
     /// "cognito:groups" claim — so this cannot grant elevated access.
     /// </summary>
-    private async Task<AuthSessionResponse> EnrichWithDatabaseRolesAsync(
+    private async Task<AuthSessionResponse> BuildEnrichedSessionAsync(
         AuthSessionResponse session,
         string? cognitoSubject,
         CancellationToken cancellationToken)
@@ -163,32 +209,37 @@ public sealed class AuthController(
             return session;
         }
 
-        var userId = await db.Users
-            .AsNoTracking()
-            .Where(user => user.CognitoSubject == cognitoSubject)
-            .Select(user => (Guid?)user.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (userId is null)
+        var user = await db.Users.FirstOrDefaultAsync(item => item.CognitoSubject == cognitoSubject, cancellationToken);
+        if (user is null)
         {
-            return session;
+            user = new Domain.Entities.User { CognitoSubject = cognitoSubject };
+            await db.Users.AddAsync(user, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
         }
 
         var roles = await db.UserRoles
             .AsNoTracking()
-            .Where(role => role.UserId == userId && role.IsActive)
+            .Where(role => role.UserId == user.Id && role.IsActive)
             .Select(role => role.Role)
             .ToListAsync(cancellationToken);
-        if (roles.Count == 0)
-        {
-            return session;
-        }
 
         var groups = session.Groups
             .Concat(roles)
             .Where(group => !string.IsNullOrWhiteSpace(group))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        return session with { Groups = groups };
+
+        return session with
+        {
+            Groups = groups,
+            Email = user.Email,
+            Name = FirstNonEmpty(user.DisplayName, user.Name),
+        };
+    }
+
+    private static string? FirstNonEmpty(params string?[] candidates)
+    {
+        return candidates.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim();
     }
 
     private static bool HasMissingCallbackField(AuthCallbackRequest? request)

@@ -34,11 +34,11 @@ const teamSignals = [
 
 export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
   return (
-    <section className="relative h-full overflow-hidden bg-[#f5efe3] px-6 py-16 md:py-20">
-      <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#f5efe3" />
+    <section className="relative h-full overflow-hidden bg-[#FBF1F4] px-6 py-16 md:py-20">
+      <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#FBF1F4" />
 
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[9%] top-36 h-28 w-28 rounded-full bg-[#efe0c5]/50 blur-3xl" />
+        <div className="absolute left-[9%] top-36 h-28 w-28 rounded-full bg-[#F2DBE0]/50 blur-3xl" />
         <div className="absolute bottom-20 right-[10%] h-36 w-36 rounded-full bg-[#dde9ef]/50 blur-3xl" />
       </div>
 
@@ -62,7 +62,7 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
             variant="secondary"
             icon={ArrowRight}
             onClick={onExploreProviders}
-            className="border-[#e4d6c8] bg-[#efe3cf] text-[#243b6b] hover:bg-[#e8d8c4]"
+            className="border-[#ECD0D6] bg-[#F1D8DE] text-[#243b6b] hover:bg-[#ECD0D6]"
           >
             Browse Providers
           </Button>
@@ -91,7 +91,7 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
             })}
           </div>
 
-          <div className="rounded-[2rem] border border-[#e5d9c7] bg-[#f8efdf]/84 p-7 shadow-[0_20px_45px_rgba(36,59,107,0.06)]">
+          <div className="rounded-[2rem] border border-[#ECD9D4] bg-[#F9EAEE]/84 p-7 shadow-[0_20px_45px_rgba(36,59,107,0.06)]">
             <Text variant="caption" className="text-[#7d8f8a]">
               Team Promise
             </Text>
@@ -102,7 +102,7 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
               As Manobhav grows, this section can expand into fuller therapist profiles, but the standard remains the
               same: empathy, confidentiality, and competence first.
             </Text>
-            <div className="mt-6 rounded-[1.5rem] border border-[#ddd0bc] bg-[#ece1cf]/72 p-5">
+            <div className="mt-6 rounded-[1.5rem] border border-[#E6C7CF] bg-[#F1D8DE]/72 p-5">
               <Text variant="body" className="text-gray-700">
                 Today, the clearest named voice behind the platform is Guramrit Kaur. Over time, that story can expand
                 into a wider team without changing the values at its core.

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, Divider, Flex, HStack, ScaleFade, SimpleGrid, Stack, Text, Textarea } from '@chakra-ui/react';
-import { ArrowLeft, ArrowUpRight, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CheckCircle2, PencilLine, XCircle } from 'lucide-react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   approveProviderApplication,
   getProviderApplication,
   getProviderApplications,
   rejectProviderApplication,
+  requestProviderApplicationRevisions,
   saveProviderApplicationSectionReview,
 } from '../adminDashboardApi';
-import { adminTheme } from '../adminTheme';
+import { adminTheme, toneStyles } from '../adminTheme';
 import { AdminDataTable, type AdminDataTableColumn } from '../components/AdminDataTable';
 import { StatusBadge } from '../components/StatusBadge';
 import {
@@ -124,9 +125,9 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [savingSection, setSavingSection] = useState<string | null>(null);
-  const [finalAction, setFinalAction] = useState<'approve' | 'reject' | null>(null);
+  const [finalAction, setFinalAction] = useState<FinalDecision | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
-  const [decisionComplete, setDecisionComplete] = useState<'approve' | 'reject' | null>(null);
+  const [decisionComplete, setDecisionComplete] = useState<FinalDecision | null>(null);
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -169,6 +170,9 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
       review?.status === 'Rejected' &&
       Boolean(review.comment?.trim());
   });
+  const hasRejectedSection = PROVIDER_APPLICATION_REQUIRED_REVIEW_SECTION_KEYS.some(
+    (sectionKey) => sectionReviews[sectionKey]?.status === 'Rejected',
+  );
   const canMakeFinalDecision = application.status === 'Submitted';
   const canReviewSections = application.status === 'Submitted';
 
@@ -207,14 +211,16 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
     }
   }
 
-  async function submitFinalDecision(action: 'approve' | 'reject') {
+  async function submitFinalDecision(action: FinalDecision) {
     setReviewError(null);
     setFinalAction(action);
     try {
       if (action === 'approve') {
         await approveProviderApplication(applicationId);
-      } else {
+      } else if (action === 'reject') {
         await rejectProviderApplication(applicationId);
+      } else {
+        await requestProviderApplicationRevisions(applicationId);
       }
 
       // Show the confirmation animation, then return to the queue. The application has left the
@@ -267,59 +273,14 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
         <DetailRow label="Submitted" value={formatDate(application.submittedAtUtc ?? application.updatedAtUtc ?? application.createdAtUtc)} />
       </SectionCard>
 
-      <SectionCard title="Final decision">
-        <Stack spacing={4}>
-          {reviewError && (
-            <Box
-              role="alert"
-              border="1px solid"
-              borderColor="rgba(190, 75, 75, 0.28)"
-              bg="#FCE8E8"
-              color="#A74747"
-              borderRadius="12px"
-              px={4}
-              py={3}
-              fontSize="sm"
-              fontWeight="800"
-            >
-              {reviewError}
-            </Box>
-          )}
-          <HStack spacing={3} flexWrap="wrap">
-            <Button
-              size="sm"
-              borderRadius="10px"
-              leftIcon={<CheckCircle2 size={15} />}
-              onClick={() => void submitFinalDecision('approve')}
-              isDisabled={!canMakeFinalDecision || !allSectionsApproved || finalAction !== null}
-              isLoading={finalAction === 'approve'}
-            >
-              Approve application
-            </Button>
-            <Button
-              size="sm"
-              borderRadius="10px"
-              variant="outline"
-              colorScheme="red"
-              leftIcon={<XCircle size={15} />}
-              onClick={() => void submitFinalDecision('reject')}
-              isDisabled={!canMakeFinalDecision || !hasRejectedSectionWithComment || finalAction !== null}
-              isLoading={finalAction === 'reject'}
-            >
-              Reject application
-            </Button>
-          </HStack>
-        </Stack>
-      </SectionCard>
-
-      <SimpleGrid columns={{ base: 1, xl: 2 }} spacing={5}>
+      <SimpleGrid columns={{ base: 1, xl: 2 }} spacing={5} pb="120px">
         {sectionEntries.map(([sectionKey, sectionValue]) => (
           <SectionCard key={sectionKey} title={formatSectionTitle(sectionKey)}>
             <Stack spacing={4}>
               <SectionValue value={sectionValue} />
               <SectionReviewControls
                 comment={sectionComments[sectionKey] ?? ''}
-                isDisabled={!canReviewSections}
+                isDisabled={!canReviewSections || sectionReviews[sectionKey]?.status === 'Approved'}
                 onCommentChange={(comment) => setSectionComments((current) => ({
                   ...current,
                   [sectionKey]: comment.slice(0, PROVIDER_APPLICATION_SECTION_REVIEW_COMMENT_MAX_LENGTH),
@@ -335,14 +296,116 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
       </SimpleGrid>
     </Stack>
       </Box>
+      {canMakeFinalDecision && !decisionComplete && (
+        <FinalDecisionBar
+          allSectionsApproved={allSectionsApproved}
+          finalAction={finalAction}
+          hasRejectedSection={hasRejectedSection}
+          hasRejectedSectionWithComment={hasRejectedSectionWithComment}
+          onDecision={(action) => void submitFinalDecision(action)}
+          reviewError={reviewError}
+        />
+      )}
     </Box>
   );
 }
 
-function DecisionCompleteOverlay({ decision }: { decision: 'approve' | 'reject' | null }) {
-  const isApprove = decision === 'approve';
-  const accent = isApprove ? '#4F8A5B' : '#A74747';
-  const bg = isApprove ? 'rgba(238, 244, 234, 0.96)' : 'rgba(252, 232, 232, 0.96)';
+type FinalDecision = 'approve' | 'reject' | 'revise';
+
+function FinalDecisionBar({
+  allSectionsApproved,
+  finalAction,
+  hasRejectedSection,
+  hasRejectedSectionWithComment,
+  onDecision,
+  reviewError,
+}: {
+  allSectionsApproved: boolean;
+  finalAction: FinalDecision | null;
+  hasRejectedSection: boolean;
+  hasRejectedSectionWithComment: boolean;
+  onDecision: (action: FinalDecision) => void;
+  reviewError: string | null;
+}) {
+  const busy = finalAction !== null;
+
+  return (
+    <Box position="fixed" bottom={{ base: 3, md: 5 }} left={0} right={0} zIndex={25} px={4} pointerEvents="none">
+      <Stack
+        spacing={3}
+        mx="auto"
+        maxW="640px"
+        pointerEvents="auto"
+        bg="rgba(255, 255, 255, 0.96)"
+        border="1px solid"
+        borderColor={adminTheme.border}
+        borderRadius="18px"
+        boxShadow="0 24px 60px rgba(45, 55, 72, 0.22)"
+        backdropFilter="blur(14px)"
+        px={{ base: 4, md: 5 }}
+        py={4}
+      >
+        {reviewError && (
+          <Box
+            role="alert"
+            border="1px solid"
+            borderColor="rgba(190, 75, 75, 0.28)"
+            bg="#FCE8E8"
+            color="#A74747"
+            borderRadius="12px"
+            px={4}
+            py={2}
+            fontSize="sm"
+            fontWeight="800"
+          >
+            {reviewError}
+          </Box>
+        )}
+        <HStack spacing={3} justify="center" flexWrap="wrap">
+          <Button
+            size="sm"
+            borderRadius="10px"
+            leftIcon={<CheckCircle2 size={15} />}
+            onClick={() => onDecision('approve')}
+            isDisabled={!allSectionsApproved || busy}
+            isLoading={finalAction === 'approve'}
+          >
+            Approve application
+          </Button>
+          <Button
+            size="sm"
+            borderRadius="10px"
+            variant="outline"
+            leftIcon={<PencilLine size={15} />}
+            onClick={() => onDecision('revise')}
+            isDisabled={!hasRejectedSection || busy}
+            isLoading={finalAction === 'revise'}
+            color={toneStyles.amber.color}
+            borderColor={toneStyles.amber.border}
+            _hover={{ bg: toneStyles.amber.bg }}
+          >
+            Request revisions
+          </Button>
+          <Button
+            size="sm"
+            borderRadius="10px"
+            variant="outline"
+            colorScheme="red"
+            leftIcon={<XCircle size={15} />}
+            onClick={() => onDecision('reject')}
+            isDisabled={!hasRejectedSectionWithComment || busy}
+            isLoading={finalAction === 'reject'}
+          >
+            Reject application
+          </Button>
+        </HStack>
+      </Stack>
+    </Box>
+  );
+}
+
+function DecisionCompleteOverlay({ decision }: { decision: FinalDecision | null }) {
+  const visual = getDecisionVisual(decision);
 
   return (
     <ScaleFade in={decision !== null} initialScale={0.85} unmountOnExit>
@@ -355,16 +418,16 @@ function DecisionCompleteOverlay({ decision }: { decision: 'approve' | 'reject' 
         direction="column"
         gap={4}
         borderRadius="16px"
-        bg={bg}
+        bg={visual.bg}
         backdropFilter="blur(2px)"
         textAlign="center"
         px={6}
         role="status"
       >
-        {isApprove ? <CheckCircle2 size={64} color={accent} /> : <XCircle size={64} color={accent} />}
+        <visual.Icon size={64} color={visual.accent} />
         <Box>
           <Text color={adminTheme.text} fontSize="xl" fontWeight="900">
-            {isApprove ? 'Application approved' : 'Application rejected'}
+            {visual.title}
           </Text>
           <Text color={adminTheme.muted} fontSize="sm" mt={1}>
             Returning to the applications queue…
@@ -373,6 +436,18 @@ function DecisionCompleteOverlay({ decision }: { decision: 'approve' | 'reject' 
       </Flex>
     </ScaleFade>
   );
+}
+
+function getDecisionVisual(decision: FinalDecision | null) {
+  if (decision === 'approve') {
+    return { Icon: CheckCircle2, accent: '#4F8A5B', bg: 'rgba(238, 244, 234, 0.96)', title: 'Application approved' };
+  }
+
+  if (decision === 'revise') {
+    return { Icon: PencilLine, accent: '#8A6D24', bg: 'rgba(248, 240, 216, 0.96)', title: 'Revisions requested' };
+  }
+
+  return { Icon: XCircle, accent: '#A74747', bg: 'rgba(252, 232, 232, 0.96)', title: 'Application rejected' };
 }
 
 function SectionReviewControls({

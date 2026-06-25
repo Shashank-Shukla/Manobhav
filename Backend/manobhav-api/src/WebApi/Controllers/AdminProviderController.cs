@@ -99,8 +99,71 @@ public sealed class AdminProviderController : ControllerBase
         application.ReviewedAtUtc = now;
         application.UpdatedAtUtc = now;
         await EnsureRoleAsync(application.UserId, ProviderRole, cancellationToken);
+        await MaterializeProviderProfileAsync(application, now, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Creates the provider's roster record on approval. The profile starts hidden (not yet published
+    /// to the public site) but exists so the admin provider roster and the provider dashboard reflect
+    /// the newly approved provider. Publishing remains a separate admin action.
+    /// </summary>
+    private async Task MaterializeProviderProfileAsync(
+        ProviderOnboardingApplication application,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var alreadyMaterialized = await _db.ProviderProfiles
+            .AnyAsync(profile => profile.ProviderApplicationId == application.Id, cancellationToken);
+        if (alreadyMaterialized)
+        {
+            return;
+        }
+
+        var (displayName, legalName) = ReadApplicationNames(application);
+        var name = FirstNonEmpty(displayName, legalName) ?? "Provider";
+        await _db.ProviderProfiles.AddAsync(new ProviderProfile
+        {
+            ProviderApplicationId = application.Id,
+            UserId = application.UserId,
+            Name = name,
+            DisplayName = FirstNonEmpty(displayName, legalName),
+            Role = "Therapist",
+            VisibilityStatus = "Hidden",
+            IsActive = true,
+            CreatedAtUtc = now,
+        }, cancellationToken);
+    }
+
+    private static (string? DisplayName, string? LegalName) ReadApplicationNames(ProviderOnboardingApplication application)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(application.BasicProfileJson);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return (null, null);
+            }
+
+            return (ReadStringProperty(document.RootElement, "displayName"), ReadStringProperty(document.RootElement, "legalName"));
+        }
+        catch (JsonException)
+        {
+            return (null, null);
+        }
+    }
+
+    private static string? ReadStringProperty(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+    }
+
+    private static string? FirstNonEmpty(params string?[] candidates)
+    {
+        return candidates.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim();
     }
 
     [HttpPut("{applicationId:guid}/sections/{sectionKey}/review")]
