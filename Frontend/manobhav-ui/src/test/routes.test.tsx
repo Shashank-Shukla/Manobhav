@@ -429,7 +429,7 @@ describe('single /dashboard role routing', () => {
 
     renderRoleDashboard();
 
-    expect(await screen.findByText(/manobhav admin/i)).toBeInTheDocument();
+    expect(await screen.findByText(/admin command center/i)).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: /provider dashboard navigation/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/coming up/i)).not.toBeInTheDocument();
   });

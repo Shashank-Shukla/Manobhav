@@ -11,6 +11,8 @@ namespace WebApi.Controllers;
 [Route("api/admin")]
 public sealed class AdminController : ControllerBase
 {
+    private const int RosterPageSize = 25;
+
     private readonly ApplicationDbContext _db;
 
     public AdminController(ApplicationDbContext db)
@@ -50,6 +52,165 @@ public sealed class AdminController : ControllerBase
             providers,
             bookings,
             slots));
+    }
+
+    [HttpGet("providers")]
+    [ProducesResponseType(typeof(AdminPagedResult<AdminProviderRosterDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AdminPagedResult<AdminProviderRosterDto>>> GetProviders(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = RosterPageSize,
+        [FromQuery] string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        var (normalizedPage, normalizedPageSize) = NormalizePaging(page, pageSize);
+        var term = NormalizeSearch(search);
+
+        var query = _db.ProviderProfiles.AsNoTracking();
+        if (term is not null)
+        {
+            query = query.Where(provider =>
+                (provider.DisplayName != null && provider.DisplayName.ToLower().Contains(term)) ||
+                provider.Name.ToLower().Contains(term) ||
+                (provider.ProfessionalTitle != null && provider.ProfessionalTitle.ToLower().Contains(term)) ||
+                provider.Role.ToLower().Contains(term));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var rows = await query
+            .OrderBy(provider => provider.DisplayOrder)
+            .ThenBy(provider => provider.DisplayName ?? provider.Name)
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .Select(provider => new
+            {
+                provider.Id,
+                Name = provider.DisplayName ?? provider.Name,
+                Title = provider.ProfessionalTitle ?? provider.Role,
+                provider.VisibilityStatus,
+                provider.IsActive,
+                provider.SpecializationsJson,
+                provider.Sessions,
+                provider.Rating,
+                provider.RatingAverage
+            })
+            .ToListAsync(cancellationToken);
+
+        var items = rows.Select(provider =>
+        {
+            var visibility = provider.IsActive ? provider.VisibilityStatus : "Inactive";
+            return new AdminProviderRosterDto(
+                provider.Id.ToString(),
+                provider.Name,
+                provider.Title,
+                visibility,
+                ToneFromStatus(visibility),
+                ReadSpecializations(provider.SpecializationsJson),
+                provider.Sessions,
+                provider.RatingAverage > 0 ? provider.RatingAverage : provider.Rating);
+        }).ToList();
+
+        return Ok(new AdminPagedResult<AdminProviderRosterDto>(items, normalizedPage, normalizedPageSize, total));
+    }
+
+    [HttpGet("patients")]
+    [ProducesResponseType(typeof(AdminPagedResult<AdminPatientRosterDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AdminPagedResult<AdminPatientRosterDto>>> GetPatients(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = RosterPageSize,
+        [FromQuery] string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        var (normalizedPage, normalizedPageSize) = NormalizePaging(page, pageSize);
+        var term = NormalizeSearch(search);
+
+        // Patients are care-seeking account holders: every user that is not an active provider or
+        // provider applicant. (Admins are a Cognito-group concept, not a database role.)
+        var providerUserIds = _db.UserRoles
+            .Where(role => role.IsActive && (role.Role == "Provider" || role.Role == "ProviderApplicant"))
+            .Select(role => role.UserId);
+
+        var query = _db.Users
+            .AsNoTracking()
+            .Where(user => !providerUserIds.Contains(user.Id));
+        if (term is not null)
+        {
+            query = query.Where(user =>
+                (user.Name != null && user.Name.ToLower().Contains(term)) ||
+                (user.DisplayName != null && user.DisplayName.ToLower().Contains(term)) ||
+                (user.Email != null && user.Email.ToLower().Contains(term)));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var rows = await query
+            .OrderByDescending(user => user.CreatedAtUtc)
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .Select(user => new
+            {
+                user.Id,
+                user.Name,
+                user.DisplayName,
+                user.Email,
+                user.AccountStatus,
+                user.CreatedAtUtc
+            })
+            .ToListAsync(cancellationToken);
+
+        var userIds = rows.Select(row => row.Id).ToList();
+        var sessionsByPatient = await _db.Appointments
+            .AsNoTracking()
+            .Where(appointment => userIds.Contains(appointment.PatientUserId) && appointment.Status == "Completed")
+            .GroupBy(appointment => appointment.PatientUserId)
+            .Select(group => new { PatientUserId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.PatientUserId, item => item.Count, cancellationToken);
+
+        var items = rows.Select(row => new AdminPatientRosterDto(
+            row.Id.ToString(),
+            ResolvePatientDisplayName(row.DisplayName, row.Name, row.Email),
+            string.IsNullOrWhiteSpace(row.Email) ? "Not provided" : row.Email!,
+            string.IsNullOrWhiteSpace(row.AccountStatus) ? "Active" : row.AccountStatus,
+            row.CreatedAtUtc.ToString("MMM d, yyyy"),
+            sessionsByPatient.GetValueOrDefault(row.Id))).ToList();
+
+        return Ok(new AdminPagedResult<AdminPatientRosterDto>(items, normalizedPage, normalizedPageSize, total));
+    }
+
+    private static (int Page, int PageSize) NormalizePaging(int page, int pageSize)
+    {
+        var normalizedPageSize = pageSize <= 0 ? RosterPageSize : Math.Min(pageSize, RosterPageSize);
+        var normalizedPage = page < 1 ? 1 : page;
+        return (normalizedPage, normalizedPageSize);
+    }
+
+    private static string? NormalizeSearch(string? search)
+    {
+        var trimmed = search?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed.ToLowerInvariant();
+    }
+
+    private static string ResolvePatientDisplayName(string? displayName, string? name, string? email)
+    {
+        if (!string.IsNullOrWhiteSpace(displayName))
+        {
+            return displayName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return name.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var local = email.Split('@', 2)[0];
+            return string.IsNullOrWhiteSpace(local) ? "Patient" : local;
+        }
+
+        return "Patient";
     }
 
     private async Task<IReadOnlyList<AdminProviderRecordDto>> ReadProvidersAsync(CancellationToken cancellationToken)
@@ -285,3 +446,23 @@ public sealed record AdminBookingRecordDto(
     int Reschedules);
 
 public sealed record AdminSlotRecordDto(string Id, string ProviderName, string Day, int Open, int Booked, int Blocked);
+
+public sealed record AdminPagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int Total);
+
+public sealed record AdminProviderRosterDto(
+    string Id,
+    string Name,
+    string Title,
+    string Status,
+    string Tone,
+    IReadOnlyList<string> Specialities,
+    int Sessions,
+    decimal Rating);
+
+public sealed record AdminPatientRosterDto(
+    string Id,
+    string Name,
+    string Email,
+    string Status,
+    string JoinedAt,
+    int SessionsCompleted);

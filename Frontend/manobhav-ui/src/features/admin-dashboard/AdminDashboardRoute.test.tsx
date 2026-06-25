@@ -254,7 +254,7 @@ describe('AdminDashboardRoute admin application review flow', () => {
       String(url).endsWith(`/api/admin/provider-applications/${providerApplicationId}/approve`) &&
       init?.method === 'POST',
     )).toBe(true));
-    await waitFor(() => expect(screen.getByText('Approved')).toBeInTheDocument());
+    expect(await screen.findByText(/application approved/i)).toBeInTheDocument();
   });
 
   it('allows final rejection when a section is rejected with a comment', async () => {
@@ -273,7 +273,7 @@ describe('AdminDashboardRoute admin application review flow', () => {
       String(url).endsWith(`/api/admin/provider-applications/${providerApplicationId}/reject`) &&
       init?.method === 'POST',
     )).toBe(true));
-    await waitFor(() => expect(screen.getByText('Rejected')).toBeInTheDocument());
+    expect(await screen.findByText(/application rejected/i)).toBeInTheDocument();
   });
 
   it('disables section review controls for terminal applications', async () => {
@@ -320,7 +320,7 @@ describe('AdminDashboardRoute notifications and branding', () => {
   it('uses the official Manobhav logo asset in the admin shell', async () => {
     renderAdmin();
 
-    const logo = await screen.findByRole('img', { name: /Manobhav admin/i, hidden: true });
+    const logo = await screen.findByRole('img', { name: /Manobhav/i, hidden: true });
     expect(logo).toHaveAttribute('src', '/Manobhav_Logo.png');
     expect(screen.queryByText(/^M$/)).not.toBeInTheDocument();
   });

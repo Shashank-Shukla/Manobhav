@@ -1,5 +1,7 @@
+using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WebApi.Security;
 
 namespace WebApi.Controllers;
@@ -9,7 +11,8 @@ namespace WebApi.Controllers;
 public sealed class AuthController(
     ICognitoTokenExchange tokenExchange,
     AuthCookieManager cookies,
-    IEmailOtpAuthService emailOtpAuth) : ControllerBase
+    IEmailOtpAuthService emailOtpAuth,
+    ApplicationDbContext? db = null) : ControllerBase
 {
     [HttpGet("csrf-token")]
     [Authorize]
@@ -30,7 +33,9 @@ public sealed class AuthController(
         }
 
         var tokens = await tokenExchange.ExchangeCodeAsync(request!, cancellationToken);
-        return Ok(cookies.SignIn(Response, tokens));
+        var session = cookies.SignIn(Response, tokens);
+        session = await EnrichWithDatabaseRolesAsync(session, AuthCookieManager.ReadSubjectFromAccessToken(tokens.AccessToken), cancellationToken);
+        return Ok(session);
     }
 
     [HttpPost("email-otp/request")]
@@ -86,6 +91,14 @@ public sealed class AuthController(
         {
             var result = await emailOtpAuth.VerifyAsync(Normalize(request!), HttpContext, cancellationToken);
             var session = result.Tokens is null ? null : cookies.SignIn(Response, result.Tokens);
+            if (session is not null && result.Tokens is not null)
+            {
+                session = await EnrichWithDatabaseRolesAsync(
+                    session,
+                    AuthCookieManager.ReadSubjectFromAccessToken(result.Tokens.AccessToken),
+                    cancellationToken);
+            }
+
             return Ok(new EmailOtpVerifyResponse(result.Status, session, result.Challenge, result.Message));
         }
         catch (EmailOtpConflictException exception)
@@ -117,9 +130,11 @@ public sealed class AuthController(
 
     [HttpGet("session")]
     [Authorize]
-    public ActionResult<AuthSessionResponse> Session()
+    public async Task<ActionResult<AuthSessionResponse>> Session(CancellationToken cancellationToken = default)
     {
-        return Ok(cookies.CreateSession(User));
+        var session = cookies.CreateSession(User);
+        session = await EnrichWithDatabaseRolesAsync(session, User.FindFirst("sub")?.Value, cancellationToken);
+        return Ok(session);
     }
 
     [HttpPost("logout")]
@@ -128,6 +143,52 @@ public sealed class AuthController(
     {
         cookies.SignOut(Response);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Provider classification lives in the database <c>UserRole</c> table (e.g. "Provider",
+    /// "ProviderApplicant"), while Cognito only carries groups such as "Admin". The frontend role
+    /// router decides which dashboard to show from <see cref="AuthSessionResponse.Groups"/>, so we
+    /// merge the user's active database roles into the session groups here. These groups are used by
+    /// the client for UI routing only — backend authorization continues to rely on the Cognito
+    /// "cognito:groups" claim — so this cannot grant elevated access.
+    /// </summary>
+    private async Task<AuthSessionResponse> EnrichWithDatabaseRolesAsync(
+        AuthSessionResponse session,
+        string? cognitoSubject,
+        CancellationToken cancellationToken)
+    {
+        if (db is null || string.IsNullOrWhiteSpace(cognitoSubject))
+        {
+            return session;
+        }
+
+        var userId = await db.Users
+            .AsNoTracking()
+            .Where(user => user.CognitoSubject == cognitoSubject)
+            .Select(user => (Guid?)user.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (userId is null)
+        {
+            return session;
+        }
+
+        var roles = await db.UserRoles
+            .AsNoTracking()
+            .Where(role => role.UserId == userId && role.IsActive)
+            .Select(role => role.Role)
+            .ToListAsync(cancellationToken);
+        if (roles.Count == 0)
+        {
+            return session;
+        }
+
+        var groups = session.Groups
+            .Concat(roles)
+            .Where(group => !string.IsNullOrWhiteSpace(group))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return session with { Groups = groups };
     }
 
     private static bool HasMissingCallbackField(AuthCallbackRequest? request)

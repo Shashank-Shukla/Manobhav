@@ -1,136 +1,82 @@
-import { useMemo, useState } from 'react';
-import { Box, Button, HStack, Stack, Text } from '@chakra-ui/react';
-import { adminTheme } from '../adminTheme';
-import { AdminDataTable, type AdminDataTableColumn } from '../components/AdminDataTable';
-import { RecordDrawer } from '../components/RecordDrawer';
-import { StatusBadge } from '../components/StatusBadge';
-import { WorkQueue } from '../components/WorkQueue';
-import type { ProviderRecord } from '../types';
-import { DetailRow, MiniProgress, SectionCard } from './shared';
-import { includesSearch } from './viewUtils';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import { getAdminProviders } from '../adminDashboardApi';
+import {
+  RosterChip,
+  RosterPrimary,
+  RosterSecondary,
+  RosterTable,
+  type RosterColumn,
+} from '../components/RosterTable';
+import { useRosterPage } from '../components/useRosterPage';
+import type { AdminProviderRosterRecord } from '../types';
+import { SectionCard } from './shared';
 
-type SearchableViewProps = {
-  providers: ProviderRecord[];
+type ProvidersViewProps = {
   search: string;
 };
 
-export function ProvidersView({ providers, search }: SearchableViewProps) {
-  const [selectedProvider, setSelectedProvider] = useState<ProviderRecord | null>(null);
-  const filteredProviders = useMemo(
-    () =>
-      providers.filter((provider) =>
-        includesSearch(
-          [
-            provider.name,
-            provider.role,
-            provider.status,
-            provider.salaryBand,
-            provider.specialities.join(' '),
-          ],
-          search,
-        ),
+const columns: RosterColumn<AdminProviderRosterRecord>[] = [
+  {
+    key: 'provider',
+    header: 'Provider',
+    render: (provider) => (
+      <Box>
+        <RosterPrimary>{provider.name}</RosterPrimary>
+        <RosterSecondary>{provider.title || 'Provider'}</RosterSecondary>
+      </Box>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    render: (provider) => <RosterChip label={provider.status} tone={provider.tone} />,
+  },
+  {
+    key: 'specialities',
+    header: 'Specialities',
+    render: (provider) =>
+      provider.specialities.length > 0 ? (
+        <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ maxWidth: 320 }}>
+          {provider.specialities.slice(0, 4).map((speciality) => (
+            <RosterChip key={speciality} label={speciality} tone="blue" />
+          ))}
+        </Stack>
+      ) : (
+        <RosterSecondary>Not provided</RosterSecondary>
       ),
-    [providers, search],
-  );
-  const columns: AdminDataTableColumn<ProviderRecord>[] = [
-    {
-      header: 'Provider',
-      render: (provider) => (
-        <Box>
-          <Text color={adminTheme.text} fontWeight="900">
-            {provider.name}
-          </Text>
-          <Text color={adminTheme.muted} fontSize="sm">
-            {provider.role}
-          </Text>
-        </Box>
-      ),
-    },
-    {
-      header: 'Status',
-      render: (provider) => <StatusBadge label={provider.status} tone={provider.tone} />,
-    },
-    {
-      header: 'Load',
-      render: (provider) => (
-        <Box minW="150px">
-          <MiniProgress value={provider.load} tone={provider.tone} />
-          <Text color={adminTheme.muted} fontSize="xs" mt={2}>
-            {provider.load}% booked
-          </Text>
-        </Box>
-      ),
-    },
-    {
-      header: 'Next opening',
-      render: (provider) => (
-        <Text color={adminTheme.muted} fontSize="sm">
-          {provider.nextOpenSlot}
-        </Text>
-      ),
-    },
-    {
-      header: 'Actions',
-      align: 'right',
-      render: (provider) => (
-        <Button size="sm" borderRadius="10px" onClick={() => setSelectedProvider(provider)}>
-          Manage
-        </Button>
-      ),
-    },
-  ];
+  },
+  {
+    key: 'sessions',
+    header: 'Sessions',
+    align: 'right',
+    render: (provider) => <RosterPrimary>{provider.sessions}</RosterPrimary>,
+  },
+  {
+    key: 'rating',
+    header: 'Rating',
+    align: 'right',
+    render: (provider) => <RosterSecondary>{provider.rating > 0 ? provider.rating.toFixed(1) : '—'}</RosterSecondary>,
+  },
+];
+
+export function ProvidersView({ search }: ProvidersViewProps) {
+  const { page, setPage, data, status } = useRosterPage(getAdminProviders, search);
 
   return (
-    <>
-      <SectionCard title="Provider roster" helper="Capacity, availability, specialties, and compensation context">
-        <AdminDataTable columns={columns} data={filteredProviders} getKey={(provider) => provider.id} emptyLabel="No providers match this search." />
-      </SectionCard>
-
-      {selectedProvider && (
-        <RecordDrawer
-          isOpen={Boolean(selectedProvider)}
-          onClose={() => setSelectedProvider(null)}
-          title={selectedProvider.name}
-          subtitle={selectedProvider.role}
-        >
-          <Stack spacing={6}>
-            <Box bg="white" borderRadius="14px" border="1px solid" borderColor={adminTheme.border} p={5}>
-              <HStack flexWrap="wrap" spacing={2} mb={4}>
-                {selectedProvider.specialities.map((speciality) => (
-                  <StatusBadge key={speciality} label={speciality} tone="blue" />
-                ))}
-              </HStack>
-              <DetailRow label="Current status" value={<StatusBadge label={selectedProvider.status} tone={selectedProvider.tone} />} />
-              <DetailRow label="Sessions this month" value={selectedProvider.sessionsThisMonth} />
-              <DetailRow label="Rating" value={selectedProvider.rating.toFixed(1)} />
-              <DetailRow label="Salary band" value={selectedProvider.salaryBand} />
-              <DetailRow label="Utilization" value={`${selectedProvider.utilization}%`} />
-              <Box mt={4}>
-                <MiniProgress value={selectedProvider.utilization} tone={selectedProvider.tone} />
-              </Box>
-            </Box>
-            <WorkQueue
-              title="Provider admin actions"
-              items={[
-                {
-                  id: 'calendar-review',
-                  title: 'Review calendar',
-                  meta: `Next open slot is ${selectedProvider.nextOpenSlot}`,
-                  status: 'Slots',
-                  tone: 'blue',
-                },
-                {
-                  id: 'salary-review',
-                  title: 'Review compensation',
-                  meta: `Current band: ${selectedProvider.salaryBand}`,
-                  status: 'Salary',
-                  tone: 'rose',
-                },
-              ]}
-            />
-          </Stack>
-        </RecordDrawer>
-      )}
-    </>
+    <SectionCard title="Provider roster" helper="Every onboarded provider, paginated 25 at a time">
+      <RosterTable
+        columns={columns}
+        rows={data.items}
+        getRowKey={(provider) => provider.id}
+        total={data.total}
+        page={page}
+        pageSize={data.pageSize}
+        onPageChange={setPage}
+        status={status}
+        emptyLabel="No providers match this search."
+        errorLabel="Unable to load providers."
+      />
+    </SectionCard>
   );
 }

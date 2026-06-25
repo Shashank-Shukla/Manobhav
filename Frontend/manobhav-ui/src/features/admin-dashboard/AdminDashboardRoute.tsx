@@ -21,7 +21,7 @@ import type { AdminDashboardData, AdminModule } from './types';
 const adminModuleViews: Record<AdminModule, (search: string, data: AdminDashboardData, params: AdminModuleViewParams) => ReactElement> = {
   today: (_search, data, params) => <TodayOpsView data={data} onOpenProviderApplications={params.onOpenProviderApplications} />,
   patients: (search) => <PatientsView search={search} />,
-  providers: (search, data) => <ProvidersView providers={data.providers} search={search} />,
+  providers: (search) => <ProvidersView search={search} />,
   'provider-applications': (search, _data, params) => (
     <ProviderApplicationsView applicationId={params.applicationId} search={search} />
   ),
