@@ -13,6 +13,33 @@ export type AdminModule =
 
 export type StatusTone = 'sage' | 'rose' | 'blue' | 'amber' | 'grey' | 'red';
 
+export type AdminPagedResult<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type AdminProviderRosterRecord = {
+  id: string;
+  name: string;
+  title: string;
+  status: string;
+  tone: StatusTone;
+  specialities: string[];
+  sessions: number;
+  rating: number;
+};
+
+export type AdminPatientRosterRecord = {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  joinedAt: string;
+  sessionsCompleted: number;
+};
+
 export type AdminModuleConfig = {
   id: AdminModule;
   label: string;

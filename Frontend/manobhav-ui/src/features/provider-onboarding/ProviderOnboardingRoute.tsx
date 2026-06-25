@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Chip from '@mui/material/Chip';
 import TextField from '@mui/material/TextField';
 import { useNavigate } from 'react-router-dom';
+import { refreshAuthSession } from '../../shared/auth/cognitoAuth';
 import { Text } from '../../shared/primitives/Text';
 import { Button } from '../../shared/primitives/Button';
 import {
@@ -32,10 +33,17 @@ type ProviderStageField = {
   key: string;
   label: string;
   required?: boolean;
-  kind?: 'text' | 'email' | 'number' | 'textarea' | 'chips';
+  kind?: 'text' | 'email' | 'number' | 'textarea' | 'chips' | 'single-select';
   placeholder?: string;
   taxonomyKey?: keyof ProviderTaxonomy;
+  options?: ReadonlyArray<{ value: string; label: string }>;
+  min?: number;
+  max?: number;
 };
+
+const sessionLengthOptions: ReadonlyArray<{ value: string; label: string }> = [30, 45, 60, 75, 90, 105, 120, 150, 180].map(
+  (minutes) => ({ value: String(minutes), label: String(minutes) }),
+);
 
 type DraftValue = string | string[];
 type Drafts = Record<ProviderSectionKey, Record<string, DraftValue>>;
@@ -120,9 +128,15 @@ const providerStages: ProviderStage[] = [
     title: 'Session details',
     helper: 'Session lengths, availability summary, and weekly capacity.',
     fields: [
-      { key: 'sessionLengthsMinutes', label: 'Session lengths in minutes', placeholder: '45, 60', required: true },
+      {
+        key: 'sessionLengthsMinutes',
+        label: 'Session length (minutes)',
+        kind: 'single-select',
+        required: true,
+        options: sessionLengthOptions,
+      },
       { key: 'availabilitySummary', label: 'Availability summary', kind: 'textarea', required: true },
-      { key: 'capacityPerWeek', label: 'Capacity per week', kind: 'number', required: true },
+      { key: 'capacityPerWeek', label: 'Capacity per week', kind: 'number', required: true, min: 1, max: 48 },
     ],
   },
   {
@@ -175,10 +189,13 @@ export function OnboardingProviderPage({ onBack }: Props) {
 
     const controller = new AbortController();
     startOrResumeProviderApplication(controller.signal)
-      .then((response) => {
+      .then(async (response) => {
         if (isSubmittedStatus(response.status)) {
           setApplication(response);
           setStatus('ready');
+          // The provider-applicant role is granted server-side; refresh the cached session so the
+          // role router sends the applicant to the provider dashboard rather than the patient page.
+          await refreshAuthSession().catch(() => undefined);
           navigate('/dashboard', { replace: true });
           return;
         }
@@ -281,6 +298,9 @@ export function OnboardingProviderPage({ onBack }: Props) {
         const response = await submitProviderApplication(application.id);
         setApplication(response);
         purgeLegacyBrowserStorageDrafts();
+        // Submitting grants the provider-applicant role server-side; refresh the cached session so
+        // /dashboard routes the applicant to the provider dashboard instead of the patient page.
+        await refreshAuthSession().catch(() => undefined);
         navigate('/dashboard', { replace: true });
       },
       'We couldn\'t submit your application. Please try again.',
@@ -615,6 +635,17 @@ function StageFieldControl({
     );
   }
 
+  if (field.kind === 'single-select') {
+    return (
+      <SingleSelectChipControl
+        error={error}
+        field={field}
+        onChange={onChange}
+        selectedValue={getDraftString(draft, field.key)}
+      />
+    );
+  }
+
   const isTextarea = field.kind === 'textarea';
   const id = `provider-${field.key}`;
   const inputType = isTextarea ? undefined : field.kind === 'email' ? 'email' : field.kind === 'number' ? 'number' : 'text';
@@ -645,7 +676,9 @@ function StageFieldControl({
 function getFieldSlotProps(field: ProviderStageField, readOnly: boolean) {
   return {
     input: readOnly ? { readOnly: true } : undefined,
-    htmlInput: field.kind === 'number' ? { min: 1, step: 1 } : undefined,
+    htmlInput: field.kind === 'number'
+      ? { min: field.min ?? 1, max: field.max, step: 1 }
+      : undefined,
   };
 }
 
@@ -731,6 +764,57 @@ function getChipSx(selected: boolean) {
   };
 }
 
+function SingleSelectChipControl({
+  error,
+  field,
+  onChange,
+  selectedValue,
+}: {
+  error?: string;
+  field: ProviderStageField;
+  onChange: (value: DraftValue) => void;
+  selectedValue: string;
+}) {
+  const id = `provider-${field.key}`;
+  const errorId = `${id}-error`;
+  const options = field.options ?? [];
+
+  return (
+    <div
+      aria-describedby={error ? errorId : undefined}
+      aria-labelledby={`${id}-label`}
+      className="space-y-2 md:col-span-2"
+      role="radiogroup"
+    >
+      <span id={`${id}-label`} className="block text-sm font-semibold text-gray-700">
+        {field.label}
+        {field.required && <span className="ml-1 text-rose-600">*</span>}
+      </span>
+      <div className={error ? 'rounded-lg border border-rose-400 p-3' : 'rounded-lg border border-gray-200 p-3'}>
+        <div className="flex flex-wrap gap-2">
+          {options.map((option) => {
+            const selected = option.value === selectedValue;
+            return (
+              <Chip
+                aria-checked={selected}
+                clickable
+                key={option.value}
+                label={option.label}
+                onClick={() => onChange(option.value)}
+                role="radio"
+                sx={getChipSx(selected)}
+                variant={selected ? 'filled' : 'outlined'}
+              />
+            );
+          })}
+          {options.length === 0 && <span className="text-sm text-gray-500">Options unavailable. Try again later.</span>}
+        </div>
+      </div>
+      {error && <p id={errorId} className="text-sm font-medium text-rose-700">{error}</p>}
+    </div>
+  );
+}
+
 function ReviewSubmit({
   isSaving,
   onSubmit,
@@ -812,8 +896,11 @@ function validateStage(stage: ProviderStage, draft: Record<string, DraftValue>):
       if (field.kind === 'email' && !isValidEmail(value.trim())) {
         return { ...errors, [field.key]: 'Please enter a valid email address.' };
       }
-      if (field.kind === 'number' && !isValidPositiveNumber(value.trim())) {
-        return { ...errors, [field.key]: `${field.label} must be a valid number greater than 0.` };
+      if (field.kind === 'number') {
+        const numberError = validateNumberField(field, value.trim());
+        if (numberError) {
+          return { ...errors, [field.key]: numberError };
+        }
       }
     }
 
@@ -825,9 +912,19 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function isValidPositiveNumber(value: string): boolean {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0;
+function validateNumberField(field: ProviderStageField, value: string): string | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+    return `${field.label} must be a whole number.`;
+  }
+
+  const min = field.min ?? 1;
+  const max = field.max;
+  if (typeof max === 'number') {
+    return parsed >= min && parsed <= max ? null : `${field.label} must be between ${min} and ${max}.`;
+  }
+
+  return parsed >= min ? null : `${field.label} must be ${min} or greater.`;
 }
 
 function isMissingValue(value: DraftValue | undefined): boolean {

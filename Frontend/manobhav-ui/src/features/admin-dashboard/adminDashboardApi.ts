@@ -1,5 +1,27 @@
 import { apiRequest } from '../../shared/api/apiClient';
-import type { AdminDashboardData, AdminNotification, ProviderApplication, ProviderApplicationSectionReviewStatus } from './types';
+import type {
+  AdminDashboardData,
+  AdminNotification,
+  AdminPagedResult,
+  AdminPatientRosterRecord,
+  AdminProviderRosterRecord,
+  ProviderApplication,
+  ProviderApplicationSectionReviewStatus,
+} from './types';
+
+export const ADMIN_ROSTER_PAGE_SIZE = 25;
+
+function buildRosterQuery(page: number, search: string): string {
+  const params = new URLSearchParams({
+    page: String(page + 1),
+    pageSize: String(ADMIN_ROSTER_PAGE_SIZE),
+  });
+  const trimmed = search.trim();
+  if (trimmed) {
+    params.set('search', trimmed);
+  }
+  return params.toString();
+}
 
 export const emptyAdminDashboardData: AdminDashboardData = {
   insightMetrics: [],
@@ -46,6 +68,28 @@ export async function approveProviderApplication(applicationId: string): Promise
 
 export async function rejectProviderApplication(applicationId: string): Promise<void> {
   await apiRequest<void>(`/api/admin/provider-applications/${encodeURIComponent(applicationId)}/reject`, { method: 'POST' });
+}
+
+export async function getAdminProviders(
+  page: number,
+  search: string,
+  signal?: AbortSignal,
+): Promise<AdminPagedResult<AdminProviderRosterRecord>> {
+  return apiRequest<AdminPagedResult<AdminProviderRosterRecord>>(
+    `/api/admin/providers?${buildRosterQuery(page, search)}`,
+    { signal },
+  );
+}
+
+export async function getAdminPatients(
+  page: number,
+  search: string,
+  signal?: AbortSignal,
+): Promise<AdminPagedResult<AdminPatientRosterRecord>> {
+  return apiRequest<AdminPagedResult<AdminPatientRosterRecord>>(
+    `/api/admin/patients?${buildRosterQuery(page, search)}`,
+    { signal },
+  );
 }
 
 export async function getAdminNotifications(signal?: AbortSignal): Promise<AdminNotification[]> {

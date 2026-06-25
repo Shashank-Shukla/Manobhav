@@ -18,17 +18,20 @@ export function SectionCard({
     <Box
       border="1px solid"
       borderColor={adminTheme.border}
-      bg={adminTheme.softPanel}
+      bg="rgba(255, 255, 255, 0.92)"
       borderRadius="16px"
       p={5}
       boxShadow="0 16px 40px rgba(45, 55, 72, 0.06)"
     >
       <Box mb={4}>
-        <Text as="h2" color={adminTheme.text} fontSize="lg" fontWeight="900">
-          {title}
-        </Text>
+        <HStack spacing={3} align="center">
+          <Box h="22px" w="4px" borderRadius="full" bg={adminTheme.sage.DEFAULT} flex="0 0 auto" />
+          <Text as="h2" color={adminTheme.text} fontSize="lg" fontWeight="900">
+            {title}
+          </Text>
+        </HStack>
         {helper && (
-          <Text mt={1} color={adminTheme.muted} fontSize="sm">
+          <Text mt={1} ml="16px" color={adminTheme.muted} fontSize="sm">
             {helper}
           </Text>
         )}

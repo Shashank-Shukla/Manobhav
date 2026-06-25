@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Box, Button, Divider, HStack, SimpleGrid, Stack, Text, Textarea } from '@chakra-ui/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Box, Button, Divider, Flex, HStack, ScaleFade, SimpleGrid, Stack, Text, Textarea } from '@chakra-ui/react';
 import { ArrowLeft, ArrowUpRight, CheckCircle2, XCircle } from 'lucide-react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   approveProviderApplication,
   getProviderApplication,
@@ -119,12 +119,21 @@ function ProviderApplicationList({ search }: { search: string }) {
 }
 
 function ProviderApplicationDetail({ applicationId }: { applicationId: string }) {
+  const navigate = useNavigate();
   const [application, setApplication] = useState<ProviderApplication | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [savingSection, setSavingSection] = useState<string | null>(null);
   const [finalAction, setFinalAction] = useState<'approve' | 'reject' | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [decisionComplete, setDecisionComplete] = useState<'approve' | 'reject' | null>(null);
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (redirectTimer.current) {
+      clearTimeout(redirectTimer.current);
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -208,16 +217,26 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
         await rejectProviderApplication(applicationId);
       }
 
-      const refreshedApplication = await getProviderApplication(applicationId);
-      applyApplicationResponse(refreshedApplication, setApplication, setSectionComments);
+      // Show the confirmation animation, then return to the queue. The application has left the
+      // "Submitted" state, so there is nothing more to do on this detail screen.
+      setDecisionComplete(action);
+      redirectTimer.current = setTimeout(() => navigate('/dashboard/admin/provider-applications'), 1600);
     } catch (error: unknown) {
       setReviewError(getErrorMessage(error));
-    } finally {
       setFinalAction(null);
     }
   }
 
   return (
+    <Box position="relative">
+      <DecisionCompleteOverlay decision={decisionComplete} />
+      <Box
+        transition="opacity 0.4s ease, filter 0.4s ease"
+        opacity={decisionComplete ? 0.2 : 1}
+        filter={decisionComplete ? 'blur(2px)' : 'none'}
+        pointerEvents={decisionComplete ? 'none' : 'auto'}
+        aria-hidden={decisionComplete ? true : undefined}
+      >
     <Stack spacing={5}>
       <HStack justify="space-between" align="flex-start" flexWrap="wrap" gap={3}>
         <Box>
@@ -315,6 +334,44 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
         ))}
       </SimpleGrid>
     </Stack>
+      </Box>
+    </Box>
+  );
+}
+
+function DecisionCompleteOverlay({ decision }: { decision: 'approve' | 'reject' | null }) {
+  const isApprove = decision === 'approve';
+  const accent = isApprove ? '#4F8A5B' : '#A74747';
+  const bg = isApprove ? 'rgba(238, 244, 234, 0.96)' : 'rgba(252, 232, 232, 0.96)';
+
+  return (
+    <ScaleFade in={decision !== null} initialScale={0.85} unmountOnExit>
+      <Flex
+        position="absolute"
+        inset={0}
+        zIndex={20}
+        align="center"
+        justify="center"
+        direction="column"
+        gap={4}
+        borderRadius="16px"
+        bg={bg}
+        backdropFilter="blur(2px)"
+        textAlign="center"
+        px={6}
+        role="status"
+      >
+        {isApprove ? <CheckCircle2 size={64} color={accent} /> : <XCircle size={64} color={accent} />}
+        <Box>
+          <Text color={adminTheme.text} fontSize="xl" fontWeight="900">
+            {isApprove ? 'Application approved' : 'Application rejected'}
+          </Text>
+          <Text color={adminTheme.muted} fontSize="sm" mt={1}>
+            Returning to the applications queue…
+          </Text>
+        </Box>
+      </Flex>
+    </ScaleFade>
   );
 }
 

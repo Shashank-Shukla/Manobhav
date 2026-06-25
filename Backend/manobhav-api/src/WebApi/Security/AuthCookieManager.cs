@@ -115,6 +115,30 @@ public sealed class AuthCookieManager(AuthOptions options)
         }
     }
 
+    /// <summary>
+    /// Reads the Cognito subject ("sub") from a freshly issued access token so the
+    /// caller can enrich the session (e.g. with database roles) right after sign-in,
+    /// before the request principal carries the new cookie.
+    /// </summary>
+    public static string? ReadSubjectFromAccessToken(string accessToken)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(DecodeJwtPayload(accessToken));
+            return document.RootElement.TryGetProperty("sub", out var sub) && sub.ValueKind == JsonValueKind.String
+                ? sub.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
     private static IReadOnlyList<string> ReadGroups(JsonElement payload)
     {
         return payload.TryGetProperty("cognito:groups", out var groups) && groups.ValueKind == JsonValueKind.Array

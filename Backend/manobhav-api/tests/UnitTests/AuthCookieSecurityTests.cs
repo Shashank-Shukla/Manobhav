@@ -59,7 +59,7 @@ public sealed class AuthCookieSecurityTests
             }
         };
 
-        var result = controller.Session();
+        var result = await controller.Session();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var session = Assert.IsType<AuthSessionResponse>(ok.Value);

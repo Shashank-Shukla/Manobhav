@@ -106,6 +106,16 @@ export async function fetchAuthSession(signal?: AbortSignal): Promise<AuthSessio
   }
 }
 
+/**
+ * Re-reads the canonical session from the backend, replacing the cached copy. Use this after an
+ * action that changes the user's role server-side (e.g. submitting a provider application grants the
+ * `ProviderApplicant` role) so the next role-routing decision reflects the new role immediately.
+ */
+export async function refreshAuthSession(signal?: AbortSignal): Promise<AuthSession | null> {
+  cachedSession = null;
+  return fetchAuthSession(signal);
+}
+
 export async function startCognitoLogin(options: { identityProvider?: string; returnTo?: string } = {}): Promise<void> {
   const config = readAuthConfig();
   assertConfigured(config);

@@ -17,17 +17,22 @@ import {
   InputRightElement,
   Menu,
   MenuButton,
+  MenuDivider,
   MenuItem,
   MenuList,
   Stack,
   Text,
   useDisclosure,
 } from '@chakra-ui/react';
-import { Bell, Home, Menu as MenuIcon, Search as SearchIcon, Settings } from 'lucide-react';
+import MuiBadge from '@mui/material/Badge';
+import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
+import { Bell, Home, LogOut, Menu as MenuIcon, Search as SearchIcon, Settings } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import { adminModules } from '../data';
 import { getAdminNotifications, markAdminNotificationRead } from '../adminDashboardApi';
 import { adminTheme, toneStyles } from '../adminTheme';
+import { muiAdminTheme } from '../muiAdminTheme';
+import { logout } from '../../../shared/auth/cognitoAuth';
 import type { AdminModule, AdminNotification } from '../types';
 
 type AdminShellProps = {
@@ -50,7 +55,12 @@ export function AdminShell({
   const nav = useDisclosure();
 
   return (
-    <Flex minH="100dvh" bg={adminTheme.shellBg} color={adminTheme.text} fontFamily={adminTheme.font}>
+    <Flex
+      minH="100dvh"
+      bgGradient="linear(150deg, #EEF4EA 0%, #F4F9FB 42%, #FBF1F4 100%)"
+      color={adminTheme.text}
+      fontFamily={adminTheme.font}
+    >
       <Box display={{ base: 'none', lg: 'block' }} w="280px" flex="0 0 280px">
         <AdminSidebar activeModule={activeModule} />
       </Box>
@@ -93,9 +103,6 @@ export function AdminShell({
               variant="outline"
             />
             <Box minW={0}>
-              <Text color={adminTheme.muted} fontSize="sm" fontWeight="700">
-                Manobhav Admin
-              </Text>
               <Text color={adminTheme.text} fontSize={{ base: '2xl', md: '3xl' }} fontWeight="800" lineHeight="1.1">
                 {moduleTitle}
               </Text>
@@ -141,6 +148,14 @@ export function AdminShell({
                 <MenuItem icon={<Settings size={16} />}>Admin settings</MenuItem>
                 <MenuItem as={RouterLink} to="/" icon={<Home size={16} />}>
                   Back to website
+                </MenuItem>
+                <MenuDivider borderColor={adminTheme.border} />
+                <MenuItem
+                  icon={<LogOut size={16} />}
+                  color={toneStyles.rose.color}
+                  onClick={() => void logout()}
+                >
+                  Sign out
                 </MenuItem>
               </MenuList>
             </Menu>
@@ -219,29 +234,29 @@ function AdminNotificationsMenu() {
         as={IconButton}
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications, no unread'}
         icon={(
-          <Box position="relative" h="22px" w="22px">
-            <Bell size={19} />
-            {unreadCount > 0 && (
-              <Flex
-                position="absolute"
-                top="-7px"
-                right="-8px"
-                minH="16px"
-                minW="16px"
-                align="center"
-                justify="center"
-                borderRadius="full"
-                bg={toneStyles.rose.accent}
-                color="white"
-                border="2px solid white"
-                fontSize="9px"
-                fontWeight="900"
-                lineHeight="1"
-              >
-                {unreadCount}
-              </Flex>
-            )}
-          </Box>
+          <MuiThemeProvider theme={muiAdminTheme}>
+            <MuiBadge
+              badgeContent={unreadCount}
+              max={10}
+              overlap="circular"
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              sx={{
+                '& .MuiBadge-badge': {
+                  backgroundColor: toneStyles.rose.accent,
+                  color: '#FFFFFF',
+                  fontFamily: adminTheme.font,
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  minWidth: '18px',
+                  height: '18px',
+                  border: '2px solid #FFFFFF',
+                  boxShadow: '0 2px 6px rgba(45, 55, 72, 0.18)',
+                },
+              }}
+            >
+              <Bell size={19} />
+            </MuiBadge>
+          </MuiThemeProvider>
         )}
         borderRadius="999px"
         bg="white"
@@ -329,18 +344,27 @@ function AdminSidebar({ activeModule, onNavigate }: AdminSidebarProps) {
       py={5}
     >
       <HStack spacing={3} px={2} pb={5}>
-        <Flex h="42px" w="42px" align="center" justify="center" borderRadius="14px" bg={adminTheme.sage.light} overflow="hidden">
+        <Flex
+          h="40px"
+          w="40px"
+          align="center"
+          justify="center"
+          borderRadius="full"
+          bg={adminTheme.sage.DEFAULT}
+          overflow="hidden"
+          flex="0 0 auto"
+        >
           <Box
             as="img"
             src="/Manobhav_Logo.png"
-            alt="Manobhav admin"
+            alt="Manobhav"
             h="100%"
             w="100%"
             objectFit="cover"
           />
         </Flex>
         <Box>
-          <Text color={adminTheme.text} fontSize="lg" fontWeight="900">
+          <Text color={adminTheme.text} fontSize="xl" fontWeight="800" letterSpacing="-0.01em" lineHeight="1.1">
             Manobhav
           </Text>
           <Text color={adminTheme.muted} fontSize="xs" fontWeight="700">
