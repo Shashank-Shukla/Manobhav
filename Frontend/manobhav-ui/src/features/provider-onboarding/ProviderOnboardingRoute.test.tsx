@@ -345,6 +345,34 @@ describe('provider onboarding route', () => {
     expect(window.localStorage.getItem(taxonomyCacheKey)).toBe(JSON.stringify(taxonomy));
   });
 
+  it('pre-fills and locks the email field when the backend returns a Cognito email', async () => {
+    const user = userEvent.setup();
+    applicationResponse = { ...application, email: 'cognito-provider@example.com' };
+
+    renderProviderPage();
+
+    const emailField = await screen.findByLabelText(/email/i);
+    expect(emailField).toHaveValue('cognito-provider@example.com');
+    expect(emailField).toHaveAttribute('readonly');
+
+    await user.type(emailField, 'tampered@example.com');
+    expect(emailField).toHaveValue('cognito-provider@example.com');
+  });
+
+  it('keeps the email field editable when the backend returns no Cognito email', async () => {
+    const user = userEvent.setup();
+    applicationResponse = { ...application, email: null };
+
+    renderProviderPage();
+
+    const emailField = await screen.findByLabelText(/email/i);
+    expect(emailField).toHaveValue('');
+    expect(emailField).not.toHaveAttribute('readonly');
+
+    await user.type(emailField, 'typed@example.com');
+    expect(emailField).toHaveValue('typed@example.com');
+  });
+
   it('redirects to the provider dashboard when the backend returns an already submitted application', async () => {
     applicationResponse = {
       ...application,

@@ -9,6 +9,7 @@ export type ProviderApplication = {
   updatedAtUtc?: string | null;
   submittedAtUtc?: string | null;
   sections?: ProviderApplicationSection[] | Record<string, unknown> | null;
+  email?: string | null;
 };
 
 export type ProviderSectionKey =

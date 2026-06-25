@@ -829,6 +829,11 @@ public sealed class EmailOtpAuthFlowTests
 
             return new CognitoTokenSet("header.eyJjb2duaXRvOmdyb3VwcyI6WyJQYXRpZW50Il19.signature", null, null, 900);
         }
+
+        public Task<string?> GetUserEmailAsync(string username, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<string?>(null);
+        }
     }
 
     private sealed class RecordingOtpEmailSender : IEmailOtpSender

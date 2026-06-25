@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using WebApi.Security;
 
 namespace WebApi.Controllers;
 
@@ -17,15 +18,18 @@ public sealed class ProviderOnboardingController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly ProviderOnboardingSectionService _sectionService;
     private readonly IProviderOnboardingAdminNotifier _adminNotifier;
+    private readonly ICognitoEmailOtpAuth _cognitoEmailOtpAuth;
 
     public ProviderOnboardingController(
         ApplicationDbContext db,
         ProviderOnboardingSectionService sectionService,
-        IProviderOnboardingAdminNotifier adminNotifier)
+        IProviderOnboardingAdminNotifier adminNotifier,
+        ICognitoEmailOtpAuth cognitoEmailOtpAuth)
     {
         _db = db;
         _sectionService = sectionService;
         _adminNotifier = adminNotifier;
+        _cognitoEmailOtpAuth = cognitoEmailOtpAuth;
     }
 
     [HttpPost]
@@ -53,10 +57,10 @@ public sealed class ProviderOnboardingController : ControllerBase
             };
             await _db.ProviderOnboardingApplications.AddAsync(application, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
-            return Created($"/api/provider-onboarding/applications/{application.Id}", ToDto(application));
+            return Created($"/api/provider-onboarding/applications/{application.Id}", ToDto(application, email: user.Email));
         }
 
-        return Ok(ToDto(application));
+        return Ok(ToDto(application, email: user.Email));
     }
 
     [HttpGet("me")]
@@ -75,7 +79,7 @@ public sealed class ProviderOnboardingController : ControllerBase
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstOrDefaultAsync(item => item.UserId == user.Id, cancellationToken);
 
-        return application is null ? NotFound() : Ok(ToDto(application));
+        return application is null ? NotFound() : Ok(ToDto(application, email: user.Email));
     }
 
     [HttpPut("{applicationId:guid}/sections/{sectionKey}")]
@@ -231,20 +235,48 @@ public sealed class ProviderOnboardingController : ControllerBase
         }
 
         var user = await _db.Users.FirstOrDefaultAsync(item => item.CognitoSubject == subject, cancellationToken);
-        if (user is not null)
+        if (user is null)
         {
-            return user;
+            user = new User
+            {
+                CognitoSubject = subject,
+                Email = User.FindFirst("email")?.Value,
+                DisplayName = User.Identity?.Name
+            };
+            await _db.Users.AddAsync(user, cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
         }
 
-        user = new User
-        {
-            CognitoSubject = subject,
-            Email = User.FindFirst("email")?.Value,
-            DisplayName = User.Identity?.Name
-        };
-        await _db.Users.AddAsync(user, cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        await BackfillEmailFromCognitoAsync(user, cancellationToken);
         return user;
+    }
+
+    private async Task BackfillEmailFromCognitoAsync(User user, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            return;
+        }
+
+        var username = User.FindFirst("username")?.Value ?? User.Identity?.Name;
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return;
+        }
+
+        try
+        {
+            var email = await _cognitoEmailOtpAuth.GetUserEmailAsync(username, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                user.Email = email;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+        }
+        catch (Exception)
+        {
+            // Email backfill is best-effort and must never break onboarding.
+        }
     }
 
     private async Task EnsureRoleAsync(Guid userId, string role, CancellationToken cancellationToken)
@@ -259,7 +291,7 @@ public sealed class ProviderOnboardingController : ControllerBase
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private static ProviderApplicationDto ToDto(ProviderOnboardingApplication application)
+    private static ProviderApplicationDto ToDto(ProviderOnboardingApplication application, string? email = null)
     {
         return new ProviderApplicationDto(
             application.Id,
@@ -269,7 +301,8 @@ public sealed class ProviderOnboardingController : ControllerBase
             application.CreatedAtUtc,
             application.UpdatedAtUtc,
             application.SubmittedAtUtc,
-            ProviderOnboardingSectionCatalog.BuildReviewSections(application));
+            ProviderOnboardingSectionCatalog.BuildReviewSections(application),
+            email: email);
     }
 
     private async Task<IActionResult?> TryNotifySubmittedAsync(
