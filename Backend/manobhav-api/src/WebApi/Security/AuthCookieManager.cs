@@ -122,12 +122,43 @@ public sealed class AuthCookieManager(AuthOptions options)
     /// </summary>
     public static string? ReadSubjectFromAccessToken(string accessToken)
     {
+        return ReadTokenClaim(accessToken, "sub");
+    }
+
+    /// <summary>
+    /// Reads identity attributes (subject, email, display name) from the Cognito ID token issued at
+    /// sign-in. The access token used for the session cookie carries no email/name, so the ID token
+    /// is the reliable source for mirroring the user into the database at login time.
+    /// </summary>
+    public static (string? Subject, string? Email, string? Name) ReadProfileFromIdToken(string? idToken)
+    {
+        if (string.IsNullOrWhiteSpace(idToken))
+        {
+            return (null, null, null);
+        }
+
         try
         {
-            using var document = JsonDocument.Parse(DecodeJwtPayload(accessToken));
-            return document.RootElement.TryGetProperty("sub", out var sub) && sub.ValueKind == JsonValueKind.String
-                ? sub.GetString()
-                : null;
+            using var document = JsonDocument.Parse(DecodeJwtPayload(idToken));
+            var root = document.RootElement;
+            return (ReadStringProperty(root, "sub"), ReadStringProperty(root, "email"), ReadDisplayName(root));
+        }
+        catch (JsonException)
+        {
+            return (null, null, null);
+        }
+        catch (FormatException)
+        {
+            return (null, null, null);
+        }
+    }
+
+    private static string? ReadTokenClaim(string token, string claim)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(DecodeJwtPayload(token));
+            return ReadStringProperty(document.RootElement, claim);
         }
         catch (JsonException)
         {
@@ -137,6 +168,20 @@ public sealed class AuthCookieManager(AuthOptions options)
         {
             return null;
         }
+    }
+
+    private static string? ReadStringProperty(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+    }
+
+    private static string? ReadDisplayName(JsonElement root)
+    {
+        return ReadStringProperty(root, "name")
+            ?? ReadStringProperty(root, "given_name")
+            ?? ReadStringProperty(root, "cognito:username");
     }
 
     private static IReadOnlyList<string> ReadGroups(JsonElement payload)

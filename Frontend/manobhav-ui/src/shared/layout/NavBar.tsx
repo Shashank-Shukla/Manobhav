@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLocation } from 'react-router-dom';
-import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { ArrowUpRight, LogOut, Menu, X } from 'lucide-react';
 import { useAuthSession } from '../auth/useAuthSession';
 import { logout, resolveDashboardPath, type AuthSession } from '../auth/cognitoAuth';
 import { Logo } from '../Logo';
@@ -200,7 +200,7 @@ function AuthNavAction({
           className="flex h-full w-full items-center justify-center rounded-full text-sm font-semibold shadow-sm"
           style={getProfileAvatarStyle()}
         >
-          U
+          {getSessionInitial(session)}
         </span>
       </button>
       {profileMenuOpen && (
@@ -241,10 +241,12 @@ function ProfileMenu({
     navigateFromMobile(path, onNavigate, onClose);
   };
 
-  const menuItems = [
+  const menuItems: ProfileMenuItemModel[] = [
     { label: 'Dashboard', onClick: () => handleNavigate(dashboardPath) },
     {
       label: 'Sign out',
+      tone: 'danger',
+      icon: <LogOut size={16} aria-hidden="true" />,
       onClick: () => {
         onRequestClose();
         onClose?.();
@@ -290,9 +292,11 @@ function ProfileMenu({
       {menuItems.map((item, index) => (
         <ProfileMenuItem
           key={item.label}
+          icon={item.icon}
           label={item.label}
           onClick={item.onClick}
           onKeyDown={(event) => handleMenuItemKeyDown(event, index)}
+          tone={item.tone}
           itemRef={(element) => {
             menuItemRefs.current[index] = element;
           }}
@@ -302,27 +306,39 @@ function ProfileMenu({
   );
 }
 
+type ProfileMenuItemModel = {
+  label: string;
+  onClick: () => void;
+  icon?: React.ReactNode;
+  tone?: 'default' | 'danger';
+};
+
 function ProfileMenuItem({
+  icon,
   itemRef,
   label,
   onClick,
   onKeyDown,
+  tone = 'default',
 }: {
+  icon?: React.ReactNode;
   itemRef: (element: HTMLButtonElement | null) => void;
   label: string;
   onClick: () => void;
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+  tone?: 'default' | 'danger';
 }) {
   return (
     <button
       type="button"
       role="menuitem"
       ref={itemRef}
-      className="w-full rounded-md px-3 py-2 text-left text-sm font-semibold transition hover:bg-[var(--profile-menu-item-active-bg)] hover:text-[var(--profile-menu-item-active-color)] focus:bg-[var(--profile-menu-item-active-bg)] focus:text-[var(--profile-menu-item-active-color)] focus:outline-none"
-      style={getProfileMenuItemStyle()}
+      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition hover:bg-[var(--profile-menu-item-active-bg)] hover:text-[var(--profile-menu-item-active-color)] focus:bg-[var(--profile-menu-item-active-bg)] focus:text-[var(--profile-menu-item-active-color)] focus:outline-none"
+      style={getProfileMenuItemStyle(tone)}
       onClick={onClick}
       onKeyDown={onKeyDown}
     >
+      {icon}
       {label}
     </button>
   );
@@ -432,12 +448,26 @@ function getProfileMenuStyle(): CSSProperties {
   };
 }
 
-function getProfileMenuItemStyle(): ThemeCssProperties {
+function getProfileMenuItemStyle(tone: 'default' | 'danger'): ThemeCssProperties {
+  if (tone === 'danger') {
+    return {
+      '--profile-menu-item-active-bg': theme.colors.dustyRose.light,
+      '--profile-menu-item-active-color': theme.colors.dustyRose.dark,
+      color: theme.colors.dustyRose.dark,
+    };
+  }
+
   return {
     '--profile-menu-item-active-bg': theme.colors.sage.light,
     '--profile-menu-item-active-color': theme.colors.textMain,
     color: theme.colors.textMain,
   };
+}
+
+function getSessionInitial(session: AuthSession | null): string {
+  const source = session?.name?.trim() || session?.email?.trim() || '';
+  const firstChar = source.charAt(0).toUpperCase();
+  return /[A-Z0-9]/.test(firstChar) ? firstChar : 'U';
 }
 
 function getNavClassName(variant: 'glass' | 'flat', scrolled: boolean): string {

@@ -61,10 +61,11 @@ public sealed class AdminController : ControllerBase
     public async Task<ActionResult<AdminPagedResult<AdminProviderRosterDto>>> GetProviders(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = RosterPageSize,
+        [FromQuery] int? offset = null,
         [FromQuery] string? search = null,
         CancellationToken cancellationToken = default)
     {
-        var (normalizedPage, normalizedPageSize) = NormalizePaging(page, pageSize);
+        var (normalizedPage, normalizedPageSize, skip) = NormalizePaging(page, pageSize, offset);
         var term = NormalizeSearch(search);
 
         var query = _db.ProviderProfiles.AsNoTracking();
@@ -81,7 +82,7 @@ public sealed class AdminController : ControllerBase
         var rows = await query
             .OrderBy(provider => provider.DisplayOrder)
             .ThenBy(provider => provider.DisplayName ?? provider.Name)
-            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Skip(skip)
             .Take(normalizedPageSize)
             .Select(provider => new
             {
@@ -121,10 +122,11 @@ public sealed class AdminController : ControllerBase
     public async Task<ActionResult<AdminPagedResult<AdminPatientRosterDto>>> GetPatients(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = RosterPageSize,
+        [FromQuery] int? offset = null,
         [FromQuery] string? search = null,
         CancellationToken cancellationToken = default)
     {
-        var (normalizedPage, normalizedPageSize) = NormalizePaging(page, pageSize);
+        var (normalizedPage, normalizedPageSize, skip) = NormalizePaging(page, pageSize, offset);
         var term = NormalizeSearch(search);
 
         // Patients are care-seeking account holders: every user that is not an active provider or
@@ -147,7 +149,7 @@ public sealed class AdminController : ControllerBase
         var total = await query.CountAsync(cancellationToken);
         var rows = await query
             .OrderByDescending(user => user.CreatedAtUtc)
-            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Skip(skip)
             .Take(normalizedPageSize)
             .Select(user => new
             {
@@ -179,11 +181,19 @@ public sealed class AdminController : ControllerBase
         return Ok(new AdminPagedResult<AdminPatientRosterDto>(items, normalizedPage, normalizedPageSize, total));
     }
 
-    private static (int Page, int PageSize) NormalizePaging(int page, int pageSize)
+    private static (int Page, int PageSize, int Skip) NormalizePaging(int page, int pageSize, int? offset)
     {
         var normalizedPageSize = pageSize <= 0 ? RosterPageSize : Math.Min(pageSize, RosterPageSize);
+
+        // An explicit, non-negative offset wins over page when both are supplied — it lets callers
+        // page by absolute row position. Otherwise the offset is derived from the 1-based page.
+        if (offset is int requestedOffset && requestedOffset >= 0)
+        {
+            return ((requestedOffset / normalizedPageSize) + 1, normalizedPageSize, requestedOffset);
+        }
+
         var normalizedPage = page < 1 ? 1 : page;
-        return (normalizedPage, normalizedPageSize);
+        return (normalizedPage, normalizedPageSize, (normalizedPage - 1) * normalizedPageSize);
     }
 
     private static string? NormalizeSearch(string? search)

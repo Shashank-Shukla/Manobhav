@@ -45,6 +45,14 @@ const sessionLengthOptions: ReadonlyArray<{ value: string; label: string }> = [3
   (minutes) => ({ value: String(minutes), label: String(minutes) }),
 );
 
+const ageGroupOptions: ReadonlyArray<{ value: string; label: string }> = [
+  'Under 13 years',
+  '13–17 years (Adolescents)',
+  '18–24 years (Young Adults)',
+  '25–64 years',
+  '65+ years',
+].map((label) => ({ value: label, label }));
+
 type DraftValue = string | string[];
 type Drafts = Record<ProviderSectionKey, Record<string, DraftValue>>;
 type FieldErrors = Record<string, string>;
@@ -104,7 +112,7 @@ const providerStages: ProviderStage[] = [
         required: true,
         taxonomyKey: 'specializations',
       },
-      { key: 'ageGroups', label: 'Age groups', placeholder: 'Adults, Teens' },
+      { key: 'ageGroups', label: 'Age groups', kind: 'chips', options: ageGroupOptions },
       { key: 'therapyGoals', label: 'Therapy goals', placeholder: 'Sleep, Emotional regulation' },
     ],
   },
@@ -975,7 +983,7 @@ function buildSpecializationsBody(draft: Record<string, DraftValue>): SaveProvid
   return {
     specializations: {
       focusAreas: getDraftList(draft, 'focusAreas'),
-      ageGroups: parseCsv(getDraftString(draft, 'ageGroups')),
+      ageGroups: getDraftList(draft, 'ageGroups'),
       therapyGoals: parseCsv(getDraftString(draft, 'therapyGoals')),
     },
   };
@@ -1114,7 +1122,7 @@ function applySectionToDrafts(drafts: Drafts, section: ProviderApplicationSectio
       drafts.specializations = {
         ...drafts.specializations,
         focusAreas: getRecordStringList(payload, 'focusAreas'),
-        ageGroups: getRecordStringList(payload, 'ageGroups').join(', '),
+        ageGroups: getRecordStringList(payload, 'ageGroups'),
         therapyGoals: getRecordStringList(payload, 'therapyGoals').join(', '),
       };
       break;
@@ -1289,7 +1297,9 @@ function getTermsForField(
   taxonomy: ProviderTaxonomy,
   selectedValues: string[],
 ): ProviderTaxonomyTerm[] {
-  const terms = field.taxonomyKey ? [...taxonomy[field.taxonomyKey]] : [];
+  const terms = field.taxonomyKey
+    ? [...taxonomy[field.taxonomyKey]]
+    : (field.options ?? []).map((option) => ({ key: option.value, label: option.label }));
   for (const value of selectedValues) {
     if (!terms.some((term) => doesTermMatchValue(term, value))) {
       terms.push({ key: value, label: humanizeValue(value) });

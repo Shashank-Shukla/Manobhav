@@ -1,6 +1,8 @@
-import { Bell, CalendarHeart, Clock } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Bell, CalendarClock, CalendarHeart, Clock, LogOut, Settings, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { theme } from '../../../utils/theme';
+import { logout } from '../../../shared/auth/cognitoAuth';
 import type { ProviderDashboard } from '../providerDashboardApi';
 import { formatCalendarAria, formatDayOfMonth, formatTime, formatWeekday } from '../providerDashboardFormat';
 
@@ -50,33 +52,116 @@ function TopRail({ data }: ProviderDashboardAsideProps) {
         )}
       </div>
 
-      <div
-        aria-label="Provider profile"
-        className="flex min-w-0 flex-1 items-center justify-end gap-3"
-        role="group"
-      >
-        <div className="min-w-0 text-right">
-          <p className="truncate text-sm font-bold" style={{ color: theme.colors.textMain }}>
-            {data.provider.name}
-          </p>
-          <Link
-            className="text-xs font-semibold"
-            style={{ color: theme.colors.sage.dark }}
-            to="/dashboard#dashboard-overview"
-          >
-            View profile
-          </Link>
-        </div>
-        <div
-          aria-label={`${data.provider.name} avatar`}
-          className="flex h-12 w-12 flex-none items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
-          role="img"
-          style={{ backgroundColor: data.provider.avatarColor || theme.colors.sage.DEFAULT }}
-        >
-          {data.provider.avatarInitials}
-        </div>
-      </div>
+      <ProviderProfileMenu provider={data.provider} />
     </div>
+  );
+}
+
+function ProviderProfileMenu({ provider }: { provider: ProviderDashboard['provider'] }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (event.target instanceof Node && !containerRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={containerRef}
+      aria-label="Provider profile"
+      role="group"
+      className="relative flex min-w-0 flex-1 items-center justify-end gap-3"
+    >
+      <div className="min-w-0 text-right">
+        <p className="truncate text-sm font-bold" style={{ color: theme.colors.textMain }}>
+          {provider.name}
+        </p>
+        <Link className="text-xs font-semibold" style={{ color: theme.colors.sage.dark }} to="/dashboard#dashboard-overview">
+          View profile
+        </Link>
+      </div>
+      <button
+        type="button"
+        aria-label="Open provider account menu"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex h-12 w-12 flex-none items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2"
+        onClick={() => setOpen((current) => !current)}
+        style={{ backgroundColor: provider.avatarColor || theme.colors.sage.DEFAULT }}
+      >
+        {provider.avatarInitials}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-14 z-20 w-56 rounded-xl border p-2 shadow-xl"
+          style={{ backgroundColor: theme.colors.white, borderColor: theme.colors.grey.DEFAULT }}
+        >
+          <ProviderMenuLink to="/dashboard#dashboard-overview" icon={Settings} label="Settings" onSelect={() => setOpen(false)} />
+          <ProviderMenuLink to="/dashboard#provider-calendar" icon={CalendarClock} label="Modify availability" onSelect={() => setOpen(false)} />
+          <ProviderMenuLink to="/dashboard#dashboard-overview" icon={UserRound} label="Profile" onSelect={() => setOpen(false)} />
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition hover:bg-[#F7E6E8] focus:bg-[#F7E6E8] focus:outline-none"
+            style={{ color: theme.colors.dustyRose.dark }}
+            onClick={() => {
+              setOpen(false);
+              void logout();
+            }}
+          >
+            <LogOut aria-hidden="true" size={16} />
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProviderMenuLink({
+  icon: Icon,
+  label,
+  onSelect,
+  to,
+}: {
+  icon: typeof Settings;
+  label: string;
+  onSelect: () => void;
+  to: string;
+}) {
+  return (
+    <Link
+      role="menuitem"
+      to={to}
+      onClick={onSelect}
+      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition hover:bg-[#EEF4EA] focus:bg-[#EEF4EA] focus:outline-none"
+      style={{ color: theme.colors.textMain }}
+    >
+      <Icon aria-hidden="true" size={16} />
+      {label}
+    </Link>
   );
 }
 

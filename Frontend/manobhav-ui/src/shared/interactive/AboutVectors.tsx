@@ -38,7 +38,7 @@ export function HeroLeafVector({
   );
 }
 
-export function AboutBottomWave({ className, fill = '#fbf6eb' }: BaseVectorProps & { fill?: string }) {
+export function AboutBottomWave({ className, fill = '#FCF2F5' }: BaseVectorProps & { fill?: string }) {
   return (
     <svg
       viewBox="0 0 1440 220"
@@ -72,7 +72,7 @@ export function ScrollArrowIcon({ className }: BaseVectorProps) {
 
 export function RollingSectionWave({
   className,
-  fill = '#fbf6eb',
+  fill = '#FCF2F5',
 }: BaseVectorProps & {
   fill?: string;
 }) {
@@ -114,7 +114,7 @@ export function OrganicBlob({
   );
 }
 
-export function StoryTopWave({ className, fill = '#f5efe3' }: BaseVectorProps & { fill?: string }) {
+export function StoryTopWave({ className, fill = '#FBF1F4' }: BaseVectorProps & { fill?: string }) {
   return (
     <svg
       viewBox="0 0 1440 220"
@@ -139,7 +139,7 @@ export function ChildVectorIllustration({ className }: BaseVectorProps) {
       <path d="M86 69C86 45 99 34 113 34C132 34 142 50 141 70C126 63 115 64 96 73C92 75 89 72 86 69Z" fill="#243b6b" />
       <path d="M92 72C101 61 123 57 136 66C136 51 126 42 113 42C101 42 91 52 92 72Z" fill="#314a7a" />
       <rect x="80" y="102" width="60" height="58" rx="22" fill="#ef9f93" />
-      <path d="M96 102H124V127C124 135 118 142 110 142C102 142 96 135 96 127V102Z" fill="#fffaf4" />
+      <path d="M96 102H124V127C124 135 118 142 110 142C102 142 96 135 96 127V102Z" fill="#FDF4F6" />
       <path d="M88 118C75 124 71 139 74 157" stroke="#f3c8b5" strokeWidth="8" strokeLinecap="round" />
       <path d="M132 118C145 126 149 140 146 156" stroke="#f3c8b5" strokeWidth="8" strokeLinecap="round" />
       <path d="M101 160L97 191" stroke="#243b6b" strokeWidth="8" strokeLinecap="round" />
@@ -164,7 +164,7 @@ export function AdultWomanVectorIllustration({ className }: BaseVectorProps) {
       />
       <path d="M108 86C110 61 124 48 140 48C156 48 167 62 165 85C156 77 145 74 133 74C122 74 114 78 108 86Z" fill="#314a7a" />
       <rect x="92" y="118" width="82" height="86" rx="30" fill="#bcd4df" />
-      <path d="M115 118H151V152C151 162 143 170 133 170C123 170 115 162 115 152V118Z" fill="#fffaf4" />
+      <path d="M115 118H151V152C151 162 143 170 133 170C123 170 115 162 115 152V118Z" fill="#FDF4F6" />
       <path d="M100 136C82 146 77 165 80 186" stroke="#f1c4b1" strokeWidth="10" strokeLinecap="round" />
       <path d="M165 138C183 149 188 165 184 186" stroke="#f1c4b1" strokeWidth="10" strokeLinecap="round" />
       <path d="M119 202L112 228" stroke="#243b6b" strokeWidth="10" strokeLinecap="round" />

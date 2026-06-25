@@ -24,12 +24,12 @@ const typedPrinciples = principles as Principle[];
 
 export function CarePhilosophy() {
   return (
-    <section className="relative h-full overflow-hidden bg-[#fbf6eb] px-6 py-16 md:py-20">
-      <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#fbf6eb" />
-      <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full rotate-180 md:h-32" fill="#fbf6eb" />
+    <section className="relative h-full overflow-hidden bg-[#FCF2F5] px-6 py-16 md:py-20">
+      <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#FCF2F5" />
+      <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full rotate-180 md:h-32" fill="#FCF2F5" />
 
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[12%] top-40 h-32 w-32 rounded-full bg-[#f0e3c0]/45 blur-3xl" />
+        <div className="absolute left-[12%] top-40 h-32 w-32 rounded-full bg-[#F2D2D9]/45 blur-3xl" />
         <div className="absolute bottom-28 right-[12%] h-36 w-36 rounded-full bg-[#e0edf2]/45 blur-3xl" />
       </div>
 

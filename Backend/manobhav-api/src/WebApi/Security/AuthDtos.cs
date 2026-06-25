@@ -26,7 +26,9 @@ public sealed record EmailOtpVerifyResponse(
 public sealed record AuthSessionResponse(
     bool IsAuthenticated,
     DateTimeOffset? ExpiresAtUtc,
-    IReadOnlyList<string> Groups);
+    IReadOnlyList<string> Groups,
+    string? Email = null,
+    string? Name = null);
 
 public sealed record CognitoTokenSet(
     string AccessToken,

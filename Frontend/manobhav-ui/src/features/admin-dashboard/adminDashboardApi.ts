@@ -15,6 +15,7 @@ function buildRosterQuery(page: number, search: string): string {
   const params = new URLSearchParams({
     page: String(page + 1),
     pageSize: String(ADMIN_ROSTER_PAGE_SIZE),
+    offset: String(page * ADMIN_ROSTER_PAGE_SIZE),
   });
   const trimmed = search.trim();
   if (trimmed) {
@@ -68,6 +69,10 @@ export async function approveProviderApplication(applicationId: string): Promise
 
 export async function rejectProviderApplication(applicationId: string): Promise<void> {
   await apiRequest<void>(`/api/admin/provider-applications/${encodeURIComponent(applicationId)}/reject`, { method: 'POST' });
+}
+
+export async function requestProviderApplicationRevisions(applicationId: string): Promise<void> {
+  await apiRequest<void>(`/api/admin/provider-applications/${encodeURIComponent(applicationId)}/needs-changes`, { method: 'POST' });
 }
 
 export async function getAdminProviders(

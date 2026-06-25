@@ -7,7 +7,7 @@ function VectorMotion() {
       <OrganicBlob className="absolute -left-8 top-8 h-32 w-32" color="#f6d8cf" />
       <OrganicBlob className="absolute -right-6 bottom-10 h-24 w-24" color="#d7ebe2" />
       <div className="relative z-10 rounded-[2.5rem] bg-white/70 p-6 shadow-[0_28px_60px_rgba(50,63,92,0.10)] backdrop-blur-sm">
-        <div className="relative overflow-hidden rounded-[2rem] bg-[#f9f1dd] px-6 py-8">
+        <div className="relative overflow-hidden rounded-[2rem] bg-[#FBEEF2] px-6 py-8">
           <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#dce8ee] opacity-80 animate-spin-slow" />
           <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#f3d5cf] opacity-60 animate-spin-slower" />
           <img
@@ -51,7 +51,7 @@ function SquishyCard({
           {points.map((point) => (
             <span
               key={point}
-              className="rounded-full bg-[#f6f3ea] px-3 py-2 text-xs font-medium tracking-[0.08em] text-[#5f6770]"
+              className="rounded-full bg-[#FBF1F4] px-3 py-2 text-xs font-medium tracking-[0.08em] text-[#5f6770]"
             >
               {point}
             </span>
@@ -64,12 +64,12 @@ function SquishyCard({
 
 export function VisionSection() {
   return (
-    <section id="vision-section" className="relative h-full overflow-hidden bg-[#fbf6eb] px-6 py-16 md:py-20">
+    <section id="vision-section" className="relative h-full overflow-hidden bg-[#FCF2F5] px-6 py-16 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-28 w-full md:h-36" />
       <RollingSectionWave className="absolute bottom-0 left-0 h-28 w-full rotate-180 md:h-36" />
 
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[8%] top-40 h-32 w-32 rounded-full bg-[#fff3de] blur-3xl" />
+        <div className="absolute left-[8%] top-40 h-32 w-32 rounded-full bg-[#FBEEF2] blur-3xl" />
         <div className="absolute bottom-32 right-[10%] h-36 w-36 rounded-full bg-[#e0eef4] blur-3xl" />
       </div>
 

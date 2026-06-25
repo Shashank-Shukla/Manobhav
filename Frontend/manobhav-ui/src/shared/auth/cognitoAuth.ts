@@ -5,6 +5,8 @@ export type AuthSession = {
   isAuthenticated: boolean;
   expiresAtUtc: string | null;
   groups: string[];
+  email?: string | null;
+  name?: string | null;
 };
 
 export type EmailOtpFlow = 'sign-in' | 'sign-up';
@@ -238,6 +240,8 @@ function normalizeSession(session: AuthSession): AuthSession {
     isAuthenticated: session.isAuthenticated === true,
     expiresAtUtc: session.expiresAtUtc ?? null,
     groups: Array.isArray(session.groups) ? session.groups : [],
+    email: session.email,
+    name: session.name,
   };
 }
 

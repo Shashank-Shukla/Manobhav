@@ -37,7 +37,7 @@ function StoryIllustrationBackground() {
 
 export function OriginStory() {
   return (
-    <section className="relative h-full overflow-hidden bg-[#f5efe3] px-6 py-16 md:py-20">
+    <section className="relative h-full overflow-hidden bg-[#FBF1F4] px-6 py-16 md:py-20">
       <StoryTopWave className="absolute left-0 top-0 h-24 w-full md:h-32" />
       <StoryIllustrationBackground />
 
