@@ -178,7 +178,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
         if (isSubmittedStatus(response.status)) {
           setApplication(response);
           setStatus('ready');
-          navigate('/dashboard/provider', { replace: true });
+          navigate('/dashboard', { replace: true });
           return;
         }
 
@@ -276,7 +276,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
         const response = await submitProviderApplication(application.id);
         setApplication(response);
         purgeLegacyBrowserStorageDrafts();
-        navigate('/dashboard/provider', { replace: true });
+        navigate('/dashboard', { replace: true });
       },
       'We couldn\'t submit your application. Please try again.',
       setError,

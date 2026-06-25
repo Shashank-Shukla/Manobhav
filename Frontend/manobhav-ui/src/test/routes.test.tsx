@@ -11,10 +11,18 @@ import { HomePage } from '../pages/HomePage';
 import { JourneyPage } from '../pages/JourneyPage';
 import { LoginPage } from '../pages/LoginPage';
 import { ProvidersPage } from '../pages/ProvidersPage';
+import { useAuthSession } from '../shared/auth/useAuthSession';
+import type { AuthSession } from '../shared/auth/cognitoAuth';
+import { RoleDashboard } from '../App';
+import { Suspense } from 'react';
 import { renderWithRouter } from './renderWithRouter';
 
 vi.mock('@jitsi/react-sdk', () => ({
   JitsiMeeting: () => <div data-testid="jitsi-meeting" />,
+}));
+
+vi.mock('../shared/auth/useAuthSession', () => ({
+  useAuthSession: vi.fn(() => ({ session: null, loading: false })),
 }));
 
 const apiJson = (body: unknown, status = 200) =>
@@ -183,6 +191,29 @@ const routeApiMocks = [
     }),
   },
   {
+    matches: (url: string) => url.endsWith('/api/admin/notifications'),
+    response: () => apiJson([]),
+  },
+  {
+    matches: (url: string) => url.endsWith('/api/provider/dashboard'),
+    response: () => apiJson({
+      provider: {
+        name: 'Dr. Asha Rao',
+        shortName: 'Dr. Asha',
+        title: 'Clinical Psychologist',
+        avatarInitials: 'AR',
+        avatarColor: '#9CAF88',
+        status: 'Provider',
+        profilePublished: true,
+      },
+      metrics: { sessionsTotal: 0, sessionsThisWeek: 0, upcomingCount: 0 },
+      todayAppointments: [],
+      upcomingAppointments: [],
+      weekCalendar: [],
+      notifications: { unreadCount: 0 },
+    }),
+  },
+  {
     matches: (url: string) => url.endsWith('/api/visitors'),
     response: () => apiJson({ visitorId: '00000000-0000-0000-0000-000000000001', fullCaptureEnabled: true, retentionDays: 90 }, 201),
   },
@@ -199,11 +230,17 @@ const routeApiMocks = [
 beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
+  vi.mocked(useAuthSession).mockReturnValue({ session: null, loading: false });
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => getRouteApiMockResponse(String(input))),
   );
 });
+
+function mockSession(groups: string[]): void {
+  const session: AuthSession = { isAuthenticated: true, expiresAtUtc: null, groups };
+  vi.mocked(useAuthSession).mockReturnValue({ session, loading: false });
+}
 
 function getRouteApiMockResponse(url: string): Response {
   return routeApiMocks.find((route) => route.matches(url))?.response() ?? apiJson({ title: 'Not found' }, 404);
@@ -344,5 +381,72 @@ describe('operational routes', () => {
     await waitFor(() => {
       expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/api/admin/dashboard'))).toBe(true);
     });
+  });
+});
+
+function renderRoleDashboard() {
+  return render(
+    <MemoryRouter initialEntries={['/dashboard']}>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Routes>
+          <Route path="/dashboard" element={<RoleDashboard navigate={vi.fn()} />} />
+          <Route path="/dashboard/admin/:module" element={<DashboardAdminPage />} />
+          <Route path="/login" element={<div>Sign in route</div>} />
+        </Routes>
+      </Suspense>
+    </MemoryRouter>,
+  );
+}
+
+describe('single /dashboard role routing', () => {
+  it('renders the patient dashboard for a session without provider or admin groups', async () => {
+    mockSession([]);
+
+    renderRoleDashboard();
+
+    expect(await screen.findByText(/coming up/i)).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: /provider dashboard navigation/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/manobhav admin/i)).not.toBeInTheDocument();
+  });
+
+  it.each(['Provider', 'ProviderApplicant'])(
+    'renders the provider dashboard for a %s session',
+    async (group) => {
+      mockSession([group]);
+
+      renderRoleDashboard();
+
+      expect(await screen.findByRole('navigation', { name: /provider dashboard navigation/i })).toBeInTheDocument();
+      expect(screen.queryByText(/coming up/i)).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/api/provider/dashboard'))).toBe(true);
+      });
+    },
+  );
+
+  it('renders the admin dashboard for an admin session', async () => {
+    mockSession(['Admin']);
+
+    renderRoleDashboard();
+
+    expect(await screen.findByText(/manobhav admin/i)).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: /provider dashboard navigation/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/coming up/i)).not.toBeInTheDocument();
+  });
+
+  it('redirects an unauthenticated visitor to the login route in place', async () => {
+    vi.mocked(useAuthSession).mockReturnValue({ session: null, loading: false });
+
+    renderRoleDashboard();
+
+    expect(await screen.findByText(/sign in route/i)).toBeInTheDocument();
+  });
+
+  it('shows a loading message while the session resolves', () => {
+    vi.mocked(useAuthSession).mockReturnValue({ session: null, loading: true });
+
+    renderRoleDashboard();
+
+    expect(screen.getByText(/loading your dashboard/i)).toBeInTheDocument();
   });
 });

@@ -16,7 +16,7 @@ export const adminModules: AdminModuleConfig[] = [
     id: 'today',
     label: "Today's Ops",
     helper: 'Daily command center',
-    path: '/dashboard/admin',
+    path: '/dashboard',
     icon: LayoutDashboard,
   },
   {

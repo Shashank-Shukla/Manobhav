@@ -70,19 +70,21 @@ export function isAdminSession(session: AuthSession | null, adminGroup = readAut
 }
 
 /**
- * Role-based dashboard path for an authenticated session: Admin > Provider /
- * ProviderApplicant > Patient. Shared by the NavBar profile menu and the
- * /dashboard role redirect so routing logic lives in exactly one place.
+ * Dashboard entry path. There is a single role-routed `/dashboard` surface that
+ * renders the Admin, Provider, or Patient dashboard in place based on the
+ * session groups, so every caller (NavBar profile menu, post-login) lands on
+ * the same URL and the role decision lives in `RoleDashboard`.
  */
 export function resolveDashboardPath(session: AuthSession | null): string {
-  if (isAdminSession(session)) {
-    return '/dashboard/admin';
-  }
-
-  return hasProviderRole(session) ? '/dashboard/provider' : '/dashboard/patient';
+  void session;
+  return '/dashboard';
 }
 
-function hasProviderRole(session: AuthSession | null): boolean {
+/**
+ * True when the session belongs to a provider or provider applicant. Used by the
+ * `/dashboard` role router to pick the provider dashboard.
+ */
+export function hasProviderRole(session: AuthSession | null): boolean {
   return Boolean(
     session?.groups.some((group) => {
       const normalized = group.trim().toLowerCase();

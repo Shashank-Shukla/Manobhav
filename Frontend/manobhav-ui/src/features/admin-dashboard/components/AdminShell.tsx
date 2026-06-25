@@ -280,7 +280,7 @@ function AdminNotificationsMenu() {
           <MenuItem
             key={notification.id}
             as={RouterLink}
-            to={notification.linkPath || '/dashboard/admin'}
+            to={notification.linkPath || '/dashboard'}
             alignItems="flex-start"
             borderRadius="12px"
             gap={3}

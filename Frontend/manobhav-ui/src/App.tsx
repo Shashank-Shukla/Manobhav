@@ -5,7 +5,7 @@ import { Footer } from './shared/layout/Footer';
 import { SimpleFooter } from './shared/layout/SimpleFooter';
 import { AdminRouteGuard } from './shared/auth/AdminRouteGuard';
 import { AuthRouteGuard } from './shared/auth/AuthRouteGuard';
-import { getStoredAuthSession, resolveDashboardPath } from './shared/auth/cognitoAuth';
+import { getStoredAuthSession, hasProviderRole, isAdminSession } from './shared/auth/cognitoAuth';
 import { useAuthSession } from './shared/auth/useAuthSession';
 import { useVisitorAnalytics } from './features/visitor-analytics';
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage || m.default })));
@@ -37,8 +37,7 @@ type FlowStep = 'home' | 'journey' | 'providers';
 const viewportLockedPaths = new Set(['/providers', '/about', '/disclaimer', '/login']);
 const standaloneFooterHiddenPaths = new Set([
   '/about',
-  '/dashboard/patient',
-  '/dashboard/provider',
+  '/dashboard',
   '/disclaimer',
   '/login',
   '/onboarding/patient',
@@ -133,10 +132,7 @@ function AppRoutes({
       <Route path="/onboarding" element={<OnboardingChooser onProvider={() => navigate('/onboarding/provider')} onPatient={() => navigate('/onboarding/patient')} />} />
       <Route path="/onboarding/provider" element={<AuthenticatedBoundedRoute context="route-provider-onboarding" navigate={navigate} returnTo="/onboarding/provider"><OnboardingProviderPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
       <Route path="/onboarding/patient" element={<AuthenticatedBoundedRoute context="route-patient-onboarding" navigate={navigate} returnTo="/onboarding/patient"><OnboardingPatientPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
-      <Route path="/dashboard" element={<DashboardRouteElement />} />
-      <Route path="/dashboard/provider" element={<AuthenticatedBoundedRoute context="route-provider-dashboard" navigate={navigate} returnTo="/dashboard/provider"><DashboardProviderPage /></AuthenticatedBoundedRoute>} />
-      <Route path="/dashboard/patient" element={<AuthenticatedBoundedRoute context="route-patient-dashboard" navigate={navigate} returnTo="/dashboard/patient"><DashboardPatientPage /></AuthenticatedBoundedRoute>} />
-      <Route path="/dashboard/admin" element={<AdminDashboardRouteElement />} />
+      <Route path="/dashboard" element={<RoleDashboard navigate={navigate} />} />
       <Route path="/dashboard/admin/:module" element={<AdminDashboardRouteElement />} />
       <Route path="/dashboard/admin/:module/:applicationId" element={<AdminDashboardRouteElement />} />
       <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
@@ -225,7 +221,7 @@ function ProvidersRouteElement({ navigate, onBook }: { navigate: (path: string) 
   );
 }
 
-function DashboardRouteElement() {
+export function RoleDashboard({ navigate }: { navigate: (path: string) => void }) {
   const { session, loading } = useAuthSession();
 
   if (loading) {
@@ -240,7 +236,25 @@ function DashboardRouteElement() {
     return <Navigate replace to={`/login?returnTo=${encodeURIComponent('/dashboard')}`} />;
   }
 
-  return <Navigate replace to={resolveDashboardPath(session)} />;
+  return (
+    <BoundedRoute context="route-dashboard" navigate={navigate}>
+      <RoleDashboardContent />
+    </BoundedRoute>
+  );
+}
+
+function RoleDashboardContent() {
+  const { session } = useAuthSession();
+
+  if (isAdminSession(session)) {
+    return <AdminDashboardRouteElement />;
+  }
+
+  if (hasProviderRole(session)) {
+    return <DashboardProviderPage />;
+  }
+
+  return <DashboardPatientPage />;
 }
 
 function AdminDashboardRouteElement() {
@@ -286,9 +300,9 @@ function AuthenticatedBoundedRoute({
 }
 
 function getRouteLayout(pathname: string, flow: FlowStep) {
-  const isAdminRoute = pathname.startsWith('/dashboard/admin');
-  const viewportLocked = viewportLockedPaths.has(pathname) || isAdminRoute;
-  const hideNav = shouldHideNav(pathname, flow, isAdminRoute);
+  const isDashboardRoute = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+  const viewportLocked = viewportLockedPaths.has(pathname) || isDashboardRoute;
+  const hideNav = shouldHideNav(pathname, flow, isDashboardRoute);
   return {
     containerClassName: viewportLocked ? 'flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden' : 'flex min-h-screen flex-col',
     hideFooter: shouldHideFooter(pathname, hideNav),
@@ -298,9 +312,8 @@ function getRouteLayout(pathname: string, flow: FlowStep) {
   };
 }
 
-function shouldHideNav(pathname: string, flow: FlowStep, isAdminRoute: boolean): boolean {
-  if (isAdminRoute) return true;
-  if (pathname === '/dashboard/provider') return true;
+function shouldHideNav(pathname: string, flow: FlowStep, isDashboardRoute: boolean): boolean {
+  if (isDashboardRoute) return true;
   if (pathname === '/journey') return true;
   if (pathname === '/appointment') return true;
   return pathname === '/' && flow === 'journey';

@@ -50,12 +50,12 @@ export function LoginPage({ onBack, returnTo }: LoginPageProps) {
 }
 
 function sanitizeReturnTo(value: string | null | undefined): string {
-  const fallback = '/dashboard/patient';
+  const fallback = '/dashboard';
   if (!value?.startsWith('/')) {
     return fallback;
   }
 
-  if (value.startsWith('//') || value === '/dashboard') {
+  if (value.startsWith('//')) {
     return fallback;
   }
 

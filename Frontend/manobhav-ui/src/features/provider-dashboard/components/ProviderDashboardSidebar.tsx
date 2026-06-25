@@ -3,11 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { theme } from '../../../utils/theme';
 
 const navItems = [
-  { label: 'Dashboard overview', href: '/dashboard/provider', icon: LayoutDashboard },
-  { label: 'Weekly report', href: '/dashboard/provider#weekly-report', icon: FileText },
-  { label: 'My appointments', href: '/dashboard/provider#my-appointments', icon: CalendarCheck },
-  { label: 'This week calendar', href: '/dashboard/provider#provider-calendar', icon: CalendarDays },
-  { label: "Today's appointments", href: '/dashboard/provider#todays-appointments', icon: Clock },
+  { label: 'Dashboard overview', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Weekly report', href: '/dashboard#weekly-report', icon: FileText },
+  { label: 'My appointments', href: '/dashboard#my-appointments', icon: CalendarCheck },
+  { label: 'This week calendar', href: '/dashboard#provider-calendar', icon: CalendarDays },
+  { label: "Today's appointments", href: '/dashboard#todays-appointments', icon: Clock },
 ];
 
 export function ProviderDashboardSidebar() {
@@ -21,10 +21,13 @@ export function ProviderDashboardSidebar() {
     >
       <Link
         aria-label="Manobhav provider home"
-        className="flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-lg border"
-        style={{ backgroundColor: theme.colors.sage.light, borderColor: theme.colors.sage.light }}
+        className="flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-lg border shadow-sm"
+        style={{
+          background: `linear-gradient(135deg, ${theme.colors.sage.light}, ${theme.colors.powderBlue.light})`,
+          borderColor: theme.colors.sage.DEFAULT,
+        }}
         title="Manobhav provider home"
-        to="/dashboard/provider"
+        to="/dashboard"
       >
         <img alt="" className="h-full w-full object-cover" src="/Manobhav_Logo.png" />
       </Link>
@@ -42,7 +45,9 @@ export function ProviderDashboardSidebar() {
               className="flex h-11 w-11 flex-none items-center justify-center rounded-lg border transition hover:-translate-y-0.5 hover:shadow-sm"
               key={item.label}
               style={{
-                backgroundColor: isActive ? theme.colors.sage.light : theme.colors.white,
+                background: isActive
+                  ? `linear-gradient(135deg, ${theme.colors.sage.light}, ${theme.colors.powderBlue.light})`
+                  : theme.colors.white,
                 borderColor: isActive ? theme.colors.sage.DEFAULT : theme.colors.grey.DEFAULT,
                 color: isActive ? theme.colors.sage.dark : theme.colors.grey.text,
               }}

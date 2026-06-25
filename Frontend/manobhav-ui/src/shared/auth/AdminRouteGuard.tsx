@@ -58,7 +58,7 @@ function AdminGuardActions({ isAuthenticated }: { isAuthenticated: boolean }) {
   }
 
   return (
-    <Button variant="primary" onClick={() => void startCognitoLogin({ returnTo: '/dashboard/admin' })}>
+    <Button variant="primary" onClick={() => void startCognitoLogin({ returnTo: '/dashboard' })}>
       Sign in
     </Button>
   );

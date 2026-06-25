@@ -6,6 +6,7 @@ import {
   isAdminSession,
   readAuthConfig,
   requestEmailOtp,
+  resolveDashboardPath,
   verifyEmailOtp,
 } from './cognitoAuth';
 
@@ -22,6 +23,14 @@ describe('cognito auth helpers', () => {
   it('requires the configured admin group for admin sessions', () => {
     expect(isAdminSession({ isAuthenticated: true, expiresAtUtc: null, groups: ['Admin'] }, 'Admin')).toBe(true);
     expect(isAdminSession({ isAuthenticated: true, expiresAtUtc: null, groups: ['Visitor'] }, 'Admin')).toBe(false);
+  });
+
+  it('resolves every authenticated role to the single /dashboard entry', () => {
+    expect(resolveDashboardPath({ isAuthenticated: true, expiresAtUtc: null, groups: ['Admin'] })).toBe('/dashboard');
+    expect(resolveDashboardPath({ isAuthenticated: true, expiresAtUtc: null, groups: ['Provider'] })).toBe('/dashboard');
+    expect(resolveDashboardPath({ isAuthenticated: true, expiresAtUtc: null, groups: ['ProviderApplicant'] })).toBe('/dashboard');
+    expect(resolveDashboardPath({ isAuthenticated: true, expiresAtUtc: null, groups: [] })).toBe('/dashboard');
+    expect(resolveDashboardPath(null)).toBe('/dashboard');
   });
 
   it('reads Cognito public settings from loaded runtime config', () => {
@@ -55,11 +64,11 @@ describe('cognito auth helpers', () => {
     vi.stubGlobal('fetch', fetchMock);
     window.sessionStorage.setItem('manobhav-auth-state', 'state-1');
     window.sessionStorage.setItem('manobhav-auth-code-verifier', 'verifier-1');
-    window.sessionStorage.setItem('manobhav-auth-return-to', '/dashboard/admin');
+    window.sessionStorage.setItem('manobhav-auth-return-to', '/dashboard');
 
     const returnTo = await completeCognitoRedirect('https://app.example.com/callback?code=auth-code&state=state-1');
 
-    expect(returnTo).toBe('/dashboard/admin');
+    expect(returnTo).toBe('/dashboard');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit | undefined];
     expect(String(url)).toBe('https://api.example.com/api/auth/callback');

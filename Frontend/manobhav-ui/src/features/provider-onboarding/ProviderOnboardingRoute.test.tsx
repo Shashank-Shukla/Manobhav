@@ -339,7 +339,7 @@ describe('provider onboarding route', () => {
 
     await waitFor(() => {
       expect(findFetchCall('/api/provider-onboarding/applications/application-1/submit')).toBeTruthy();
-      expect(screen.getByTestId('current-location')).toHaveTextContent('/dashboard/provider');
+      expect(screen.getByTestId('current-location')).toHaveTextContent('/dashboard');
     });
     expect(window.localStorage.getItem(draftStorageKey)).toBeNull();
     expect(window.localStorage.getItem(taxonomyCacheKey)).toBe(JSON.stringify(taxonomy));
@@ -356,7 +356,7 @@ describe('provider onboarding route', () => {
     renderProviderPage();
 
     await waitFor(() => {
-      expect(screen.getByTestId('current-location')).toHaveTextContent('/dashboard/provider');
+      expect(screen.getByTestId('current-location')).toHaveTextContent('/dashboard');
     });
   });
 });
