@@ -168,6 +168,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [emailLocked, setEmailLocked] = useState(false);
 
   useEffect(() => {
     purgeLegacyBrowserStorageDrafts();
@@ -178,15 +179,17 @@ export function OnboardingProviderPage({ onBack }: Props) {
         if (isSubmittedStatus(response.status)) {
           setApplication(response);
           setStatus('ready');
-          navigate('/dashboard/provider', { replace: true });
+          navigate('/dashboard', { replace: true });
           return;
         }
 
         const currentStage = getKnownStageKey(response.currentStep);
         const currentStageIndex = getStageIndex(currentStage);
+        const cognitoEmail = getNonEmptyEmail(response.email);
 
         setApplication(response);
-        setDrafts(hydrateDrafts(response));
+        setDrafts(applyLockedEmail(hydrateDrafts(response), cognitoEmail));
+        setEmailLocked(Boolean(cognitoEmail));
         setSelectedStage(currentStage);
         setActiveStageIndex(currentStageIndex);
         setCompletedStages(inferCompletedStages(response, currentStageIndex));
@@ -219,8 +222,10 @@ export function OnboardingProviderPage({ onBack }: Props) {
     return () => controller.abort();
   }, []);
 
+  const lockedFieldKeys = getLockedFieldKeys(selectedStage, emailLocked);
+
   const updateDraft = (fieldKey: string, value: DraftValue) => {
-    if (selectedStage === 'review') return;
+    if (selectedStage === 'review' || lockedFieldKeys.has(fieldKey)) return;
     setDrafts((current) => {
       const next = {
         ...current,
@@ -276,7 +281,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
         const response = await submitProviderApplication(application.id);
         setApplication(response);
         purgeLegacyBrowserStorageDrafts();
-        navigate('/dashboard/provider', { replace: true });
+        navigate('/dashboard', { replace: true });
       },
       'We couldn\'t submit your application. Please try again.',
       setError,
@@ -296,6 +301,7 @@ export function OnboardingProviderPage({ onBack }: Props) {
       error={error}
       fieldErrors={fieldErrors}
       isSaving={isSaving}
+      lockedFieldKeys={lockedFieldKeys}
       onDraftChange={updateDraft}
       onSave={saveStage}
       onSelectStage={setSelectedStage}
@@ -314,6 +320,7 @@ function ProviderOnboardingLayout({
   error,
   fieldErrors,
   isSaving,
+  lockedFieldKeys,
   onDraftChange,
   onSave,
   onSelectStage,
@@ -328,6 +335,7 @@ function ProviderOnboardingLayout({
   error: string;
   fieldErrors: FieldErrors;
   isSaving: boolean;
+  lockedFieldKeys: ReadonlySet<string>;
   onDraftChange: (fieldKey: string, value: DraftValue) => void;
   onSave: () => Promise<void>;
   onSelectStage: (stageKey: ProviderStage['key']) => void;
@@ -352,6 +360,7 @@ function ProviderOnboardingLayout({
         error={error}
         fieldErrors={fieldErrors}
         isSaving={isSaving}
+        lockedFieldKeys={lockedFieldKeys}
         onDraftChange={onDraftChange}
         onSave={onSave}
         onSubmit={onSubmit}
@@ -452,6 +461,7 @@ function ProviderStagePanel({
   error,
   fieldErrors,
   isSaving,
+  lockedFieldKeys,
   onDraftChange,
   onSave,
   onSubmit,
@@ -462,6 +472,7 @@ function ProviderStagePanel({
   error: string;
   fieldErrors: FieldErrors;
   isSaving: boolean;
+  lockedFieldKeys: ReadonlySet<string>;
   onDraftChange: (fieldKey: string, value: DraftValue) => void;
   onSave: () => Promise<void>;
   onSubmit: () => Promise<void>;
@@ -476,6 +487,7 @@ function ProviderStagePanel({
         draft={draft}
         fieldErrors={fieldErrors}
         isSaving={isSaving}
+        lockedFieldKeys={lockedFieldKeys}
         onDraftChange={onDraftChange}
         onSave={onSave}
         onSubmit={onSubmit}
@@ -491,6 +503,7 @@ function ProviderStageBody({
   draft,
   fieldErrors,
   isSaving,
+  lockedFieldKeys,
   onDraftChange,
   onSave,
   onSubmit,
@@ -500,6 +513,7 @@ function ProviderStageBody({
   draft: Record<string, DraftValue>;
   fieldErrors: FieldErrors;
   isSaving: boolean;
+  lockedFieldKeys: ReadonlySet<string>;
   onDraftChange: (fieldKey: string, value: DraftValue) => void;
   onSave: () => Promise<void>;
   onSubmit: () => Promise<void>;
@@ -516,6 +530,7 @@ function ProviderStageBody({
       fieldErrors={fieldErrors}
       fields={selected.fields}
       isSaving={isSaving}
+      lockedFieldKeys={lockedFieldKeys}
       onDraftChange={onDraftChange}
       onSave={onSave}
       taxonomy={taxonomy}
@@ -537,6 +552,7 @@ function StageForm({
   fieldErrors,
   fields,
   isSaving,
+  lockedFieldKeys,
   onDraftChange,
   onSave,
   taxonomy,
@@ -545,6 +561,7 @@ function StageForm({
   fieldErrors: FieldErrors;
   fields: ProviderStageField[];
   isSaving: boolean;
+  lockedFieldKeys: ReadonlySet<string>;
   onDraftChange: (fieldKey: string, value: DraftValue) => void;
   onSave: () => Promise<void>;
   taxonomy: ProviderTaxonomy;
@@ -559,6 +576,7 @@ function StageForm({
             field={field}
             key={field.key}
             onChange={(value) => onDraftChange(field.key, value)}
+            readOnly={lockedFieldKeys.has(field.key)}
             taxonomy={taxonomy}
           />
         ))}
@@ -575,12 +593,14 @@ function StageFieldControl({
   error,
   field,
   onChange,
+  readOnly = false,
   taxonomy,
 }: {
   draft: Record<string, DraftValue>;
   error?: string;
   field: ProviderStageField;
   onChange: (value: DraftValue) => void;
+  readOnly?: boolean;
   taxonomy: ProviderTaxonomy;
 }) {
   if (field.kind === 'chips') {
@@ -615,18 +635,30 @@ function StageFieldControl({
         type={inputType}
         value={getDraftString(draft, field.key)}
         variant="outlined"
-        slotProps={field.kind === 'number' ? { htmlInput: { min: 1, step: 1 } } : undefined}
-        sx={{
-          '& .MuiFormLabel-asterisk': { color: '#e11d48' },
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '8px',
-            '&.Mui-focused fieldset': { borderColor: '#9CAF88' },
-          },
-          '& .MuiInputLabel-root.Mui-focused': { color: '#7A8C6A' },
-        }}
+        slotProps={getFieldSlotProps(field, readOnly)}
+        sx={getFieldSx(readOnly)}
       />
     </div>
   );
+}
+
+function getFieldSlotProps(field: ProviderStageField, readOnly: boolean) {
+  return {
+    input: readOnly ? { readOnly: true } : undefined,
+    htmlInput: field.kind === 'number' ? { min: 1, step: 1 } : undefined,
+  };
+}
+
+function getFieldSx(readOnly: boolean) {
+  return {
+    '& .MuiFormLabel-asterisk': { color: '#e11d48' },
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '8px',
+      backgroundColor: readOnly ? '#F3F4F6' : undefined,
+      '&.Mui-focused fieldset': { borderColor: '#9CAF88' },
+    },
+    '& .MuiInputLabel-root.Mui-focused': { color: '#7A8C6A' },
+  };
 }
 
 function ChipFieldControl({
@@ -720,6 +752,25 @@ function ReviewSubmit({
 
 function isSubmittedStatus(status: string | null | undefined): boolean {
   return typeof status === 'string' && status.toLowerCase() === 'submitted';
+}
+
+function getNonEmptyEmail(email: string | null | undefined): string {
+  return typeof email === 'string' ? email.trim() : '';
+}
+
+function applyLockedEmail(drafts: Drafts, email: string): Drafts {
+  if (!email) {
+    return drafts;
+  }
+
+  return {
+    ...drafts,
+    'basic-profile': { ...drafts['basic-profile'], email },
+  };
+}
+
+function getLockedFieldKeys(selectedStage: ProviderStage['key'], emailLocked: boolean): ReadonlySet<string> {
+  return emailLocked && selectedStage === 'basic-profile' ? new Set(['email']) : new Set();
 }
 
 function getStage(stageKey: ProviderStage['key']): ProviderStage {

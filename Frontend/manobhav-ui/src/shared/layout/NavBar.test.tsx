@@ -170,7 +170,7 @@ describe('NavBar auth action', () => {
     });
   });
 
-  it('routes the profile menu Dashboard action to the patient dashboard by default', async () => {
+  it('routes the profile menu Dashboard action to the single /dashboard entry by default', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
     vi.mocked(useAuthSession).mockReturnValue({
@@ -183,32 +183,16 @@ describe('NavBar auth action', () => {
     await user.click(screen.getByRole('button', { name: /open profile/i }));
     await user.click(screen.getByRole('menuitem', { name: /dashboard/i }));
 
-    expect(onNavigate).toHaveBeenCalledWith('/dashboard/patient');
+    expect(onNavigate).toHaveBeenCalledWith('/dashboard');
   });
 
-  it('routes the profile menu Dashboard action to the admin dashboard for admin sessions', async () => {
-    const user = userEvent.setup();
-    const onNavigate = vi.fn();
-    vi.mocked(useAuthSession).mockReturnValue({
-      session: { isAuthenticated: true, expiresAtUtc: null, groups: ['Admin'] },
-      loading: false,
-    });
-
-    renderNavBar(onNavigate);
-
-    await user.click(screen.getByRole('button', { name: /open profile/i }));
-    await user.click(screen.getByRole('menuitem', { name: /dashboard/i }));
-
-    expect(onNavigate).toHaveBeenCalledWith('/dashboard/admin');
-  });
-
-  it.each(['Provider', 'ProviderApplicant'])(
-    'routes %s sessions from the profile menu Dashboard action to the provider dashboard',
-    async (group) => {
+  it.each([['Admin'], ['Provider'], ['ProviderApplicant'], []])(
+    'routes the profile menu Dashboard action to /dashboard for %s sessions',
+    async (...groups) => {
       const user = userEvent.setup();
       const onNavigate = vi.fn();
       vi.mocked(useAuthSession).mockReturnValue({
-        session: { isAuthenticated: true, expiresAtUtc: null, groups: [group] },
+        session: { isAuthenticated: true, expiresAtUtc: null, groups },
         loading: false,
       });
 
@@ -217,7 +201,7 @@ describe('NavBar auth action', () => {
       await user.click(screen.getByRole('button', { name: /open profile/i }));
       await user.click(screen.getByRole('menuitem', { name: /dashboard/i }));
 
-      expect(onNavigate).toHaveBeenCalledWith('/dashboard/provider');
+      expect(onNavigate).toHaveBeenCalledWith('/dashboard');
     },
   );
 });

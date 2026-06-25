@@ -47,7 +47,7 @@ describe('LoginRoute', () => {
     });
   });
 
-  it('defaults Google login to the patient dashboard when no return target is provided', async () => {
+  it('defaults Google login to the role-routed /dashboard when no return target is provided', async () => {
     const user = userEvent.setup();
 
     render(
@@ -58,10 +58,10 @@ describe('LoginRoute', () => {
 
     await user.click(screen.getByRole('button', { name: /google/i }));
 
-    expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/dashboard/patient' });
+    expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/dashboard' });
   });
 
-  it('falls back to the patient dashboard for unsafe return targets', async () => {
+  it('falls back to the role-routed /dashboard for unsafe return targets', async () => {
     const user = userEvent.setup();
 
     render(
@@ -72,7 +72,7 @@ describe('LoginRoute', () => {
 
     await user.click(screen.getByRole('button', { name: /google/i }));
 
-    expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/dashboard/patient' });
+    expect(startCognitoLogin).toHaveBeenCalledWith({ identityProvider: 'Google', returnTo: '/dashboard' });
   });
 
   it('centers the desktop back button on the auth container top-left corner', () => {

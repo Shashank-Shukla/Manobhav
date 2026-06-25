@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WebApi.Controllers;
 using WebApi.Notifications;
+using WebApi.Security;
 
 namespace UnitTests;
 
@@ -207,6 +208,31 @@ public sealed class ProviderOnboardingControllerTests
         Assert.Equal(60, sections["sessionDetails"].GetProperty("sessionLengthsMinutes")[0].GetInt32());
         Assert.Equal("Clinical Psychologist", sections["credentials"].GetProperty("items")[0].GetProperty("title").GetString());
         Assert.Equal("Bank", sections["payout"].GetProperty("payoutMode").GetString());
+    }
+
+    [Fact]
+    public async Task StartOrResume_BackfillsEmailFromCognitoAndPersistsItOnUser()
+    {
+        await using var db = CreateDbContext();
+        var user = new User
+        {
+            CognitoSubject = "provider-subject",
+            Email = null,
+            DisplayName = "Provider"
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        var cognito = new RecordingCognitoEmailOtpAuth { Email = "cognito-provider@example.com" };
+        var controller = CreateProviderControllerWithoutEmailClaim(db, cognito);
+
+        var result = await controller.StartOrResume(CancellationToken.None);
+
+        var ok = Assert.IsType<CreatedResult>(result);
+        var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
+        Assert.Equal("cognito-provider@example.com", dto.Email);
+        Assert.Equal("provider-username", Assert.Single(cognito.RequestedUsernames));
+        var savedUser = await db.Users.FindAsync([user.Id], CancellationToken.None);
+        Assert.Equal("cognito-provider@example.com", savedUser!.Email);
     }
 
     [Fact]
@@ -633,12 +659,14 @@ public sealed class ProviderOnboardingControllerTests
 
     private static ProviderOnboardingController CreateProviderController(
         ApplicationDbContext db,
-        IProviderOnboardingAdminNotifier? notifier = null)
+        IProviderOnboardingAdminNotifier? notifier = null,
+        ICognitoEmailOtpAuth? cognitoEmailOtpAuth = null)
     {
         var controller = new ProviderOnboardingController(
             db,
             new ProviderOnboardingSectionService(),
-            notifier ?? new RecordingProviderOnboardingAdminNotifier())
+            notifier ?? new RecordingProviderOnboardingAdminNotifier(),
+            cognitoEmailOtpAuth ?? new RecordingCognitoEmailOtpAuth())
         {
             ControllerContext = new ControllerContext
             {
@@ -653,6 +681,30 @@ public sealed class ProviderOnboardingControllerTests
             }
         };
         return controller;
+    }
+
+    private static ProviderOnboardingController CreateProviderControllerWithoutEmailClaim(
+        ApplicationDbContext db,
+        ICognitoEmailOtpAuth cognitoEmailOtpAuth)
+    {
+        return new ProviderOnboardingController(
+            db,
+            new ProviderOnboardingSectionService(),
+            new RecordingProviderOnboardingAdminNotifier(),
+            cognitoEmailOtpAuth)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim("sub", "provider-subject"),
+                        new Claim("username", "provider-username")
+                    ], "TestAuth"))
+                }
+            }
+        };
     }
 
     private static async Task<User> AddUserAsync(ApplicationDbContext db)
@@ -813,6 +865,33 @@ public sealed class ProviderOnboardingControllerTests
         {
             Sent.Add(email);
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingCognitoEmailOtpAuth : ICognitoEmailOtpAuth
+    {
+        public string? Email { get; set; } = "provider@example.com";
+        public List<string> RequestedUsernames { get; } = [];
+
+        public Task<bool> UserExistsAsync(string email, CancellationToken cancellationToken) =>
+            Task.FromResult(false);
+
+        public Task CreatePasswordlessUserAsync(string email, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task DeletePasswordlessUserAsync(string email, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task<WebApi.Security.EmailOtpChallenge> RequestSignInOtpAsync(string email, CancellationToken cancellationToken) =>
+            Task.FromResult(new WebApi.Security.EmailOtpChallenge("session", "sign-in"));
+
+        public Task<CognitoTokenSet> VerifySignInOtpAsync(string email, string otp, string session, CancellationToken cancellationToken) =>
+            Task.FromResult(new CognitoTokenSet("access-token", null, null, 900));
+
+        public Task<string?> GetUserEmailAsync(string username, CancellationToken cancellationToken)
+        {
+            RequestedUsernames.Add(username);
+            return Task.FromResult(Email);
         }
     }
 }

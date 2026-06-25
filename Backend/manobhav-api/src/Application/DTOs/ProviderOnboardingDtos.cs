@@ -19,7 +19,8 @@ public sealed record ProviderApplicationDto
         DateTimeOffset? updatedAtUtc,
         DateTimeOffset? submittedAtUtc,
         IReadOnlyDictionary<string, JsonElement>? sections = null,
-        IReadOnlyDictionary<string, ProviderApplicationSectionReviewDto>? sectionReviews = null)
+        IReadOnlyDictionary<string, ProviderApplicationSectionReviewDto>? sectionReviews = null,
+        string? email = null)
     {
         Id = id;
         UserId = userId;
@@ -30,6 +31,7 @@ public sealed record ProviderApplicationDto
         SubmittedAtUtc = submittedAtUtc;
         Sections = sections ?? EmptySections;
         SectionReviews = sectionReviews ?? EmptySectionReviews;
+        Email = email;
     }
 
     public Guid Id { get; init; }
@@ -41,6 +43,7 @@ public sealed record ProviderApplicationDto
     public DateTimeOffset? SubmittedAtUtc { get; init; }
     public IReadOnlyDictionary<string, JsonElement> Sections { get; init; }
     public IReadOnlyDictionary<string, ProviderApplicationSectionReviewDto> SectionReviews { get; init; }
+    public string? Email { get; init; }
 }
 
 public sealed record ProviderApplicationSectionReviewDto(

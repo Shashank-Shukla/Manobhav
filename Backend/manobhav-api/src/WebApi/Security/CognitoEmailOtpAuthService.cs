@@ -20,6 +20,8 @@ public interface ICognitoEmailOtpAuth
     Task<EmailOtpChallenge> RequestSignInOtpAsync(string email, CancellationToken cancellationToken);
 
     Task<CognitoTokenSet> VerifySignInOtpAsync(string email, string otp, string session, CancellationToken cancellationToken);
+
+    Task<string?> GetUserEmailAsync(string username, CancellationToken cancellationToken);
 }
 
 public sealed class CognitoEmailOtpAuthService(
@@ -107,6 +109,31 @@ public sealed class CognitoEmailOtpAuthService(
         }
         catch (UserNotFoundException)
         {
+        }
+    }
+
+    public async Task<string?> GetUserEmailAsync(string username, CancellationToken cancellationToken)
+    {
+        if (cognitoClient is null || string.IsNullOrWhiteSpace(options.UserPoolId) || string.IsNullOrWhiteSpace(username))
+        {
+            return null;
+        }
+
+        try
+        {
+            var response = await cognitoClient.AdminGetUserAsync(new AdminGetUserRequest
+            {
+                UserPoolId = options.UserPoolId,
+                Username = username
+            }, cancellationToken);
+
+            return response.UserAttributes?
+                .FirstOrDefault(attribute => string.Equals(attribute.Name, "email", StringComparison.Ordinal))?
+                .Value;
+        }
+        catch (AmazonCognitoIdentityProviderException)
+        {
+            return null;
         }
     }
 
