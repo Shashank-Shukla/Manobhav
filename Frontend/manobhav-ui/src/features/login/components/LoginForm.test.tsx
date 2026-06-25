@@ -95,6 +95,40 @@ describe('LoginForm', () => {
     });
     expect(screen.getByText(/next step reached/i)).toBeInTheDocument();
   });
+
+  it('requests a sign-in OTP from the in-input send button without pressing Enter', async () => {
+    const user = userEvent.setup();
+
+    renderLoginForm();
+
+    await user.click(screen.getByRole('button', { name: /continue with email otp/i }));
+    await user.type(screen.getByRole('textbox', { name: /email address/i }), 'person@example.com');
+    await user.click(screen.getByRole('button', { name: /send verification code/i }));
+
+    expect(requestEmailOtp).toHaveBeenCalledWith({ email: 'person@example.com', flow: 'sign-in' });
+    expect(screen.getByRole('textbox', { name: /one-time code/i })).toHaveFocus();
+    expect(startCognitoLogin).not.toHaveBeenCalled();
+  });
+
+  it('verifies the sign-in OTP from the in-input submit button without pressing Enter', async () => {
+    const user = userEvent.setup();
+
+    renderLoginForm();
+
+    await user.click(screen.getByRole('button', { name: /continue with email otp/i }));
+    await user.type(screen.getByRole('textbox', { name: /email address/i }), 'person@example.com');
+    await user.click(screen.getByRole('button', { name: /send verification code/i }));
+    await user.type(screen.getByRole('textbox', { name: /one-time code/i }), '123456');
+    await user.click(screen.getByRole('button', { name: /submit verification code/i }));
+
+    expect(verifyEmailOtp).toHaveBeenCalledWith({
+      email: 'person@example.com',
+      flow: 'sign-in',
+      challengeId: 'challenge-1',
+      otp: '123456',
+    });
+    expect(screen.getByText(/next step reached/i)).toBeInTheDocument();
+  });
 });
 
 function renderLoginForm(returnTo = '/appointment') {
