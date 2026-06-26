@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import Chip from '@mui/material/Chip';
 import TextField from '@mui/material/TextField';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,10 @@ import {
   type ProviderTaxonomyTerm,
   type SaveProviderSectionBody,
 } from './providerOnboardingApi';
+import { WeeklyAvailabilityPicker } from '../../shared/availability/WeeklyAvailabilityPicker';
+import type { AvailabilitySlot } from '../../shared/availability/types';
+import { FocusAreasPicker } from './components/FocusAreasPicker';
+import { BankDetailsSection, type BankDetailsValue } from './components/BankDetailsSection';
 
 type Props = {
   onBack: () => void;
@@ -33,7 +38,7 @@ type ProviderStageField = {
   key: string;
   label: string;
   required?: boolean;
-  kind?: 'text' | 'email' | 'number' | 'textarea' | 'chips' | 'single-select';
+  kind?: 'text' | 'email' | 'number' | 'textarea' | 'chips' | 'single-select' | 'focus-areas' | 'availability' | 'bank-details';
   placeholder?: string;
   taxonomyKey?: keyof ProviderTaxonomy;
   options?: ReadonlyArray<{ value: string; label: string }>;
@@ -92,34 +97,31 @@ const providerStages: ProviderStage[] = [
   {
     key: 'bio',
     title: 'Bio and approach',
-    helper: 'Your therapeutic approach, languages, and background.',
+    helper: 'A short introduction, languages you work in, and your background.',
     fields: [
       { key: 'shortBio', label: 'Short bio', kind: 'textarea', required: true },
       { key: 'longBio', label: 'Long bio', kind: 'textarea' },
-      { key: 'approach', label: 'Therapeutic approach', kind: 'textarea', required: true },
       { key: 'languages', label: 'Languages', kind: 'chips', required: true, taxonomyKey: 'languages' },
     ],
   },
   {
     key: 'specializations',
     title: 'Specializations',
-    helper: 'Your focus areas, age groups, and therapy goals.',
+    helper: 'The focus areas you support and the age groups you work with.',
     fields: [
       {
         key: 'focusAreas',
         label: 'Focus areas',
-        kind: 'chips',
+        kind: 'focus-areas',
         required: true,
-        taxonomyKey: 'specializations',
       },
-      { key: 'ageGroups', label: 'Age groups', kind: 'chips', options: ageGroupOptions },
-      { key: 'therapyGoals', label: 'Therapy goals', placeholder: 'Sleep, Emotional regulation' },
+      { key: 'ageGroups', label: 'Age groups', kind: 'chips', required: true, options: ageGroupOptions },
     ],
   },
   {
     key: 'modalities',
     title: 'How you work',
-    helper: 'Online, in-person, individual, couples, group, or hybrid care.',
+    helper: 'The therapy approaches you practise.',
     fields: [
       {
         key: 'modalities',
@@ -128,13 +130,12 @@ const providerStages: ProviderStage[] = [
         required: true,
         taxonomyKey: 'therapyApproaches',
       },
-      { key: 'deliveryModes', label: 'Delivery modes', placeholder: 'Online, In-person', required: true },
     ],
   },
   {
     key: 'session-details',
     title: 'Session details',
-    helper: 'Session lengths, availability summary, and weekly capacity.',
+    helper: 'Session lengths, your weekly availability, and weekly capacity.',
     fields: [
       {
         key: 'sessionLengthsMinutes',
@@ -143,14 +144,14 @@ const providerStages: ProviderStage[] = [
         required: true,
         options: sessionLengthOptions,
       },
-      { key: 'availabilitySummary', label: 'Availability summary', kind: 'textarea', required: true },
+      { key: 'availabilitySlots', label: 'Weekly availability', kind: 'availability', required: true },
       { key: 'capacityPerWeek', label: 'Capacity per week', kind: 'number', required: true, min: 1, max: 48 },
     ],
   },
   {
     key: 'credentials',
     title: 'Your credentials',
-    helper: 'Add your credentials for our review.',
+    helper: 'Add your credentials for our review. (Masters degree, RCI License, etc.)',
     fields: [
       { key: 'credentialType', label: 'Credential type', required: true },
       { key: 'credentialTitle', label: 'Credential title', required: true },
@@ -162,11 +163,9 @@ const providerStages: ProviderStage[] = [
   {
     key: 'payout',
     title: 'Payment details',
-    helper: 'Your preferred payout method, set up after approval.',
+    helper: 'Your bank account details for payouts after approval.',
     fields: [
-      { key: 'payoutMode', label: 'Payout mode', required: true },
-      { key: 'accountHolderName', label: 'Account holder name' },
-      { key: 'notes', label: 'Payout notes', kind: 'textarea' },
+      { key: 'bankDetails', label: 'Bank account details', kind: 'bank-details', required: true },
     ],
   },
   {
@@ -654,6 +653,38 @@ function StageFieldControl({
     );
   }
 
+  if (field.kind === 'focus-areas') {
+    return (
+      <CustomFieldGroup field={field}>
+        <FocusAreasPicker error={error} onChange={(next) => onChange(next)} value={getDraftList(draft, field.key)} />
+      </CustomFieldGroup>
+    );
+  }
+
+  if (field.kind === 'availability') {
+    return (
+      <CustomFieldGroup field={field}>
+        <WeeklyAvailabilityPicker
+          error={error}
+          onChange={(slots) => onChange(encodeAvailabilitySlots(slots))}
+          value={decodeAvailabilityDraft(getDraftList(draft, field.key))}
+        />
+      </CustomFieldGroup>
+    );
+  }
+
+  if (field.kind === 'bank-details') {
+    return (
+      <CustomFieldGroup field={field}>
+        <BankDetailsSection
+          errors={parseBankErrors(error)}
+          onChange={(next) => onChange(encodeBankDetails(next))}
+          value={parseBankDetails(getDraftString(draft, field.key))}
+        />
+      </CustomFieldGroup>
+    );
+  }
+
   const isTextarea = field.kind === 'textarea';
   const id = `provider-${field.key}`;
   const inputType = isTextarea ? undefined : field.kind === 'email' ? 'email' : field.kind === 'number' ? 'number' : 'text';
@@ -823,6 +854,20 @@ function SingleSelectChipControl({
   );
 }
 
+// Full-width labelled wrapper for the custom controls (focus areas, availability, bank details)
+// so they share the field-label styling of the simpler inputs while owning their own layout.
+function CustomFieldGroup({ children, field }: { children: ReactNode; field: ProviderStageField }) {
+  return (
+    <div className="space-y-2 md:col-span-2">
+      <span className="block text-sm font-semibold text-gray-700">
+        {field.label}
+        {field.required && <span className="ml-1 text-rose-600">*</span>}
+      </span>
+      {children}
+    </div>
+  );
+}
+
 function ReviewSubmit({
   isSaving,
   onSubmit,
@@ -889,12 +934,22 @@ function createInitialDrafts(): Drafts {
 }
 
 function createStageDraft(fields: ProviderStageField[]): Record<string, DraftValue> {
-  return Object.fromEntries(fields.map((field) => [field.key, field.kind === 'chips' ? [] : '']));
+  return Object.fromEntries(fields.map((field) => [field.key, isListFieldKind(field.kind) ? [] : '']));
+}
+
+// Field kinds whose draft value is a string[] (multi-value selections or encoded slot rows).
+function isListFieldKind(kind: ProviderStageField['kind']): boolean {
+  return kind === 'chips' || kind === 'focus-areas' || kind === 'availability';
 }
 
 function validateStage(stage: ProviderStage, draft: Record<string, DraftValue>): FieldErrors {
   return stage.fields.reduce((errors, field) => {
     const value = draft[field.key];
+
+    if (field.kind === 'bank-details') {
+      const bankErrors = validateBankDetails(parseBankDetails(getDraftString(draft, field.key)));
+      return Object.keys(bankErrors).length > 0 ? { ...errors, [field.key]: JSON.stringify(bankErrors) } : errors;
+    }
 
     if (field.required && isMissingValue(value)) {
       return { ...errors, [field.key]: `${field.label} is required.` };
@@ -973,7 +1028,6 @@ function buildBioBody(draft: Record<string, DraftValue>): SaveProviderSectionBod
     bio: {
       shortBio: getDraftString(draft, 'shortBio'),
       longBio: getDraftString(draft, 'longBio'),
-      approach: getDraftString(draft, 'approach'),
       languages: getDraftList(draft, 'languages'),
     },
   };
@@ -984,7 +1038,6 @@ function buildSpecializationsBody(draft: Record<string, DraftValue>): SaveProvid
     specializations: {
       focusAreas: getDraftList(draft, 'focusAreas'),
       ageGroups: getDraftList(draft, 'ageGroups'),
-      therapyGoals: parseCsv(getDraftString(draft, 'therapyGoals')),
     },
   };
 }
@@ -993,7 +1046,6 @@ function buildModalitiesBody(draft: Record<string, DraftValue>): SaveProviderSec
   return {
     modalities: {
       modalities: getDraftList(draft, 'modalities'),
-      deliveryModes: parseCsv(getDraftString(draft, 'deliveryModes')),
     },
   };
 }
@@ -1002,7 +1054,7 @@ function buildSessionDetailsBody(draft: Record<string, DraftValue>): SaveProvide
   return {
     sessionDetails: {
       sessionLengthsMinutes: parseNumberList(getDraftString(draft, 'sessionLengthsMinutes')),
-      availabilitySummary: getDraftString(draft, 'availabilitySummary'),
+      availabilitySlots: decodeAvailabilityDraft(getDraftList(draft, 'availabilitySlots')),
       capacityPerWeek: parseNullableNumber(getDraftString(draft, 'capacityPerWeek')),
     },
   };
@@ -1023,11 +1075,12 @@ function buildCredentialsBody(draft: Record<string, DraftValue>): SaveProviderSe
 }
 
 function buildPayoutBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
+  const bank = parseBankDetails(getDraftString(draft, 'bankDetails'));
   return {
     payout: {
-      payoutMode: getDraftString(draft, 'payoutMode'),
-      accountHolderName: getDraftString(draft, 'accountHolderName'),
-      notes: getDraftString(draft, 'notes'),
+      accountNumber: bank.accountNumber.trim(),
+      bankName: bank.bankName.trim(),
+      ifscCode: bank.ifscCode.trim().toUpperCase(),
     },
   };
 }
@@ -1112,7 +1165,6 @@ function applySectionToDrafts(drafts: Drafts, section: ProviderApplicationSectio
         ...drafts.bio,
         shortBio: getRecordString(payload, 'shortBio'),
         longBio: getRecordString(payload, 'longBio'),
-        approach: getRecordString(payload, 'approach'),
         languages: getRecordStringList(payload, 'languages'),
       };
       break;
@@ -1123,7 +1175,6 @@ function applySectionToDrafts(drafts: Drafts, section: ProviderApplicationSectio
         ...drafts.specializations,
         focusAreas: getRecordStringList(payload, 'focusAreas'),
         ageGroups: getRecordStringList(payload, 'ageGroups'),
-        therapyGoals: getRecordStringList(payload, 'therapyGoals').join(', '),
       };
       break;
     }
@@ -1132,7 +1183,6 @@ function applySectionToDrafts(drafts: Drafts, section: ProviderApplicationSectio
       drafts.modalities = {
         ...drafts.modalities,
         modalities: getRecordStringList(payload, 'modalities'),
-        deliveryModes: getRecordStringList(payload, 'deliveryModes').join(', '),
       };
       break;
     }
@@ -1141,7 +1191,7 @@ function applySectionToDrafts(drafts: Drafts, section: ProviderApplicationSectio
       drafts['session-details'] = {
         ...drafts['session-details'],
         sessionLengthsMinutes: getRecordStringList(payload, 'sessionLengthsMinutes').join(', '),
-        availabilitySummary: getRecordString(payload, 'availabilitySummary'),
+        availabilitySlots: encodeStoredAvailabilitySlots(payload),
         capacityPerWeek: getRecordString(payload, 'capacityPerWeek'),
       };
       break;
@@ -1161,11 +1211,15 @@ function applySectionToDrafts(drafts: Drafts, section: ProviderApplicationSectio
     }
     case 'payout': {
       const payload = getPayload(section, 'payout');
+      const accountNumber = getRecordString(payload, 'accountNumber');
       drafts.payout = {
         ...drafts.payout,
-        payoutMode: getRecordString(payload, 'payoutMode'),
-        accountHolderName: getRecordString(payload, 'accountHolderName'),
-        notes: getRecordString(payload, 'notes'),
+        bankDetails: encodeBankDetails({
+          accountNumber,
+          confirmAccountNumber: accountNumber,
+          bankName: getRecordString(payload, 'bankName'),
+          ifscCode: getRecordString(payload, 'ifscCode'),
+        }),
       };
       break;
     }
@@ -1384,6 +1438,122 @@ function parseNumberList(value = ''): number[] {
 function parseNullableNumber(value = ''): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) && value.trim() ? parsed : null;
+}
+
+// --- Weekly availability draft encoding --------------------------------------
+// The form draft model stores list values as string[]; each availability slot is
+// encoded as a "dayOfWeek|startTime|endTime" row so it fits that model cleanly and
+// the existing required/empty checks keep working.
+
+function encodeAvailabilitySlots(slots: AvailabilitySlot[]): string[] {
+  return slots.map((slot) => `${slot.dayOfWeek}|${slot.startTime}|${slot.endTime}`);
+}
+
+function decodeAvailabilityDraft(rows: string[]): AvailabilitySlot[] {
+  return rows
+    .map((row) => row.split('|'))
+    .filter((parts) => parts.length === 3)
+    .map(([dayOfWeek, startTime, endTime]) => ({ dayOfWeek: Number(dayOfWeek), startTime, endTime }))
+    .filter((slot) => Number.isInteger(slot.dayOfWeek) && Boolean(slot.startTime) && Boolean(slot.endTime));
+}
+
+function encodeStoredAvailabilitySlots(payload: Record<string, unknown> | undefined): string[] {
+  const slots = payload?.availabilitySlots;
+  if (!Array.isArray(slots)) {
+    return [];
+  }
+
+  return slots
+    .filter(isRecord)
+    .map((slot) => ({
+      dayOfWeek: Number(slot.dayOfWeek),
+      startTime: typeof slot.startTime === 'string' ? slot.startTime : '',
+      endTime: typeof slot.endTime === 'string' ? slot.endTime : '',
+    }))
+    .filter((slot) => Number.isInteger(slot.dayOfWeek) && Boolean(slot.startTime) && Boolean(slot.endTime))
+    .map((slot) => `${slot.dayOfWeek}|${slot.startTime}|${slot.endTime}`);
+}
+
+// --- Bank details draft encoding ---------------------------------------------
+// Bank details are several related fields plus a client-only confirmation, so the
+// whole value is stored as a single JSON string under one draft key.
+
+const emptyBankDetails: BankDetailsValue = {
+  accountNumber: '',
+  confirmAccountNumber: '',
+  bankName: '',
+  ifscCode: '',
+};
+
+const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const accountNumberPattern = /^[0-9]{9,18}$/;
+
+function encodeBankDetails(value: BankDetailsValue): string {
+  return JSON.stringify(value);
+}
+
+function parseBankDetails(value: string): BankDetailsValue {
+  if (!value.trim()) {
+    return { ...emptyBankDetails };
+  }
+
+  try {
+    const parsed = JSON.parse(value) as Partial<BankDetailsValue>;
+    return {
+      accountNumber: parsed.accountNumber ?? '',
+      confirmAccountNumber: parsed.confirmAccountNumber ?? '',
+      bankName: parsed.bankName ?? '',
+      ifscCode: parsed.ifscCode ?? '',
+    };
+  } catch {
+    return { ...emptyBankDetails };
+  }
+}
+
+// Validation errors for the bank-details field are serialized to JSON so they can
+// travel through the single-string FieldErrors slot, then re-expanded for display.
+function parseBankErrors(error: string | undefined): Partial<Record<keyof BankDetailsValue, string>> | undefined {
+  if (!error) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(error) as Partial<Record<keyof BankDetailsValue, string>>;
+  } catch {
+    return { accountNumber: error };
+  }
+}
+
+function validateBankDetails(value: BankDetailsValue): Partial<Record<keyof BankDetailsValue, string>> {
+  const errors: Partial<Record<keyof BankDetailsValue, string>> = {};
+  const accountNumber = value.accountNumber.trim();
+  const confirm = value.confirmAccountNumber.trim();
+  const bankName = value.bankName.trim();
+  const ifsc = value.ifscCode.trim().toUpperCase();
+
+  if (!accountNumber) {
+    errors.accountNumber = 'Account number is required.';
+  } else if (!accountNumberPattern.test(accountNumber)) {
+    errors.accountNumber = 'Enter a valid account number (9–18 digits).';
+  }
+
+  if (!confirm) {
+    errors.confirmAccountNumber = 'Re-enter your account number.';
+  } else if (confirm !== accountNumber) {
+    errors.confirmAccountNumber = 'Account numbers do not match.';
+  }
+
+  if (!ifsc) {
+    errors.ifscCode = 'IFSC code is required.';
+  } else if (!ifscPattern.test(ifsc)) {
+    errors.ifscCode = 'Enter a valid IFSC code (e.g. HDFC0001234).';
+  }
+
+  if (!bankName) {
+    errors.bankName = 'Bank name is required.';
+  }
+
+  return errors;
 }
 
 function humanizeValue(value: string): string {

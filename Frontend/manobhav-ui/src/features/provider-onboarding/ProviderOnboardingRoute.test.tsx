@@ -166,7 +166,6 @@ describe('provider onboarding route', () => {
     renderProviderPage();
 
     expect(await screen.findByDisplayValue('Grounded support for high-stress seasons.')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Collaborative care.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Hindi' })).toHaveAttribute('aria-pressed', 'true');
   });
@@ -259,14 +258,14 @@ describe('provider onboarding route', () => {
     expect(window.localStorage.getItem(taxonomyCacheKey)).toBe(JSON.stringify(taxonomy));
   });
 
-  it('fetches taxonomy once and saves selected specialization chips', async () => {
+  it('saves selected focus areas and mandatory age groups from the specializations pickers', async () => {
     const user = userEvent.setup();
     applicationResponse = { ...application, currentStep: 'specializations' };
 
     renderProviderPage();
 
+    // The first focus-area category is active by default, so its sub-options (incl. Anxiety) show as chips.
     const anxietyChip = await screen.findByRole('button', { name: 'Anxiety' });
-    expect(findFetchCall('/api/provider-onboarding/taxonomy')).toBeTruthy();
     expect(screen.queryByRole('textbox', { name: /focus areas/i })).not.toBeInTheDocument();
 
     await user.click(anxietyChip);
@@ -274,15 +273,18 @@ describe('provider onboarding route', () => {
     await user.click(screen.getByRole('button', { name: 'Anxiety' }));
     expect(screen.getByRole('button', { name: 'Anxiety' })).toHaveAttribute('aria-pressed', 'false');
     await user.click(screen.getByRole('button', { name: 'Anxiety' }));
+
+    // Age groups are now mandatory before the section can be saved.
+    await user.click(screen.getByRole('button', { name: 'Under 13 years' }));
+
     await user.click(screen.getByRole('button', { name: /save and continue/i }));
 
     await waitFor(() => {
       const saveCall = findFetchCall('/api/provider-onboarding/applications/application-1/sections/specializations');
       expect(JSON.parse(String((saveCall?.[1] as RequestInit).body))).toEqual({
         specializations: {
-          focusAreas: ['anxiety'],
-          ageGroups: [],
-          therapyGoals: [],
+          focusAreas: ['Anxiety'],
+          ageGroups: ['Under 13 years'],
         },
         currentStep: 'modalities',
       });

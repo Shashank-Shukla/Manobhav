@@ -1,4 +1,5 @@
 import { ApiError, apiRequest } from '../../shared/api/apiClient';
+import type { AvailabilitySlot } from '../../shared/availability/types';
 
 export type ProviderApplication = {
   id: string;
@@ -32,24 +33,21 @@ export type ProviderBasicIdentitySection = {
 export type ProviderBioSection = {
   shortBio: string;
   longBio: string;
-  approach: string;
   languages: string[];
 };
 
 export type ProviderSpecializationsSection = {
   focusAreas: string[];
   ageGroups: string[];
-  therapyGoals: string[];
 };
 
 export type ProviderModalitiesSection = {
   modalities: string[];
-  deliveryModes: string[];
 };
 
 export type ProviderSessionDetailsSection = {
   sessionLengthsMinutes: number[];
-  availabilitySummary: string;
+  availabilitySlots: AvailabilitySlot[];
   capacityPerWeek: number | null;
 };
 
@@ -64,9 +62,9 @@ export type ProviderCredentialsSection = {
 };
 
 export type ProviderPayoutSection = {
-  payoutMode: string;
-  accountHolderName: string;
-  notes: string;
+  accountNumber: string;
+  bankName: string;
+  ifscCode: string;
 };
 
 export type ProviderSectionPayload = {

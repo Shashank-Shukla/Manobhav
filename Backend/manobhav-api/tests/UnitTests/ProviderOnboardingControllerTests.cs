@@ -154,17 +154,14 @@ public sealed class ProviderOnboardingControllerTests
               "bio": {
                 "shortBio": "Therapist",
                 "longBio": "Long bio",
-                "approach": "I practice ACT.",
                 "languages": ["English", "Hindi"]
               },
               "specializations": {
                 "focusAreas": ["Anxiety"],
-                "ageGroups": ["Adults"],
-                "therapyGoals": ["Stress"]
+                "ageGroups": ["Adults"]
               },
               "modalities": {
-                "modalities": ["ACT - Acceptance & Commitment Therapy"],
-                "deliveryModes": ["Online"]
+                "modalities": ["ACT - Acceptance & Commitment Therapy"]
               }
             }
             """;
@@ -172,7 +169,7 @@ public sealed class ProviderOnboardingControllerTests
             {
               "sessionDetails": {
                 "sessionLengthsMinutes": [60],
-                "availabilitySummary": "Weekdays",
+                "availabilitySlots": [{ "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }],
                 "capacityPerWeek": 12
               },
               "credentials": {
@@ -185,9 +182,9 @@ public sealed class ProviderOnboardingControllerTests
                 }]
               },
               "payout": {
-                "payoutMode": "Bank",
-                "accountHolderName": "Hydrate Rao",
-                "notes": "Verified later"
+                "accountNumber": "123456789012",
+                "bankName": "HDFC Bank",
+                "ifscCode": "HDFC0001234"
               }
             }
             """;
@@ -202,12 +199,13 @@ public sealed class ProviderOnboardingControllerTests
         Assert.NotNull(sectionsProperty);
         var sections = Assert.IsAssignableFrom<IReadOnlyDictionary<string, JsonElement>>(sectionsProperty!.GetValue(dto));
         Assert.Equal("Dr. Hydrate Rao", sections["basicIdentity"].GetProperty("legalName").GetString());
-        Assert.Equal("I practice ACT.", sections["bioAndApproach"].GetProperty("approach").GetString());
+        Assert.Equal("Therapist", sections["bioAndApproach"].GetProperty("shortBio").GetString());
         Assert.Equal("Anxiety", sections["specializations"].GetProperty("focusAreas")[0].GetString());
         Assert.Equal("ACT - Acceptance & Commitment Therapy", sections["therapyApproaches"].GetProperty("modalities")[0].GetString());
         Assert.Equal(60, sections["sessionDetails"].GetProperty("sessionLengthsMinutes")[0].GetInt32());
+        Assert.Equal("09:00", sections["sessionDetails"].GetProperty("availabilitySlots")[0].GetProperty("startTime").GetString());
         Assert.Equal("Clinical Psychologist", sections["credentials"].GetProperty("items")[0].GetProperty("title").GetString());
-        Assert.Equal("Bank", sections["payout"].GetProperty("payoutMode").GetString());
+        Assert.Equal("HDFC0001234", sections["payout"].GetProperty("ifscCode").GetString());
     }
 
     [Fact]
@@ -250,9 +248,9 @@ public sealed class ProviderOnboardingControllerTests
             {
                 Payout = new ProviderPayoutSection
                 {
-                    PayoutMode = "Bank transfer",
-                    AccountHolderName = "Dr. Review Ready",
-                    Notes = "Ready for review"
+                    AccountNumber = "123456789012",
+                    BankName = "HDFC Bank",
+                    IfscCode = "HDFC0001234"
                 },
                 CurrentStep = "review"
             },
@@ -266,6 +264,131 @@ public sealed class ProviderOnboardingControllerTests
         var ok = Assert.IsType<OkObjectResult>(reloadResult);
         var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
         Assert.Equal("review", dto.CurrentStep);
+    }
+
+    [Fact]
+    public async Task SaveSection_RejectsSessionDetailsWithEmptyAvailabilitySlots()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        var controller = CreateProviderController(db);
+
+        var result = await controller.SaveSection(
+            application.Id,
+            "session-details",
+            new SaveProviderSectionRequest
+            {
+                SessionDetails = new ProviderSessionDetailsSection
+                {
+                    SessionLengthsMinutes = [60],
+                    AvailabilitySlots = [],
+                    CapacityPerWeek = 12
+                }
+            },
+            CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task SaveSection_RejectsPayoutWithInvalidIfscCode()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        var controller = CreateProviderController(db);
+
+        var result = await controller.SaveSection(
+            application.Id,
+            "payout",
+            new SaveProviderSectionRequest
+            {
+                Payout = new ProviderPayoutSection
+                {
+                    AccountNumber = "123456789012",
+                    BankName = "HDFC Bank",
+                    IfscCode = "HDFC1234"
+                }
+            },
+            CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task SaveSection_RejectsPayoutWithNonDigitAccountNumber()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        var controller = CreateProviderController(db);
+
+        var result = await controller.SaveSection(
+            application.Id,
+            "payout",
+            new SaveProviderSectionRequest
+            {
+                Payout = new ProviderPayoutSection
+                {
+                    AccountNumber = "12345ABC9012",
+                    BankName = "HDFC Bank",
+                    IfscCode = "HDFC0001234"
+                }
+            },
+            CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task SaveSection_RejectsSpecializationsWithoutAgeGroups()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        var controller = CreateProviderController(db);
+
+        var result = await controller.SaveSection(
+            application.Id,
+            "specializations",
+            new SaveProviderSectionRequest
+            {
+                Specializations = new ProviderSpecializationsSection
+                {
+                    FocusAreas = ["Anxiety"],
+                    AgeGroups = []
+                }
+            },
+            CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task Submit_MarksDraftAsSubmitted_WithBankPayoutAndAvailabilitySlots()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddApplicationAsync(db, user.Id);
+        SeedCompleteProviderApplication(application);
+        await db.SaveChangesAsync();
+        var notifier = new RecordingProviderOnboardingAdminNotifier();
+        var controller = CreateProviderController(db, notifier);
+
+        var result = await controller.Submit(application.Id, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
+        Assert.Equal("Submitted", dto.Status);
+        Assert.NotNull(dto.SubmittedAtUtc);
+        Assert.Equal("09:00", dto.Sections["sessionDetails"].GetProperty("availabilitySlots")[0].GetProperty("startTime").GetString());
+        Assert.Equal("HDFC0001234", dto.Sections["payout"].GetProperty("ifscCode").GetString());
+        Assert.Single(notifier.Sent);
     }
 
     [Fact]
@@ -306,16 +429,16 @@ public sealed class ProviderOnboardingControllerTests
             {
               "sessionDetails": {
                 "sessionLengthsMinutes": [60],
-                "availabilitySummary": "Weekdays",
+                "availabilitySlots": [{ "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }],
                 "capacityPerWeek": 12
               },
               "credentials": {
                 "items": []
               },
               "payout": {
-                "payoutMode": "Bank",
-                "accountHolderName": "Submitted Rao",
-                "notes": "Verified later"
+                "accountNumber": "123456789012",
+                "bankName": "HDFC Bank",
+                "ifscCode": "HDFC0001234"
               }
             }
             """;
@@ -749,17 +872,14 @@ public sealed class ProviderOnboardingControllerTests
               "bio": {
                 "shortBio": "Trauma informed therapist",
                 "longBio": "Long bio",
-                "approach": "ACT and mindfulness",
                 "languages": ["English", "Hindi"]
               },
               "specializations": {
                 "focusAreas": ["Anxiety"],
-                "ageGroups": ["Adults"],
-                "therapyGoals": ["Stress"]
+                "ageGroups": ["Adults"]
               },
               "modalities": {
-                "modalities": ["ACT"],
-                "deliveryModes": ["Online"]
+                "modalities": ["ACT"]
               }
             }
             """;
@@ -767,7 +887,7 @@ public sealed class ProviderOnboardingControllerTests
             {
               "sessionDetails": {
                 "sessionLengthsMinutes": [60],
-                "availabilitySummary": "Weekdays",
+                "availabilitySlots": [{ "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }],
                 "capacityPerWeek": 12
               },
               "credentials": {
@@ -779,9 +899,9 @@ public sealed class ProviderOnboardingControllerTests
                 }]
               },
               "payout": {
-                "payoutMode": "Bank",
-                "accountHolderName": "Submitted Rao",
-                "notes": "Verified later"
+                "accountNumber": "123456789012",
+                "bankName": "HDFC Bank",
+                "ifscCode": "HDFC0001234"
               }
             }
             """;

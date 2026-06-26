@@ -96,7 +96,6 @@ public sealed class ProviderBioSection
 {
     public string? ShortBio { get; init; }
     public string? LongBio { get; init; }
-    public string? Approach { get; init; }
     public IReadOnlyList<string>? Languages { get; init; }
 }
 
@@ -104,21 +103,27 @@ public sealed class ProviderSpecializationsSection
 {
     public IReadOnlyList<string>? FocusAreas { get; init; }
     public IReadOnlyList<string>? AgeGroups { get; init; }
-    public IReadOnlyList<string>? TherapyGoals { get; init; }
 }
 
 public sealed class ProviderModalitiesSection
 {
     public IReadOnlyList<string>? Modalities { get; init; }
-    public IReadOnlyList<string>? DeliveryModes { get; init; }
 }
 
 public sealed class ProviderSessionDetailsSection
 {
     public IReadOnlyList<int>? SessionLengthsMinutes { get; init; }
-    public string? AvailabilitySummary { get; init; }
+    public IReadOnlyList<AvailabilitySlotDto>? AvailabilitySlots { get; init; }
     public int? CapacityPerWeek { get; init; }
 }
+
+/// <summary>
+/// A single weekly availability slot for a provider.
+/// <paramref name="DayOfWeek"/> is 0=Sunday through 6=Saturday.
+/// <paramref name="StartTime"/> and <paramref name="EndTime"/> are 24-hour
+/// "HH:mm" strings (e.g. "09:00", "17:30"); the start must be strictly before the end.
+/// </summary>
+public sealed record AvailabilitySlotDto(int DayOfWeek, string StartTime, string EndTime);
 
 public sealed class ProviderCredentialsSection
 {
@@ -134,11 +139,17 @@ public sealed class ProviderCredentialMetadata
     public int? Year { get; init; }
 }
 
+/// <summary>
+/// Indian bank payout details for a provider.
+/// <see cref="AccountNumber"/> is sensitive PII and must be handled accordingly
+/// (never logged or surfaced in notifications). <see cref="IfscCode"/> is the
+/// 11-character RBI IFSC code identifying the bank branch.
+/// </summary>
 public sealed class ProviderPayoutSection
 {
-    public string? PayoutMode { get; init; }
-    public string? AccountHolderName { get; init; }
-    public string? Notes { get; init; }
+    public string? AccountNumber { get; init; }
+    public string? BankName { get; init; }
+    public string? IfscCode { get; init; }
 }
 
 public sealed record ProviderDocumentUploadRequest(
