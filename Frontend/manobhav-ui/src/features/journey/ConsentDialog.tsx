@@ -19,7 +19,21 @@ type ConsentDialogProps = {
   sections?: IntakeConsentSection[];
 };
 
+type ConsentPage = {
+  sectionNumber: number;
+  title: string;
+  items: string[];
+};
+
 const requiredConsentSectionNumbers = [5, 6, 7] as const;
+
+const DPDP_PAGE: ConsentPage = {
+  sectionNumber: 8,
+  title: 'Data protection & confidentiality',
+  items: [
+    'By using this website and booking services, you consent to the collection and processing of your information in accordance with the Digital Personal Data Protection (DPDP) Act, 2023 and applicable professional ethical and privacy guidelines, while maintaining confidentiality except where disclosure is legally required.',
+  ],
+};
 
 const DialogTransition = forwardRef(function DialogTransition(
   props: TransitionProps & { children: ReactElement },
@@ -34,8 +48,9 @@ export function ConsentDialog({ onClose, onComplete, open, sections }: ConsentDi
   const [signatureName, setSignatureName] = useState('');
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionError, setCompletionError] = useState('');
-  const consentSections = getCompleteApiConsentSections(sections);
-  const isUnavailable = consentSections.length !== requiredConsentSectionNumbers.length;
+  const apiPages = getCompleteApiConsentSections(sections);
+  const isUnavailable = apiPages.length !== requiredConsentSectionNumbers.length;
+  const consentSections: ConsentPage[] = [...apiPages, DPDP_PAGE];
   const activeSection = consentSections[activeIndex] ?? consentSections[0];
   const isLastSection = !isUnavailable && activeIndex === consentSections.length - 1;
   const signedName = signatureName.trim();
@@ -112,7 +127,7 @@ export function ConsentDialog({ onClose, onComplete, open, sections }: ConsentDi
       <DialogTitle id="intake-consent-title">{activeSection.title}</DialogTitle>
       <DialogContent dividers>
         <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {activeIndex + 1}/3
+          {activeIndex + 1}/{consentSections.length}
         </p>
         <ul className="space-y-3 text-sm leading-6 text-slate-700">
           {displayItems.map((item) => (
@@ -172,7 +187,7 @@ function formatConsentDate(date: Date): string {
   return `${day}/${month}/${date.getFullYear()}`;
 }
 
-function getDisplayConsentItems(section: IntakeConsentSection | undefined, isSignatureStep: boolean): string[] {
+function getDisplayConsentItems(section: ConsentPage | undefined, isSignatureStep: boolean): string[] {
   const items = section?.items ?? [];
   if (!isSignatureStep) {
     return items;

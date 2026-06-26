@@ -398,17 +398,14 @@ public sealed class AdminProviderControllerTests
             {
               "bio": {
                 "shortBio": "Trauma informed therapist",
-                "approach": "ACT and mindfulness",
                 "languages": ["English", "Hindi"]
               },
               "specializations": {
                 "focusAreas": ["Anxiety"],
-                "ageGroups": ["Adults"],
-                "therapyGoals": ["Stress"]
+                "ageGroups": ["Adults"]
               },
               "modalities": {
-                "modalities": ["ACT"],
-                "deliveryModes": ["Online"]
+                "modalities": ["ACT"]
               }
             }
             """;
@@ -416,7 +413,7 @@ public sealed class AdminProviderControllerTests
             {
               "sessionDetails": {
                 "sessionLengthsMinutes": [60],
-                "availabilitySummary": "Weekdays",
+                "availabilitySlots": [{ "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }],
                 "capacityPerWeek": 12
               },
               "credentials": {
@@ -428,9 +425,9 @@ public sealed class AdminProviderControllerTests
                 }]
               },
               "payout": {
-                "payoutMode": "Bank",
-                "accountHolderName": "Asha Rao",
-                "notes": "Verified later"
+                "accountNumber": "123456789012",
+                "bankName": "HDFC Bank",
+                "ifscCode": "HDFC0001234"
               }
             }
             """;

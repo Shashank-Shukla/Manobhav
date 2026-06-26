@@ -192,7 +192,7 @@ describe('patient journey intake inputs', () => {
 
     await user.click(screen.getByRole('button', { name: /read terms and consent/i }));
     expect(await screen.findByRole('dialog', { name: /consent, policies & confidentiality/i })).toBeInTheDocument();
-    expect(screen.getByText('1/3')).toBeInTheDocument();
+    expect(screen.getByText('1/4')).toBeInTheDocument();
     expect(screen.getByText(/API-provided confidentiality copy/i)).toBeInTheDocument();
     expect(screen.queryByText(/50-minute sessions are standard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Section 5 of 7/i)).not.toBeInTheDocument();
@@ -204,7 +204,7 @@ describe('patient journey intake inputs', () => {
     await user.click(continueButton);
 
     expect(await screen.findByRole('heading', { name: /no suicidal liability & emergency disclaimer/i })).toBeInTheDocument();
-    expect(screen.getByText('2/3')).toBeInTheDocument();
+    expect(screen.getByText('2/4')).toBeInTheDocument();
     expect(screen.getByText(/emergency services \(112\)/i)).toBeInTheDocument();
     continueButton = screen.getByRole('button', { name: /continue/i });
     expect(continueButton).toBeDisabled();
@@ -212,10 +212,16 @@ describe('patient journey intake inputs', () => {
     await user.click(continueButton);
 
     expect(await screen.findByRole('heading', { name: /consent to therapy/i })).toBeInTheDocument();
-    expect(screen.getByText('3/3')).toBeInTheDocument();
+    expect(screen.getByText('3/4')).toBeInTheDocument();
     expect(screen.getByText(/I have read and agree to the above terms/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Client Signature/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Therapist Signature/i)).not.toBeInTheDocument();
+    continueButton = screen.getByRole('button', { name: /continue/i });
+    expect(continueButton).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: 'I Agree' }));
+    await user.click(continueButton);
+
+    expect(await screen.findByRole('heading', { name: /data protection & confidentiality/i })).toBeInTheDocument();
+    expect(screen.getByText('4/4')).toBeInTheDocument();
+    expect(screen.getByText(/Digital Personal Data Protection \(DPDP\) Act, 2023/i)).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.getByText(new RegExp(formatTodayForTest()))).toBeInTheDocument();
     const agreeButton = screen.getByRole('button', { name: 'I Agree' });

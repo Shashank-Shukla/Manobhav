@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Application.DTOs;
 using Domain.Entities;
 
@@ -15,6 +16,15 @@ public sealed class ProviderOnboardingValidationException : Exception
 public sealed class ProviderOnboardingSectionService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    /// <summary>Indian bank account number: 9 to 18 digits.</summary>
+    private const string AccountNumberPattern = "^[0-9]{9,18}$";
+
+    /// <summary>RBI IFSC code: four-letter bank code, a literal '0', then a six-character branch code.</summary>
+    private const string IfscPattern = "^[A-Z]{4}0[A-Z0-9]{6}$";
+
+    /// <summary>24-hour clock time of day in "HH:mm" format.</summary>
+    private const string TimeOfDayPattern = "^([01][0-9]|2[0-3]):[0-5][0-9]$";
     private static readonly HashSet<string> SectionKeys =
     [
         "basic-profile",
@@ -124,11 +134,14 @@ public sealed class ProviderOnboardingSectionService
 
         RequireText(section.ShortBio, "Short bio", 300);
         OptionalText(section.LongBio, "Long bio", 2000);
-        RequireText(section.Approach, "Approach", 1200);
         ValidateTextList(section.Languages, "Languages", required: true);
         return section;
     }
 
+    /// <summary>
+    /// Validates the specializations section. Both focus areas and age groups are
+    /// required; focus areas allow up to 80 entries while age groups use the default cap.
+    /// </summary>
     private static ProviderSpecializationsSection ValidateSpecializations(ProviderSpecializationsSection? section)
     {
         if (section is null)
@@ -136,9 +149,8 @@ public sealed class ProviderOnboardingSectionService
             throw new ProviderOnboardingValidationException("Specializations section is required.");
         }
 
-        ValidateTextList(section.FocusAreas, "Focus areas", required: true);
-        ValidateTextList(section.AgeGroups, "Age groups", required: false);
-        ValidateTextList(section.TherapyGoals, "Therapy goals", required: false);
+        ValidateTextList(section.FocusAreas, "Focus areas", required: true, maxCount: 80);
+        ValidateTextList(section.AgeGroups, "Age groups", required: true);
         return section;
     }
 
@@ -150,7 +162,6 @@ public sealed class ProviderOnboardingSectionService
         }
 
         ValidateTextList(section.Modalities, "Modalities", required: true);
-        ValidateTextList(section.DeliveryModes, "Delivery modes", required: true);
         return section;
     }
 
@@ -162,7 +173,7 @@ public sealed class ProviderOnboardingSectionService
         }
 
         ValidateSessionLengths(section.SessionLengthsMinutes);
-        RequireText(section.AvailabilitySummary, "Availability summary", 1200);
+        ValidateAvailabilitySlots(section.AvailabilitySlots);
         ValidateCapacity(section.CapacityPerWeek);
         return section;
     }
@@ -190,17 +201,36 @@ public sealed class ProviderOnboardingSectionService
         return section;
     }
 
+    /// <summary>
+    /// Validates Indian bank payout details. Account number must be 9–18 digits
+    /// (<c>^[0-9]{9,18}$</c>); IFSC code must be the 11-character RBI format
+    /// (<c>^[A-Z]{4}0[A-Z0-9]{6}$</c>: four-letter bank code, a literal '0', then a
+    /// six-character branch code); bank name is required text.
+    /// </summary>
     private static ProviderPayoutSection ValidatePayout(ProviderPayoutSection? section)
     {
         if (section is null)
         {
-            throw new ProviderOnboardingValidationException("Payout placeholder section is required.");
+            throw new ProviderOnboardingValidationException("Payout section is required.");
         }
 
-        RequireText(section.PayoutMode, "Payout mode", 80);
-        OptionalText(section.AccountHolderName, "Account holder name", 200);
-        OptionalText(section.Notes, "Payout notes", 800);
+        if (!Matches(section.AccountNumber, AccountNumberPattern))
+        {
+            throw new ProviderOnboardingValidationException("Account number is required and must be 9 to 18 digits.");
+        }
+
+        if (!Matches(section.IfscCode, IfscPattern))
+        {
+            throw new ProviderOnboardingValidationException("IFSC code is required and must be in the format ABCD0123456.");
+        }
+
+        RequireText(section.BankName, "Bank name", 160);
         return section;
+    }
+
+    private static bool Matches(string? value, string pattern)
+    {
+        return !string.IsNullOrWhiteSpace(value) && Regex.IsMatch(value, pattern);
     }
 
     private static void ValidateSessionLengths(IReadOnlyList<int>? values)
@@ -216,6 +246,43 @@ public sealed class ProviderOnboardingSectionService
         }
     }
 
+    /// <summary>
+    /// Validates the weekly availability slots. At least one slot is required and at most
+    /// 50 are allowed. Each slot must have a <c>DayOfWeek</c> in 0..6 (0=Sunday..6=Saturday),
+    /// <c>StartTime</c> and <c>EndTime</c> in 24-hour "HH:mm" format, and a start strictly
+    /// earlier than the end (an ordinal string compare on "HH:mm" is equivalent to a time compare).
+    /// </summary>
+    private static void ValidateAvailabilitySlots(IReadOnlyList<AvailabilitySlotDto>? slots)
+    {
+        if (slots is null || slots.Count == 0)
+        {
+            throw new ProviderOnboardingValidationException("Availability is required.");
+        }
+
+        if (slots.Count > 50)
+        {
+            throw new ProviderOnboardingValidationException("Availability can include at most 50 slots.");
+        }
+
+        foreach (var slot in slots)
+        {
+            if (slot.DayOfWeek is < 0 or > 6)
+            {
+                throw new ProviderOnboardingValidationException("Availability day of week must be between 0 (Sunday) and 6 (Saturday).");
+            }
+
+            if (!Matches(slot.StartTime, TimeOfDayPattern) || !Matches(slot.EndTime, TimeOfDayPattern))
+            {
+                throw new ProviderOnboardingValidationException("Availability times must be in 24-hour HH:mm format.");
+            }
+
+            if (string.CompareOrdinal(slot.StartTime, slot.EndTime) >= 0)
+            {
+                throw new ProviderOnboardingValidationException("Availability start time must be earlier than end time.");
+            }
+        }
+    }
+
     private static void ValidateCapacity(int? capacityPerWeek)
     {
         if (capacityPerWeek is null or < 1 or > 80)
@@ -224,7 +291,7 @@ public sealed class ProviderOnboardingSectionService
         }
     }
 
-    private static void ValidateTextList(IReadOnlyList<string>? values, string label, bool required)
+    private static void ValidateTextList(IReadOnlyList<string>? values, string label, bool required, int maxCount = 20)
     {
         if (values is null || values.Count == 0)
         {
@@ -236,9 +303,9 @@ public sealed class ProviderOnboardingSectionService
             return;
         }
 
-        if (values.Count > 20 || values.Any(value => string.IsNullOrWhiteSpace(value) || value.Length > 120))
+        if (values.Count > maxCount || values.Any(value => string.IsNullOrWhiteSpace(value) || value.Length > 120))
         {
-            throw new ProviderOnboardingValidationException($"{label} must contain 20 or fewer non-empty items.");
+            throw new ProviderOnboardingValidationException($"{label} must contain {maxCount} or fewer non-empty items.");
         }
     }
 
