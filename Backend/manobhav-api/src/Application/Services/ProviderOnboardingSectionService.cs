@@ -257,7 +257,10 @@ public sealed class ProviderOnboardingSectionService
                 throw new ProviderOnboardingValidationException("Availability day of week must be between 0 (Sunday) and 6 (Saturday).");
             }
 
-            if (!Matches(slot.StartTime, TimeOfDayPattern) || !Matches(slot.EndTime, TimeOfDayPattern))
+            // Start must be a real time-of-day; end may also be "24:00" to represent the end of the day
+            // (the last 30-minute window, 23:30–24:00). Ordinal compare keeps start strictly before end.
+            if (!Matches(slot.StartTime, TimeOfDayPattern) ||
+                !(Matches(slot.EndTime, TimeOfDayPattern) || slot.EndTime == "24:00"))
             {
                 throw new ProviderOnboardingValidationException("Availability times must be in 24-hour HH:mm format.");
             }
