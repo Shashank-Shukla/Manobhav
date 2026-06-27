@@ -18,6 +18,7 @@ public sealed class AdminProviderController : ControllerBase
     private const string ApprovedStatus = "Approved";
     private const string RejectedStatus = "Rejected";
     private const string ProviderRole = "Provider";
+    private const string ProviderApplicantRole = "ProviderApplicant";
 
     private readonly ApplicationDbContext _db;
 
@@ -105,19 +106,21 @@ public sealed class AdminProviderController : ControllerBase
     }
 
     /// <summary>
-    /// Creates the provider's roster record on approval. The profile starts hidden (not yet published
-    /// to the public site) but exists so the admin provider roster and the provider dashboard reflect
-    /// the newly approved provider. Publishing remains a separate admin action.
+    /// Creates the provider's roster record on approval. Approval publishes the provider so they are
+    /// immediately active and visible to patients on the public directory (the public /providers feed
+    /// requires <c>IsActive</c> and <c>VisibilityStatus == "Published"</c>). If a profile already
+    /// exists it is (re)published, which also covers re-approving a previously hidden provider.
     /// </summary>
     private async Task MaterializeProviderProfileAsync(
         ProviderOnboardingApplication application,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var alreadyMaterialized = await _db.ProviderProfiles
-            .AnyAsync(profile => profile.ProviderApplicationId == application.Id, cancellationToken);
-        if (alreadyMaterialized)
+        var existing = await _db.ProviderProfiles
+            .FirstOrDefaultAsync(profile => profile.ProviderApplicationId == application.Id, cancellationToken);
+        if (existing is not null)
         {
+            PublishProfile(existing, now);
             return;
         }
 
@@ -130,10 +133,19 @@ public sealed class AdminProviderController : ControllerBase
             Name = name,
             DisplayName = FirstNonEmpty(displayName, legalName),
             Role = "Therapist",
-            VisibilityStatus = "Hidden",
+            VisibilityStatus = "Published",
             IsActive = true,
             CreatedAtUtc = now,
+            PublishedAtUtc = now,
         }, cancellationToken);
+    }
+
+    private static void PublishProfile(ProviderProfile profile, DateTimeOffset now)
+    {
+        profile.IsActive = true;
+        profile.VisibilityStatus = "Published";
+        profile.PublishedAtUtc = now;
+        profile.UpdatedAtUtc = now;
     }
 
     private static (string? DisplayName, string? LegalName) ReadApplicationNames(ProviderOnboardingApplication application)
@@ -270,23 +282,17 @@ public sealed class AdminProviderController : ControllerBase
     public async Task<IActionResult> Reject(Guid applicationId, CancellationToken cancellationToken)
     {
         var application = await _db.ProviderOnboardingApplications
-            .Include(item => item.SectionReviews)
             .FirstOrDefaultAsync(item => item.Id == applicationId, cancellationToken);
         if (application is null)
         {
             return NotFound();
         }
 
-        if (!string.Equals(application.Status, SubmittedStatus, StringComparison.Ordinal))
+        // Rejecting is allowed for any application that isn't already rejected — this covers both
+        // declining a pending application and revoking a previously approved provider.
+        if (string.Equals(application.Status, RejectedStatus, StringComparison.Ordinal))
         {
             return ProviderApplicationStatusConflict(application);
-        }
-
-        if (!HasRejectedRequiredSectionWithComment(application))
-        {
-            return Problem(
-                title: "At least one provider application section must be rejected with a comment before final rejection.",
-                statusCode: StatusCodes.Status400BadRequest);
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -294,8 +300,50 @@ public sealed class AdminProviderController : ControllerBase
         application.ReviewedAtUtc = now;
         application.UpdatedAtUtc = now;
         application.RejectedAtUtc = now;
+        await SoftDeleteProviderAsync(application, now, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Soft-deletes the materialized provider and its activities when an application is rejected.
+    /// Nothing is hard-deleted: the profile is deactivated and hidden from the public directory,
+    /// scheduled appointments are cancelled, and provider roles are deactivated, so every record
+    /// stays auditable and reversible.
+    /// </summary>
+    private async Task SoftDeleteProviderAsync(
+        ProviderOnboardingApplication application,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var profile = await _db.ProviderProfiles
+            .FirstOrDefaultAsync(item => item.ProviderApplicationId == application.Id, cancellationToken);
+        if (profile is not null)
+        {
+            profile.IsActive = false;
+            profile.VisibilityStatus = "Hidden";
+            profile.UnpublishedAtUtc = now;
+            profile.UpdatedAtUtc = now;
+
+            var scheduledAppointments = await _db.Appointments
+                .Where(appointment => appointment.ProviderProfileId == profile.Id && appointment.Status == "Scheduled")
+                .ToListAsync(cancellationToken);
+            foreach (var appointment in scheduledAppointments)
+            {
+                appointment.Status = "Cancelled";
+                appointment.CancelledAtUtc = now;
+                appointment.UpdatedAtUtc = now;
+            }
+        }
+
+        var providerRoles = await _db.UserRoles
+            .Where(role => role.UserId == application.UserId && role.IsActive &&
+                (role.Role == ProviderRole || role.Role == ProviderApplicantRole))
+            .ToListAsync(cancellationToken);
+        foreach (var role in providerRoles)
+        {
+            role.IsActive = false;
+        }
     }
 
     [HttpPost("{applicationId:guid}/suspend")]
@@ -412,14 +460,6 @@ public sealed class AdminProviderController : ControllerBase
             .ToHashSet(StringComparer.Ordinal);
 
         return ProviderOnboardingSectionCatalog.RequiredReviewSectionKeys.All(approvedSectionKeys.Contains);
-    }
-
-    private static bool HasRejectedRequiredSectionWithComment(ProviderOnboardingApplication application)
-    {
-        return application.SectionReviews.Any(review =>
-            ProviderOnboardingSectionCatalog.IsRequiredReviewSectionKey(review.SectionKey) &&
-            string.Equals(review.Status, RejectedStatus, StringComparison.Ordinal) &&
-            !string.IsNullOrWhiteSpace(review.Comment));
     }
 
     private static string? NormalizeSectionReviewStatus(string? status)

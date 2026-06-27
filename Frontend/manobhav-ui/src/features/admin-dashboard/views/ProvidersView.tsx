@@ -64,7 +64,7 @@ export function ProvidersView({ search }: ProvidersViewProps) {
   const { page, setPage, data, status } = useRosterPage(getAdminProviders, search);
 
   return (
-    <SectionCard title="Provider roster" helper="Every onboarded provider, paginated 25 at a time">
+    <SectionCard title="Provider roster" helper="Every onboarded provider">
       <RosterTable
         columns={columns}
         rows={data.items}

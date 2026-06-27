@@ -168,7 +168,6 @@ public sealed class ProviderOnboardingControllerTests
         application.SessionDetailsJson = """
             {
               "sessionDetails": {
-                "sessionLengthsMinutes": [60],
                 "availabilitySlots": [{ "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }],
                 "capacityPerWeek": 12
               },
@@ -202,7 +201,6 @@ public sealed class ProviderOnboardingControllerTests
         Assert.Equal("Therapist", sections["bioAndApproach"].GetProperty("shortBio").GetString());
         Assert.Equal("Anxiety", sections["specializations"].GetProperty("focusAreas")[0].GetString());
         Assert.Equal("ACT - Acceptance & Commitment Therapy", sections["therapyApproaches"].GetProperty("modalities")[0].GetString());
-        Assert.Equal(60, sections["sessionDetails"].GetProperty("sessionLengthsMinutes")[0].GetInt32());
         Assert.Equal("09:00", sections["sessionDetails"].GetProperty("availabilitySlots")[0].GetProperty("startTime").GetString());
         Assert.Equal("Clinical Psychologist", sections["credentials"].GetProperty("items")[0].GetProperty("title").GetString());
         Assert.Equal("HDFC0001234", sections["payout"].GetProperty("ifscCode").GetString());
@@ -281,7 +279,6 @@ public sealed class ProviderOnboardingControllerTests
             {
                 SessionDetails = new ProviderSessionDetailsSection
                 {
-                    SessionLengthsMinutes = [60],
                     AvailabilitySlots = [],
                     CapacityPerWeek = 12
                 }
@@ -428,7 +425,6 @@ public sealed class ProviderOnboardingControllerTests
         application.SessionDetailsJson = """
             {
               "sessionDetails": {
-                "sessionLengthsMinutes": [60],
                 "availabilitySlots": [{ "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }],
                 "capacityPerWeek": 12
               },
@@ -886,7 +882,6 @@ public sealed class ProviderOnboardingControllerTests
         application.SessionDetailsJson = """
             {
               "sessionDetails": {
-                "sessionLengthsMinutes": [60],
                 "availabilitySlots": [{ "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }],
                 "capacityPerWeek": 12
               },

@@ -56,7 +56,7 @@ export function PatientsView({ search }: PatientsViewProps) {
   const { page, setPage, data, status } = useRosterPage(getAdminPatients, search);
 
   return (
-    <SectionCard title="Patient management" helper="Registered care-seekers, paginated 25 at a time">
+    <SectionCard title="Patient management" helper="Registered care-seekers">
       <RosterTable
         columns={columns}
         rows={data.items}

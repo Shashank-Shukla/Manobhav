@@ -135,9 +135,10 @@ function OptionSection({
 function getChipSx(selected: boolean) {
   if (!selected) {
     return {
-      borderColor: '#CBD5E1',
-      color: '#374151',
-      '&:hover': { backgroundColor: '#F3F7EF' },
+      backgroundColor: '#F1F5F9',
+      borderColor: '#E2E8F0',
+      color: '#64748B',
+      '&:hover': { backgroundColor: '#E2E8F0' },
     };
   }
 

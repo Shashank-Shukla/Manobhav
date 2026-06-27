@@ -172,7 +172,6 @@ public sealed class ProviderOnboardingSectionService
             throw new ProviderOnboardingValidationException("Session details section is required.");
         }
 
-        ValidateSessionLengths(section.SessionLengthsMinutes);
         ValidateAvailabilitySlots(section.AvailabilitySlots);
         ValidateCapacity(section.CapacityPerWeek);
         return section;
@@ -231,19 +230,6 @@ public sealed class ProviderOnboardingSectionService
     private static bool Matches(string? value, string pattern)
     {
         return !string.IsNullOrWhiteSpace(value) && Regex.IsMatch(value, pattern);
-    }
-
-    private static void ValidateSessionLengths(IReadOnlyList<int>? values)
-    {
-        if (values is null || values.Count == 0)
-        {
-            throw new ProviderOnboardingValidationException("Session lengths are required.");
-        }
-
-        if (values.Count > 5 || values.Any(value => value is < 15 or > 180))
-        {
-            throw new ProviderOnboardingValidationException("Session lengths must be between 15 and 180 minutes.");
-        }
     }
 
     /// <summary>

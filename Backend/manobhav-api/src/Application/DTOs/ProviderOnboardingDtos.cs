@@ -112,7 +112,6 @@ public sealed class ProviderModalitiesSection
 
 public sealed class ProviderSessionDetailsSection
 {
-    public IReadOnlyList<int>? SessionLengthsMinutes { get; init; }
     public IReadOnlyList<AvailabilitySlotDto>? AvailabilitySlots { get; init; }
     public int? CapacityPerWeek { get; init; }
 }
