@@ -36,8 +36,8 @@ export const DISPLAY_DAYS: readonly DayDescriptor[] = [
   DAY_DESCRIPTORS[0],
 ];
 
-export const DEFAULT_START_TIME = '06:00';
-export const DEFAULT_END_TIME = '22:00';
+export const DEFAULT_START_TIME = '00:00';
+export const DEFAULT_END_TIME = '24:00';
 export const SLOT_MINUTES = 30;
 
 const MINUTES_PER_HOUR = 60;

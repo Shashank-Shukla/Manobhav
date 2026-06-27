@@ -85,15 +85,19 @@ function CategoryChip({
   value: string[];
 }) {
   const count = countSelectedInCategory(category, value);
-  const label = count > 0 ? `${category.label} (${count})` : category.label;
+  // A category is highlighted (selected) when it has chosen sub-options, regardless of which
+  // category is currently open. The open/active category gets a lighter "viewing" treatment so
+  // a category you opened but left empty falls back to grey once you move on.
+  const selected = count > 0;
+  const label = selected ? `${category.label} (${count})` : category.label;
   return (
     <Chip
-      aria-pressed={isActive}
+      aria-pressed={selected}
       clickable
       label={label}
       onClick={onActivate}
-      sx={getChipSx(isActive)}
-      variant={isActive ? 'filled' : 'outlined'}
+      sx={getChipSx(selected, isActive)}
+      variant={selected ? 'filled' : 'outlined'}
     />
   );
 }
@@ -132,20 +136,31 @@ function OptionSection({
   );
 }
 
-function getChipSx(selected: boolean) {
-  if (!selected) {
+function getChipSx(selected: boolean, active = false) {
+  if (selected) {
     return {
-      backgroundColor: '#F1F5F9',
-      borderColor: '#E2E8F0',
-      color: '#64748B',
-      '&:hover': { backgroundColor: '#E2E8F0' },
+      backgroundColor: '#9CAF88',
+      color: '#FFFFFF',
+      '&:hover': { backgroundColor: '#7A8C6A' },
+      '& .MuiChip-deleteIcon': { color: '#FFFFFF' },
+    };
+  }
+
+  // The currently-open (but not yet selected) category gets a subtle sage outline so users can
+  // tell which category's focus areas are showing; everything else is plain light grey.
+  if (active) {
+    return {
+      backgroundColor: '#EEF4EA',
+      borderColor: '#9CAF88',
+      color: '#5A6B4E',
+      '&:hover': { backgroundColor: '#E3EDD9' },
     };
   }
 
   return {
-    backgroundColor: '#9CAF88',
-    color: '#FFFFFF',
-    '&:hover': { backgroundColor: '#7A8C6A' },
-    '& .MuiChip-deleteIcon': { color: '#FFFFFF' },
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    color: '#64748B',
+    '&:hover': { backgroundColor: '#E2E8F0' },
   };
 }

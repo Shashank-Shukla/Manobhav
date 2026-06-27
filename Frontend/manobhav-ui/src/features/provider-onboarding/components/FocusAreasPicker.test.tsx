@@ -43,23 +43,36 @@ function optionChip(name: string): HTMLElement {
 }
 
 describe('FocusAreasPicker', () => {
-  it('renders the first category active with its sub-options by default', () => {
+  it('opens the first category and shows its sub-options by default', () => {
     render(<ControlledHost spy={vi.fn()} />);
 
-    expect(screen.getByRole('button', { name: 'Emotional & Mood Concerns' })).toHaveAttribute('aria-pressed', 'true');
-    // A sub-option from the first category is visible in the bottom section.
+    // The first category is open (its sub-options show) but, with nothing selected, it is not highlighted.
     expect(optionChip('Anxiety')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Emotional & Mood Concerns' })).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('renders a category\'s sub-options when it is activated', async () => {
+  it('renders a category\'s sub-options when it is opened', async () => {
     const user = userEvent.setup();
     render(<ControlledHost spy={vi.fn()} />);
 
     await user.click(screen.getByRole('button', { name: 'Trauma & Healing' }));
 
-    expect(screen.getByRole('button', { name: 'Trauma & Healing' })).toHaveAttribute('aria-pressed', 'true');
     expect(optionChip('PTSD')).toBeInTheDocument();
     expect(optionChip('Childhood Trauma')).toBeInTheDocument();
+  });
+
+  it('keeps a category highlighted after moving on when it has selections, and drops empty ones', async () => {
+    const user = userEvent.setup();
+    render(<ControlledHost spy={vi.fn()} />);
+
+    // Select an option in the first category, then open another without selecting anything in it.
+    await user.click(optionChip('Anxiety'));
+    await user.click(screen.getByRole('button', { name: 'Trauma & Healing' }));
+
+    // The category with a selection stays highlighted...
+    expect(screen.getByRole('button', { name: 'Emotional & Mood Concerns (1)' })).toHaveAttribute('aria-pressed', 'true');
+    // ...while the opened-but-empty category is not.
+    expect(screen.getByRole('button', { name: 'Trauma & Healing' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('emits the toggled sub-option label in onChange', async () => {

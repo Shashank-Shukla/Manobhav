@@ -50,6 +50,18 @@ const RETURN_TO_KEY = 'manobhav-auth-return-to';
 const DEFAULT_POST_LOGIN_RETURN_TO = '/dashboard';
 
 let cachedSession: AuthSession | null = null;
+const sessionListeners = new Set<() => void>();
+
+// Single source of truth for the session: mutating it here notifies every `useAuthSession`
+// consumer (NavBar, route guards, dashboards) so they never get stuck out of sync — e.g. the
+// NavBar showing "Login" after a guard has already loaded the authenticated session.
+function setCachedSession(next: AuthSession | null): AuthSession | null {
+  cachedSession = next;
+  for (const listener of sessionListeners) {
+    listener();
+  }
+  return cachedSession;
+}
 
 export function readAuthConfig(): CognitoAuthConfig {
   const config = getRuntimeConfig().auth;
@@ -65,6 +77,12 @@ export function readAuthConfig(): CognitoAuthConfig {
 
 export function getStoredAuthSession(): AuthSession | null {
   return cachedSession;
+}
+
+/** Subscribe to session changes so all hook instances stay in sync (used by useSyncExternalStore). */
+export function subscribeAuthSession(listener: () => void): () => void {
+  sessionListeners.add(listener);
+  return () => sessionListeners.delete(listener);
 }
 
 export function isAdminSession(session: AuthSession | null, adminGroup = readAuthConfig().adminGroup): boolean {
@@ -97,12 +115,10 @@ export function hasProviderRole(session: AuthSession | null): boolean {
 
 export async function fetchAuthSession(signal?: AbortSignal): Promise<AuthSession | null> {
   try {
-    cachedSession = normalizeSession(await apiRequest<AuthSession>('/api/auth/session', { signal }));
-    return cachedSession;
+    return setCachedSession(normalizeSession(await apiRequest<AuthSession>('/api/auth/session', { signal })));
   } catch (err) {
     if (isAnonymousSessionError(err)) {
-      cachedSession = null;
-      return null;
+      return setCachedSession(null);
     }
     throw err;
   }
@@ -114,7 +130,7 @@ export async function fetchAuthSession(signal?: AbortSignal): Promise<AuthSessio
  * `ProviderApplicant` role) so the next role-routing decision reflects the new role immediately.
  */
 export async function refreshAuthSession(signal?: AbortSignal): Promise<AuthSession | null> {
-  cachedSession = null;
+  setCachedSession(null);
   return fetchAuthSession(signal);
 }
 
@@ -161,8 +177,9 @@ export async function verifyEmailOtp(input: {
     });
 
   if (response.status === 'authenticated') {
-    cachedSession = normalizeSession(response.session);
-    return { ...response, session: cachedSession };
+    const session = normalizeSession(response.session);
+    setCachedSession(session);
+    return { ...response, session };
   }
 
   return response;
@@ -173,14 +190,14 @@ export async function completeCognitoRedirect(url = window.location.href): Promi
   assertConfigured(config);
 
   const callback = readCallbackParams(url);
-  cachedSession = normalizeSession(await createBackendSession(callback, config.redirectUri));
+  setCachedSession(normalizeSession(await createBackendSession(callback, config.redirectUri)));
   clearTransientAuthState();
   return readAndClearReturnTo();
 }
 
 export async function logout(): Promise<void> {
   await apiRequest<void>('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-  cachedSession = null;
+  setCachedSession(null);
   redirectToCognitoLogout(readAuthConfig());
 }
 
