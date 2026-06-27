@@ -142,7 +142,6 @@ describe('provider onboarding route', () => {
           deliveryModes: ['Online'],
         },
         sessionDetails: {
-          sessionLengthsMinutes: [60],
           availabilitySummary: 'Weekdays',
           capacityPerWeek: 12,
         },

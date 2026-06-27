@@ -164,16 +164,11 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
   const sectionReviews = application.sectionReviews ?? {};
   const allSectionsApproved = PROVIDER_APPLICATION_REQUIRED_REVIEW_SECTION_KEYS.every((sectionKey) =>
     application.sections?.[sectionKey] !== undefined && sectionReviews[sectionKey]?.status === 'Approved');
-  const hasRejectedSectionWithComment = PROVIDER_APPLICATION_REQUIRED_REVIEW_SECTION_KEYS.some((sectionKey) => {
-    const review = sectionReviews[sectionKey];
-    return application.sections?.[sectionKey] !== undefined &&
-      review?.status === 'Rejected' &&
-      Boolean(review.comment?.trim());
-  });
   const hasRejectedSection = PROVIDER_APPLICATION_REQUIRED_REVIEW_SECTION_KEYS.some(
     (sectionKey) => sectionReviews[sectionKey]?.status === 'Rejected',
   );
-  const canMakeFinalDecision = application.status === 'Submitted';
+  // Approved providers can still be rejected (revoked), so the decision bar stays available for them.
+  const canMakeFinalDecision = application.status === 'Submitted' || application.status === 'Approved';
   const canReviewSections = application.status === 'Submitted';
 
   async function saveSectionReview(sectionKey: string, reviewStatus: ProviderApplicationSectionReviewStatus) {
@@ -301,9 +296,9 @@ function ProviderApplicationDetail({ applicationId }: { applicationId: string })
           allSectionsApproved={allSectionsApproved}
           finalAction={finalAction}
           hasRejectedSection={hasRejectedSection}
-          hasRejectedSectionWithComment={hasRejectedSectionWithComment}
           onDecision={(action) => void submitFinalDecision(action)}
           reviewError={reviewError}
+          status={application.status}
         />
       )}
     </Box>
@@ -316,18 +311,19 @@ function FinalDecisionBar({
   allSectionsApproved,
   finalAction,
   hasRejectedSection,
-  hasRejectedSectionWithComment,
   onDecision,
   reviewError,
+  status,
 }: {
   allSectionsApproved: boolean;
   finalAction: FinalDecision | null;
   hasRejectedSection: boolean;
-  hasRejectedSectionWithComment: boolean;
   onDecision: (action: FinalDecision) => void;
   reviewError: string | null;
+  status: string;
 }) {
   const busy = finalAction !== null;
+  const canApproveOrRevise = status === 'Submitted';
 
   return (
     <Box position="fixed" bottom={{ base: 3, md: 5 }} left={0} right={0} zIndex={25} px={4} pointerEvents="none">
@@ -362,30 +358,34 @@ function FinalDecisionBar({
           </Box>
         )}
         <HStack spacing={3} justify="center" flexWrap="wrap">
-          <Button
-            size="sm"
-            borderRadius="10px"
-            leftIcon={<CheckCircle2 size={15} />}
-            onClick={() => onDecision('approve')}
-            isDisabled={!allSectionsApproved || busy}
-            isLoading={finalAction === 'approve'}
-          >
-            Approve application
-          </Button>
-          <Button
-            size="sm"
-            borderRadius="10px"
-            variant="outline"
-            leftIcon={<PencilLine size={15} />}
-            onClick={() => onDecision('revise')}
-            isDisabled={!hasRejectedSection || busy}
-            isLoading={finalAction === 'revise'}
-            color={toneStyles.amber.color}
-            borderColor={toneStyles.amber.border}
-            _hover={{ bg: toneStyles.amber.bg }}
-          >
-            Request revisions
-          </Button>
+          {canApproveOrRevise && (
+            <>
+              <Button
+                size="sm"
+                borderRadius="10px"
+                leftIcon={<CheckCircle2 size={15} />}
+                onClick={() => onDecision('approve')}
+                isDisabled={!allSectionsApproved || busy}
+                isLoading={finalAction === 'approve'}
+              >
+                Approve application
+              </Button>
+              <Button
+                size="sm"
+                borderRadius="10px"
+                variant="outline"
+                leftIcon={<PencilLine size={15} />}
+                onClick={() => onDecision('revise')}
+                isDisabled={!hasRejectedSection || busy}
+                isLoading={finalAction === 'revise'}
+                color={toneStyles.amber.color}
+                borderColor={toneStyles.amber.border}
+                _hover={{ bg: toneStyles.amber.bg }}
+              >
+                Request revisions
+              </Button>
+            </>
+          )}
           <Button
             size="sm"
             borderRadius="10px"
@@ -393,10 +393,10 @@ function FinalDecisionBar({
             colorScheme="red"
             leftIcon={<XCircle size={15} />}
             onClick={() => onDecision('reject')}
-            isDisabled={!hasRejectedSectionWithComment || busy}
+            isDisabled={busy}
             isLoading={finalAction === 'reject'}
           >
-            Reject application
+            {canApproveOrRevise ? 'Reject application' : 'Reject provider'}
           </Button>
         </HStack>
       </Stack>

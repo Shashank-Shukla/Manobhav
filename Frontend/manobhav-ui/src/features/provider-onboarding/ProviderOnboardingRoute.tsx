@@ -38,17 +38,13 @@ type ProviderStageField = {
   key: string;
   label: string;
   required?: boolean;
-  kind?: 'text' | 'email' | 'number' | 'textarea' | 'chips' | 'single-select' | 'focus-areas' | 'availability' | 'bank-details';
+  kind?: 'text' | 'email' | 'number' | 'textarea' | 'chips' | 'focus-areas' | 'availability' | 'bank-details';
   placeholder?: string;
   taxonomyKey?: keyof ProviderTaxonomy;
   options?: ReadonlyArray<{ value: string; label: string }>;
   min?: number;
   max?: number;
 };
-
-const sessionLengthOptions: ReadonlyArray<{ value: string; label: string }> = [30, 45, 60, 75, 90, 105, 120, 150, 180].map(
-  (minutes) => ({ value: String(minutes), label: String(minutes) }),
-);
 
 const ageGroupOptions: ReadonlyArray<{ value: string; label: string }> = [
   'Under 13 years',
@@ -135,15 +131,8 @@ const providerStages: ProviderStage[] = [
   {
     key: 'session-details',
     title: 'Session details',
-    helper: 'Session lengths, your weekly availability, and weekly capacity.',
+    helper: 'Your weekly availability and weekly capacity.',
     fields: [
-      {
-        key: 'sessionLengthsMinutes',
-        label: 'Session length (minutes)',
-        kind: 'single-select',
-        required: true,
-        options: sessionLengthOptions,
-      },
       { key: 'availabilitySlots', label: 'Weekly availability', kind: 'availability', required: true },
       { key: 'capacityPerWeek', label: 'Capacity per week', kind: 'number', required: true, min: 1, max: 48 },
     ],
@@ -642,23 +631,8 @@ function StageFieldControl({
     );
   }
 
-  if (field.kind === 'single-select') {
-    return (
-      <SingleSelectChipControl
-        error={error}
-        field={field}
-        onChange={onChange}
-        selectedValue={getDraftString(draft, field.key)}
-      />
-    );
-  }
-
   if (field.kind === 'focus-areas') {
-    return (
-      <CustomFieldGroup field={field}>
-        <FocusAreasPicker error={error} onChange={(next) => onChange(next)} value={getDraftList(draft, field.key)} />
-      </CustomFieldGroup>
-    );
+    return <FocusAreasPicker error={error} onChange={(next) => onChange(next)} value={getDraftList(draft, field.key)} />;
   }
 
   if (field.kind === 'availability') {
@@ -801,57 +775,6 @@ function getChipSx(selected: boolean) {
     '&:hover': { backgroundColor: '#7A8C6A' },
     '& .MuiChip-deleteIcon': { color: '#FFFFFF' },
   };
-}
-
-function SingleSelectChipControl({
-  error,
-  field,
-  onChange,
-  selectedValue,
-}: {
-  error?: string;
-  field: ProviderStageField;
-  onChange: (value: DraftValue) => void;
-  selectedValue: string;
-}) {
-  const id = `provider-${field.key}`;
-  const errorId = `${id}-error`;
-  const options = field.options ?? [];
-
-  return (
-    <div
-      aria-describedby={error ? errorId : undefined}
-      aria-labelledby={`${id}-label`}
-      className="space-y-2 md:col-span-2"
-      role="radiogroup"
-    >
-      <span id={`${id}-label`} className="block text-sm font-semibold text-gray-700">
-        {field.label}
-        {field.required && <span className="ml-1 text-rose-600">*</span>}
-      </span>
-      <div className={error ? 'rounded-lg border border-rose-400 p-3' : 'rounded-lg border border-gray-200 p-3'}>
-        <div className="flex flex-wrap gap-2">
-          {options.map((option) => {
-            const selected = option.value === selectedValue;
-            return (
-              <Chip
-                aria-checked={selected}
-                clickable
-                key={option.value}
-                label={option.label}
-                onClick={() => onChange(option.value)}
-                role="radio"
-                sx={getChipSx(selected)}
-                variant={selected ? 'filled' : 'outlined'}
-              />
-            );
-          })}
-          {options.length === 0 && <span className="text-sm text-gray-500">Options unavailable. Try again later.</span>}
-        </div>
-      </div>
-      {error && <p id={errorId} className="text-sm font-medium text-rose-700">{error}</p>}
-    </div>
-  );
 }
 
 // Full-width labelled wrapper for the custom controls (focus areas, availability, bank details)
@@ -1053,7 +976,6 @@ function buildModalitiesBody(draft: Record<string, DraftValue>): SaveProviderSec
 function buildSessionDetailsBody(draft: Record<string, DraftValue>): SaveProviderSectionBody {
   return {
     sessionDetails: {
-      sessionLengthsMinutes: parseNumberList(getDraftString(draft, 'sessionLengthsMinutes')),
       availabilitySlots: decodeAvailabilityDraft(getDraftList(draft, 'availabilitySlots')),
       capacityPerWeek: parseNullableNumber(getDraftString(draft, 'capacityPerWeek')),
     },
@@ -1190,7 +1112,6 @@ function applySectionToDrafts(drafts: Drafts, section: ProviderApplicationSectio
       const payload = getPayload(section, 'sessionDetails');
       drafts['session-details'] = {
         ...drafts['session-details'],
-        sessionLengthsMinutes: getRecordStringList(payload, 'sessionLengthsMinutes').join(', '),
         availabilitySlots: encodeStoredAvailabilitySlots(payload),
         capacityPerWeek: getRecordString(payload, 'capacityPerWeek'),
       };
@@ -1429,10 +1350,6 @@ function getFirstCredential(record: Record<string, unknown> | undefined): Record
 
 function parseCsv(value = ''): string[] {
   return value.split(',').map((item) => item.trim()).filter(Boolean);
-}
-
-function parseNumberList(value = ''): number[] {
-  return parseCsv(value).map(Number).filter(Number.isFinite);
 }
 
 function parseNullableNumber(value = ''): number | null {

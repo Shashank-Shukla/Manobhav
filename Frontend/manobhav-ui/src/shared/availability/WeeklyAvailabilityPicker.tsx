@@ -96,8 +96,7 @@ export function WeeklyAvailabilityPicker({
 
   return (
     <div className="w-full select-none" onPointerUp={endDrag} onPointerLeave={endDrag}>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">Weekly availability</span>
+      <div className="mb-2 flex items-center justify-end">
         <button
           type="button"
           onClick={() => !disabled && onChange([])}
@@ -109,13 +108,13 @@ export function WeeklyAvailabilityPicker({
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="max-h-[26rem] overflow-auto rounded-lg border border-gray-200">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 bg-gray-50 p-2 text-left font-medium text-gray-500">Time</th>
+              <th className="sticky left-0 top-0 z-30 bg-gray-50 p-2 text-left font-medium text-gray-500">Time</th>
               {DISPLAY_DAYS.map((day) => (
-                <th key={day.dayOfWeek} className="bg-gray-50 p-2 font-medium text-gray-600">
+                <th key={day.dayOfWeek} className="sticky top-0 z-10 bg-gray-50 p-2 font-medium text-gray-600">
                   <span className="hidden sm:inline">{day.label}</span>
                   <span className="sm:hidden">{day.short}</span>
                 </th>

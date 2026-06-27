@@ -62,19 +62,12 @@ public sealed class AdminProviderControllerTests
     }
 
     [Fact]
-    public async Task Reject_ReturnsConflictForNonSubmittedApplication()
+    public async Task Reject_ReturnsConflictForAlreadyRejectedApplication()
     {
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
-        application.Status = "Approved";
-        db.ProviderApplicationSectionReviews.Add(new ProviderApplicationSectionReview
-        {
-            ProviderApplicationId = application.Id,
-            SectionKey = "basicIdentity",
-            Status = "Rejected",
-            Comment = "Legal name does not match identity document."
-        });
+        application.Status = "Rejected";
         await db.SaveChangesAsync();
         var controller = new AdminProviderController(db);
 
@@ -83,7 +76,7 @@ public sealed class AdminProviderControllerTests
         var problem = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
         var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
-        Assert.Equal("Approved", saved!.Status);
+        Assert.Equal("Rejected", saved!.Status);
     }
 
     [Fact]
@@ -281,41 +274,76 @@ public sealed class AdminProviderControllerTests
     }
 
     [Fact]
-    public async Task Reject_RequiresRejectedSectionWithComment()
+    public async Task Reject_RejectsSubmittedApplicationDirectly()
     {
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
         var controller = new AdminProviderController(db);
 
-        var missingReviewResult = await controller.Reject(application.Id, CancellationToken.None);
+        var result = await controller.Reject(application.Id, CancellationToken.None);
 
-        var missingProblem = Assert.IsType<ObjectResult>(missingReviewResult);
-        Assert.Equal(StatusCodes.Status400BadRequest, missingProblem.StatusCode);
-
-        db.ProviderApplicationSectionReviews.Add(new ProviderApplicationSectionReview
-        {
-            ProviderApplicationId = application.Id,
-            SectionKey = "basicIdentity",
-            Status = "Approved"
-        });
-        await db.SaveChangesAsync();
-
-        var approvedOnlyResult = await controller.Reject(application.Id, CancellationToken.None);
-
-        var approvedOnlyProblem = Assert.IsType<ObjectResult>(approvedOnlyResult);
-        Assert.Equal(StatusCodes.Status400BadRequest, approvedOnlyProblem.StatusCode);
-
-        var review = await db.ProviderApplicationSectionReviews.SingleAsync();
-        review.Status = "Rejected";
-        review.Comment = "Legal name does not match identity document.";
-        await db.SaveChangesAsync();
-
-        var rejectedResult = await controller.Reject(application.Id, CancellationToken.None);
-
-        Assert.IsType<NoContentResult>(rejectedResult);
+        Assert.IsType<NoContentResult>(result);
         var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
         Assert.Equal("Rejected", saved!.Status);
+        Assert.NotNull(saved.RejectedAtUtc);
+    }
+
+    [Fact]
+    public async Task Reject_SoftDeletesApprovedProviderAndActivities()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddSubmittedApplicationAsync(db, user.Id);
+        application.Status = "Approved";
+        var profile = new ProviderProfile
+        {
+            ProviderApplicationId = application.Id,
+            UserId = user.Id,
+            Name = "Asha Rao",
+            VisibilityStatus = "Published",
+            IsActive = true,
+        };
+        db.ProviderProfiles.Add(profile);
+        db.UserRoles.Add(new UserRole { UserId = user.Id, Role = "Provider", IsActive = true });
+        db.Appointments.Add(new Appointment
+        {
+            ProviderProfileId = profile.Id,
+            PatientUserId = Guid.NewGuid(),
+            StartsAtUtc = DateTimeOffset.UtcNow.AddDays(1),
+            EndsAtUtc = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            Status = "Scheduled",
+        });
+        await db.SaveChangesAsync();
+        var controller = new AdminProviderController(db);
+
+        var result = await controller.Reject(application.Id, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+        var savedProfile = await db.ProviderProfiles.FindAsync([profile.Id], CancellationToken.None);
+        Assert.False(savedProfile!.IsActive);
+        Assert.Equal("Hidden", savedProfile.VisibilityStatus);
+        Assert.Equal("Cancelled", (await db.Appointments.SingleAsync()).Status);
+        Assert.False(await db.UserRoles.AnyAsync(role => role.UserId == user.Id && role.IsActive));
+    }
+
+    [Fact]
+    public async Task Approve_MaterializesPublishedProviderProfile()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddSubmittedApplicationAsync(db, user.Id, includeAllSections: true);
+        AddApprovedReviews(db, application.Id, RequiredReviewSectionKeys);
+        await db.SaveChangesAsync();
+        var controller = new AdminProviderController(db);
+
+        var result = await controller.Approve(application.Id, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+        var profile = await db.ProviderProfiles.SingleAsync(item => item.ProviderApplicationId == application.Id);
+        Assert.True(profile.IsActive);
+        Assert.Equal("Published", profile.VisibilityStatus);
+        Assert.NotNull(profile.PublishedAtUtc);
     }
 
     [Fact]
@@ -412,7 +440,6 @@ public sealed class AdminProviderControllerTests
         application.SessionDetailsJson = """
             {
               "sessionDetails": {
-                "sessionLengthsMinutes": [60],
                 "availabilitySlots": [{ "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }],
                 "capacityPerWeek": 12
               },

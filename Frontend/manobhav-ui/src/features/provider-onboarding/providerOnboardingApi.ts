@@ -46,7 +46,6 @@ export type ProviderModalitiesSection = {
 };
 
 export type ProviderSessionDetailsSection = {
-  sessionLengthsMinutes: number[];
   availabilitySlots: AvailabilitySlot[];
   capacityPerWeek: number | null;
 };

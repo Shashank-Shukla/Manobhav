@@ -83,7 +83,6 @@ function createApplicationDetailResponse() {
         deliveryModes: ['Online'],
       },
       sessionDetails: {
-        sessionLengthsMinutes: [60],
         availabilitySummary: 'Weekdays',
         capacityPerWeek: 12,
       },
@@ -257,17 +256,14 @@ describe('AdminDashboardRoute admin application review flow', () => {
     expect(await screen.findByText(/application approved/i)).toBeInTheDocument();
   });
 
-  it('allows final rejection when a section is rejected with a comment', async () => {
+  it('rejects the entire application directly from the always-enabled reject button', async () => {
     const user = userEvent.setup();
     renderAdmin(`/dashboard/admin/provider-applications/${providerApplicationId}`);
 
-    expect(await screen.findByRole('button', { name: /^reject application$/i })).toBeDisabled();
+    const rejectButton = await screen.findByRole('button', { name: /^reject application$/i });
+    expect(rejectButton).toBeEnabled();
 
-    await user.type(screen.getByRole('textbox', { name: /comment for bio and approach/i }), 'Approach needs more detail.');
-    await user.click(screen.getByRole('button', { name: /reject bio and approach section/i }));
-
-    await waitFor(() => expect(screen.getByRole('button', { name: /^reject application$/i })).toBeEnabled());
-    await user.click(screen.getByRole('button', { name: /^reject application$/i }));
+    await user.click(rejectButton);
 
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
       String(url).endsWith(`/api/admin/provider-applications/${providerApplicationId}/reject`) &&
