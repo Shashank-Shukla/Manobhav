@@ -18,6 +18,15 @@ public sealed class ProviderProfile
     public string? Bio { get; set; }
     public string? TherapyApproach { get; set; }
     public string SpecializationsJson { get; set; } = "[]";
+
+    /// <summary>
+    /// The provider's recurring weekly availability captured during onboarding, stored as a JSON
+    /// array of <c>{ dayOfWeek, startTime, endTime }</c> entries (dayOfWeek 0=Sunday..6=Saturday,
+    /// times as 24-hour "HH:mm"). This is the source of truth for the public directory's
+    /// "next available dates" and the booking calendar's enabled weekdays; concrete bookable
+    /// <see cref="ProviderAvailabilitySlot"/> rows are generated from it on demand.
+    /// </summary>
+    public string WeeklyAvailabilityJson { get; set; } = "[]";
     public string AvatarColor { get; set; } = "#9CAF88";
     public Guid? ProfilePhotoDocumentId { get; set; }
     public Guid? IntroVideoDocumentId { get; set; }

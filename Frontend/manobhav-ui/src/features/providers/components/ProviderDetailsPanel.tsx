@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Avatar, Box, Button, Flex, HStack, Tag, Text, VStack } from '@chakra-ui/react';
-import { Star } from 'lucide-react';
+import { CalendarDays, Star } from 'lucide-react';
 import { theme } from '../../../utils/theme';
 import type { ProviderRecord } from '../types';
 
@@ -12,6 +12,7 @@ type ProviderDetailsPanelProps = {
   onBook: () => void;
   onCalendarCancel: () => void;
   onCalendarChoose: (iso: string, label: string) => void;
+  onOpenCalendar: (providerId: string) => void;
   onTempCalendarChange: (iso: string) => void;
   selected?: ProviderRecord;
   selectedDateIso: string;
@@ -26,6 +27,7 @@ export function ProviderDetailsPanel({
   onBook,
   onCalendarCancel,
   onCalendarChoose,
+  onOpenCalendar,
   onTempCalendarChange,
   selected,
   selectedDateIso,
@@ -39,6 +41,7 @@ export function ProviderDetailsPanel({
 
   return showCalendar ? (
     <ProviderCalendarPanel
+      availableDaysOfWeek={selected.availableDaysOfWeek}
       onCalendarCancel={onCalendarCancel}
       onCalendarChoose={onCalendarChoose}
       onTempCalendarChange={onTempCalendarChange}
@@ -51,6 +54,7 @@ export function ProviderDetailsPanel({
       bookingError={bookingError}
       isBooking={isBooking}
       onBook={onBook}
+      onOpenCalendar={onOpenCalendar}
       selected={selected}
       selectedDateLabel={selectedDateLabel}
     />
@@ -58,21 +62,22 @@ export function ProviderDetailsPanel({
 }
 
 function ProviderCalendarPanel({
+  availableDaysOfWeek,
   onCalendarCancel,
   onCalendarChoose,
   onTempCalendarChange,
   selectedDateIso,
   selectedDateLabel,
   tempCalendarIso,
-}: Pick<
-  ProviderDetailsPanelProps,
-  | 'onCalendarCancel'
-  | 'onCalendarChoose'
-  | 'onTempCalendarChange'
-  | 'selectedDateIso'
-  | 'selectedDateLabel'
-  | 'tempCalendarIso'
->) {
+}: {
+  availableDaysOfWeek: number[];
+  onCalendarCancel: () => void;
+  onCalendarChoose: (iso: string, label: string) => void;
+  onTempCalendarChange: (iso: string) => void;
+  selectedDateIso: string;
+  selectedDateLabel: string;
+  tempCalendarIso: string;
+}) {
   return (
     <VStack align="stretch" spacing={3} className="items-center transition-all duration-700 ease-in-out">
       <Text fontSize="lg" fontWeight="bold" color={theme.colors.textMain} textAlign="center">
@@ -80,6 +85,7 @@ function ProviderCalendarPanel({
       </Text>
       <Suspense fallback={<Text color="gray.600">Loading calendar...</Text>}>
         <ProviderDatePicker
+          availableDaysOfWeek={availableDaysOfWeek}
           onCancel={onCalendarCancel}
           onChoose={onCalendarChoose}
           onTempDateChange={onTempCalendarChange}
@@ -96,37 +102,58 @@ function ProviderProfilePanel({
   bookingError,
   isBooking,
   onBook,
+  onOpenCalendar,
   selected,
   selectedDateLabel,
 }: {
   bookingError: string;
   isBooking: boolean;
   onBook: () => void;
+  onOpenCalendar: (providerId: string) => void;
   selected: ProviderRecord;
   selectedDateLabel: string;
 }) {
+  const hasAvailability = selected.availableDaysOfWeek.length > 0;
+
   return (
     <VStack align="stretch" spacing={3} className="h-full transition-all duration-700 ease-in-out">
       <Flex justify="center">
         <Avatar name={selected.name} bg={selected.avatarColor} color="white" boxSize="7rem" />
       </Flex>
-      <Box h="1rem" />
-      <Text fontSize="md" color="gray.700" overflowY={{ base: 'visible', lg: 'auto' }} maxH={{ base: 'none', lg: '8rem' }}>
-        {selected.longDescription}
+      <Text fontSize="xl" fontWeight="bold" color="gray.800" textAlign="center">
+        {selected.name}
       </Text>
-      <Box h="3px" />
-      <HStack spacing={2} flexWrap="wrap">
-        {selected.specializations.map((specialization) => (
-          <Tag key={specialization} colorScheme="green" variant="subtle">
-            {specialization}
-          </Tag>
-        ))}
-      </HStack>
-      <Box h="0.8rem" />
+
+      <Box
+        fontSize="md"
+        color="gray.700"
+        maxH="6.5rem"
+        overflowY="auto"
+        sx={{ scrollbarWidth: 'thin' }}
+      >
+        {selected.longDescription || 'This provider has not added a bio yet.'}
+      </Box>
+
+      {selected.specializations.length > 0 && (
+        <HStack
+          spacing={2}
+          overflowX="auto"
+          flexWrap="nowrap"
+          pb={1}
+          sx={{ scrollbarWidth: 'thin' }}
+        >
+          {selected.specializations.map((specialization) => (
+            <Tag key={specialization} colorScheme="green" variant="subtle" flexShrink={0} whiteSpace="nowrap">
+              {specialization}
+            </Tag>
+          ))}
+        </HStack>
+      )}
+
       <Text fontWeight="semibold" color="gray.800">
         No. of sessions taken: {selected.sessions}
       </Text>
-      <Box h="0.8rem" />
+
       <HStack spacing={1} align="center">
         <Text fontWeight="semibold" color="gray.800">
           Rating:
@@ -138,9 +165,27 @@ function ProviderProfilePanel({
           {selected.rating.toFixed(1)}
         </Text>
       </HStack>
-      <Box h="0.8rem" />
-      <BookingButton isBooking={isBooking} onBook={onBook} selectedDateLabel={selectedDateLabel} />
-      <BookingErrorMessage message={bookingError} />
+
+      <VStack align="stretch" spacing={2} pt={1}>
+        <Flex justify="center">
+          <BookingButton isBooking={isBooking} onBook={onBook} selectedDateLabel={selectedDateLabel} />
+        </Flex>
+        <Flex justify="center">
+          <Button
+            width="75%"
+            variant="outline"
+            leftIcon={<CalendarDays size={16} aria-hidden="true" />}
+            borderColor={theme.colors.sage.DEFAULT}
+            color={theme.colors.sage.dark}
+            _hover={{ bg: theme.colors.sage.light }}
+            isDisabled={!hasAvailability}
+            onClick={() => onOpenCalendar(selected.id)}
+          >
+            More dates
+          </Button>
+        </Flex>
+        <BookingErrorMessage message={bookingError} />
+      </VStack>
     </VStack>
   );
 }
@@ -157,7 +202,7 @@ function BookingButton({
   const isDisabled = !selectedDateLabel || isBooking;
   return (
     <Button
-      px="1.25em"
+      width="75%"
       py="0.5em"
       borderRadius="8px"
       bg={theme.colors.sage.DEFAULT}
@@ -184,7 +229,7 @@ function BookingErrorMessage({ message }: { message: string }) {
   }
 
   return (
-    <Text color="red.700" fontSize="sm" fontWeight="semibold">
+    <Text color="red.700" fontSize="sm" fontWeight="semibold" textAlign="center">
       {message}
     </Text>
   );

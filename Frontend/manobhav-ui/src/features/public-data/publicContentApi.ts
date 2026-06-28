@@ -1,5 +1,6 @@
 import { apiRequest } from '../../shared/api/apiClient';
-import type { ProviderRecord } from '../providers';
+import { computeNextDates, getAvailableDaysOfWeek } from '../providers';
+import type { ProviderRecord, WeeklyAvailabilitySlot } from '../providers';
 
 export type FeaturedExpert = {
   id: string;
@@ -144,8 +145,38 @@ export async function getVisitorFlow(signal?: AbortSignal): Promise<VisitorFlow>
   return mapIntakeFormToVisitorFlow(form);
 }
 
+type ProviderDirectoryItemResponse = {
+  id: string;
+  name: string;
+  summary?: string | null;
+  longDescription?: string | null;
+  specializations?: string[] | null;
+  avatarColor?: string | null;
+  sessions?: number | null;
+  rating?: number | null;
+  weeklyAvailability?: WeeklyAvailabilitySlot[] | null;
+};
+
 export async function getProviders(signal?: AbortSignal): Promise<ProviderRecord[]> {
-  return apiRequest<ProviderRecord[]>('/api/public/providers', { signal });
+  const items = await apiRequest<ProviderDirectoryItemResponse[]>('/api/public/providers', { signal });
+  return items.map(toProviderRecord);
+}
+
+function toProviderRecord(item: ProviderDirectoryItemResponse): ProviderRecord {
+  const weeklyAvailability = Array.isArray(item.weeklyAvailability) ? item.weeklyAvailability : [];
+  return {
+    id: item.id,
+    name: item.name,
+    summary: item.summary ?? '',
+    specializations: Array.isArray(item.specializations) ? item.specializations : [],
+    avatarColor: item.avatarColor || '#9CAF88',
+    weeklyAvailability,
+    nextDates: computeNextDates(weeklyAvailability),
+    availableDaysOfWeek: getAvailableDaysOfWeek(weeklyAvailability),
+    longDescription: item.longDescription ?? '',
+    sessions: item.sessions ?? 0,
+    rating: item.rating ?? 0,
+  };
 }
 
 export async function getActiveIntakeForm(kind: 'PatientIntake' | 'ProviderOnboarding', signal?: AbortSignal): Promise<IntakeForm> {

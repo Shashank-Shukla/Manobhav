@@ -9,6 +9,12 @@ vi.mock('../../shared/auth/cognitoAuth', () => ({
   startCognitoLogin: vi.fn(),
 }));
 
+// The login page redirects authenticated visitors; default every test to an anonymous session so the
+// form renders, matching how these tests drive the sign-in/sign-up UI.
+vi.mock('../../shared/auth/useAuthSession', () => ({
+  useAuthSession: () => ({ session: null, loading: false }),
+}));
+
 describe('LoginRoute', () => {
   beforeEach(() => {
     vi.mocked(startCognitoLogin).mockReset();

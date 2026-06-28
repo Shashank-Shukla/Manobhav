@@ -16,7 +16,7 @@ public sealed class EmailOtpAuthFlowTests
     private static readonly DateTimeOffset FixedNow = DateTimeOffset.Parse("2026-06-19T10:00:00Z");
 
     [Fact]
-    public async Task SignUpRequest_WhenCognitoAccountExists_ReturnsConflictWithFriendlyMessage()
+    public async Task SignUpRequest_WhenCognitoAccountExists_AutoRoutesToSignIn()
     {
         await using var db = CreateDbContext();
         var clock = new MutableClock(FixedNow);
@@ -25,13 +25,15 @@ public sealed class EmailOtpAuthFlowTests
 
         var result = await controller.RequestEmailOtp(new EmailOtpAuthRequest("Person@Example.com", "sign-up"), CancellationToken.None);
 
-        var problem = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
-        var details = Assert.IsType<ProblemDetails>(problem.Value);
-        Assert.Equal("We believe you've already registered with us, you might want to try Signing in.", details.Title);
+        // A registered email is signed in instead of failing with a 409, and no user is created.
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<EmailOtpAuthResponse>(ok.Value);
+        Assert.Equal("person@example.com", response.Email);
+        Assert.Equal("sign-in", response.Flow);
         Assert.Equal(0, cognito.CreateUserRequestCount);
-        Assert.Equal(0, cognito.SignInChallengeRequestCount);
-        Assert.Empty(db.EmailOtpChallenges);
+        Assert.Equal(1, cognito.SignInChallengeRequestCount);
+        var challenge = Assert.Single(db.EmailOtpChallenges);
+        Assert.Equal("sign-in", challenge.Flow);
     }
 
     [Fact]
@@ -129,7 +131,7 @@ public sealed class EmailOtpAuthFlowTests
     }
 
     [Fact]
-    public async Task SignUpRequest_WhenCognitoCreateReportsDuplicate_ReturnsConflictAndReleasesReservation()
+    public async Task SignUpRequest_WhenCognitoCreateRacesDuplicate_FallsBackToSignIn()
     {
         await using var db = CreateDbContext();
         var clock = new MutableClock(FixedNow);
@@ -139,13 +141,16 @@ public sealed class EmailOtpAuthFlowTests
 
         var result = await controller.RequestEmailOtp(new EmailOtpAuthRequest("person@example.com", "sign-up"), CancellationToken.None);
 
-        var problem = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
-        var details = Assert.IsType<ProblemDetails>(problem.Value);
-        Assert.Equal("We believe you've already registered with us, you might want to try Signing in.", details.Title);
+        // The existence check missed a concurrent registration and the create raced a duplicate; we
+        // fall back to signing the now-existing user in rather than failing, and never delete it.
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<EmailOtpAuthResponse>(ok.Value);
+        Assert.Equal("sign-in", response.Flow);
         Assert.Equal(1, cognito.CreateUserRequestCount);
-        Assert.Equal(0, cognito.SignInChallengeRequestCount);
-        Assert.Empty(db.EmailOtpChallenges);
+        Assert.Equal(1, cognito.SignInChallengeRequestCount);
+        Assert.Empty(cognito.DeletedUsers);
+        var challenge = Assert.Single(db.EmailOtpChallenges);
+        Assert.Equal("sign-in", challenge.Flow);
     }
 
     [Fact]
@@ -198,7 +203,8 @@ public sealed class EmailOtpAuthFlowTests
     {
         await using var db = CreateDbContext();
         var clock = new MutableClock(FixedNow);
-        var controller = CreateController(db, new RecordingCognitoEmailOtpAuth(), clock);
+        var cognito = new RecordingCognitoEmailOtpAuth { ExistingUsers = { "person@example.com" } };
+        var controller = CreateController(db, cognito, clock);
 
         for (var i = 0; i < 3; i += 1)
         {
@@ -241,7 +247,7 @@ public sealed class EmailOtpAuthFlowTests
     {
         await using var db = CreateDbContext();
         var clock = new MutableClock(FixedNow);
-        var cognito = new RecordingCognitoEmailOtpAuth();
+        var cognito = new RecordingCognitoEmailOtpAuth { ExistingUsers = { "person@example.com" } };
         var limiter = new RejectingEmailOtpRateLimiter(FixedNow.AddMinutes(1), 60, 2);
         var controller = CreateController(db, cognito, clock, limiter);
 
@@ -422,7 +428,7 @@ public sealed class EmailOtpAuthFlowTests
     {
         await using var database = await SqliteAuthDatabase.CreateAsync();
         await using var db = database.CreateDbContext();
-        var cognito = new RecordingCognitoEmailOtpAuth();
+        var cognito = new RecordingCognitoEmailOtpAuth { ExistingUsers = { "person@example.com" } };
         cognito.OnRequestSignInOtpAsync = async email =>
         {
             await using var verificationDb = database.CreateDbContext();
@@ -468,7 +474,7 @@ public sealed class EmailOtpAuthFlowTests
     public async Task SignInRequest_WhenInitialChallengeSaveFails_DoesNotStartCognitoChallenge()
     {
         await using var db = CreateDbContext(failEmailOtpChallengeInserts: true);
-        var cognito = new RecordingCognitoEmailOtpAuth();
+        var cognito = new RecordingCognitoEmailOtpAuth { ExistingUsers = { "person@example.com" } };
         var controller = CreateController(
             db,
             cognito,

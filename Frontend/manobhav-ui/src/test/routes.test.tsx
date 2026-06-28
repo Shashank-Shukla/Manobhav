@@ -138,7 +138,8 @@ const routeApiMocks = [
         avatarColor: '#9CAF88',
         sessions: 12,
         rating: 4.6,
-        nextDates: [{ display: 'Jun 5', iso: '2026-06-05' }],
+        // Fridays (dayOfWeek 5); the UI derives the next available dates from this.
+        weeklyAvailability: [{ dayOfWeek: 5, startTime: '09:00', endTime: '17:00' }],
       },
     ]),
   },
@@ -322,7 +323,8 @@ describe('operational routes', () => {
     renderWithRouter(<ProvidersPage onBackHome={vi.fn()} onBook={vi.fn()} />, ['/providers']);
 
     expect(screen.getByPlaceholderText(/search providers/i)).toBeInTheDocument();
-    expect(await screen.findByText(/Clinical Specialist/i)).toBeInTheDocument();
+    // The provider name shows on both the list card and the detail panel.
+    expect((await screen.findAllByText(/Clinical Specialist/i)).length).toBeGreaterThan(0);
     await user.type(screen.getByPlaceholderText(/search providers/i), 'not-a-provider');
     expect(await screen.findByText(/no providers match this search/i)).toBeInTheDocument();
 
@@ -332,25 +334,34 @@ describe('operational routes', () => {
   });
 
   it('creates a booking hold before continuing from provider selection', async () => {
-    const user = userEvent.setup();
-    const onBook = vi.fn();
-    window.sessionStorage.setItem('manobhav-active-intake-submission-id', 'submission-1');
+    // Pin "now" to Friday 2026-06-05 so the provider's Friday availability surfaces today as the
+    // first selectable date chip; the UI derives next-available dates from the weekly schedule.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-05T08:00:00.000Z'));
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onBook = vi.fn();
+      window.sessionStorage.setItem('manobhav-active-intake-submission-id', 'submission-1');
 
-    renderWithRouter(<ProvidersPage onBackHome={vi.fn()} onBook={onBook} />, ['/providers']);
+      renderWithRouter(<ProvidersPage onBackHome={vi.fn()} onBook={onBook} />, ['/providers']);
 
-    expect(await screen.findByText(/Clinical Specialist/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Jun 5/i }));
-    await user.click(screen.getByRole('button', { name: /book appointment/i }));
+      // The provider name shows on both the list card and the detail panel.
+      expect((await screen.findAllByText(/Clinical Specialist/i)).length).toBeGreaterThan(0);
+      await user.click(await screen.findByRole('button', { name: /^Jun 5$/i }));
+      await user.click(screen.getByRole('button', { name: /book appointment/i }));
 
-    await waitFor(() => expect(onBook).toHaveBeenCalledTimes(1));
-    const holdCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith('/api/booking/holds'));
-    expect(holdCall?.[1]).toMatchObject({ method: 'POST' });
-    expect(JSON.parse(String((holdCall?.[1] as RequestInit).body))).toEqual({
-      providerId: 'provider-1',
-      slotId: 'slot-1',
-      intakeSubmissionId: 'submission-1',
-    });
-    expect(window.sessionStorage.getItem('manobhav-booking-hold-id')).toBe('hold-1');
+      await waitFor(() => expect(onBook).toHaveBeenCalledTimes(1));
+      const holdCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith('/api/booking/holds'));
+      expect(holdCall?.[1]).toMatchObject({ method: 'POST' });
+      expect(JSON.parse(String((holdCall?.[1] as RequestInit).body))).toEqual({
+        providerId: 'provider-1',
+        slotId: 'slot-1',
+        intakeSubmissionId: 'submission-1',
+      });
+      expect(window.sessionStorage.getItem('manobhav-booking-hold-id')).toBe('hold-1');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('finalizes a stored booking hold on the appointment route', async () => {

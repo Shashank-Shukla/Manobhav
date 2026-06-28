@@ -12,22 +12,20 @@ type LoadState =
 
 export function DashboardProviderPage() {
   const state = useProviderDashboard();
-  const [navExpanded, setNavExpanded] = useState(false);
 
   if (state.status !== 'ready') {
     return <ProviderDashboardStatus status={state.status} />;
   }
 
+  // The sidebar column is a fixed 5rem; expanding the sidebar overlays the content rather than
+  // resizing the grid, so opening/closing it never reflows the whole dashboard (that grid-track
+  // animation was the lag). Only the sidebar element animates, which stays smooth.
   return (
     <div
-      className={`grid min-h-screen grid-cols-1 transition-[grid-template-columns] duration-300 ${
-        navExpanded
-          ? 'lg:grid-cols-[15rem_minmax(0,1fr)_23rem]'
-          : 'lg:grid-cols-[5rem_minmax(0,1fr)_23rem]'
-      }`}
+      className="relative grid min-h-screen grid-cols-1 lg:grid-cols-[5rem_minmax(0,1fr)_23rem]"
       style={{ backgroundColor: theme.colors.smokeWhite, fontFamily: theme.font }}
     >
-      <ProviderDashboardSidebar onExpandedChange={setNavExpanded} />
+      <ProviderDashboardSidebar />
       <ProviderDashboardMain data={state.data} />
       <ProviderDashboardAside data={state.data} />
     </div>

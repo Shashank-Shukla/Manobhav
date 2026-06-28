@@ -65,17 +65,15 @@ export function EmailOtpAuthPanel({ choiceLabel, initialFlow, onAuthenticated }:
     setError('');
     setMessage('');
     try {
+      // The API decides sign-in vs sign-up from whether the email is already registered and echoes
+      // the chosen flow back on the challenge, so an existing email is signed in (not rejected) and
+      // a new one is registered — all in this single request.
       const nextChallenge = await cognitoAuth.requestEmailOtp({ email: normalizedEmail, flow });
       applyChallenge(nextChallenge);
       setEmail(nextChallenge.email);
       setOtp('');
       setStep('otp');
     } catch (err) {
-      if (flow === 'sign-up' && err instanceof ApiError && err.status === 409) {
-        setError("Looks like you're already registered! Head to Sign In to continue.");
-        setMessage('');
-        return;
-      }
       applyApiError(err, 'Unable to send OTP. Please try again.');
     } finally {
       setIsSubmitting(false);

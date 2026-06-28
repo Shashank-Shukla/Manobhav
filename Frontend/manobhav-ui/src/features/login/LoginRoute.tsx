@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { ErrorBoundary } from '../../shared/error/ErrorBoundary';
+import { useAuthSession } from '../../shared/auth/useAuthSession';
 import { LeftPanel } from './components/LeftPanel';
 import { LoginForm } from './components/LoginForm';
 import { SignUpForm } from './components/SignUpForm';
@@ -15,9 +16,16 @@ type LoginMode = 'sign-in' | 'sign-up';
 
 export function LoginPage({ onBack, returnTo }: LoginPageProps) {
   const [searchParams] = useSearchParams();
+  const { session } = useAuthSession();
   const [mode, setMode] = useState<LoginMode>(() => (searchParams.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in'));
   const isSignUp = mode === 'sign-up';
   const authReturnTo = sanitizeReturnTo(returnTo ?? searchParams.get('returnTo'));
+
+  // Already signed in (e.g. an authenticated user clicking "Careers")? Skip the login form and send
+  // them straight where they were headed instead of asking them to sign in again.
+  if (session?.isAuthenticated) {
+    return <Navigate replace to={authReturnTo} />;
+  }
 
   return (
     <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden px-4 pb-4 pt-24 md:px-6 md:pb-6 md:pt-28 animate-in slide-in-from-right-10 duration-500">

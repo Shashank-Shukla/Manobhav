@@ -1,4 +1,4 @@
-import { Avatar, Box, Button, Card, CardBody, CardHeader, Flex, HStack, Tag, Text, VStack } from '@chakra-ui/react';
+import { Avatar, Box, Button, Card, CardBody, CardHeader, Flex, Text, VStack } from '@chakra-ui/react';
 import type { ProviderDateOption, ProviderRecord } from '../types';
 
 type ProviderListProps = {
@@ -45,29 +45,29 @@ export function ProviderList({
                   <Avatar name={provider.name} bg={provider.avatarColor} color="white" size="lg" />
                 </Flex>
 
-                <Flex direction="column" flex={1} gap={2}>
+                <Flex direction="column" flex={1} gap={1}>
                   <CardHeader padding={0}>
                     <Text fontSize="lg" fontWeight="bold" color="gray.800">
                       {provider.name}
                     </Text>
                   </CardHeader>
-                  <Text fontSize="sm" color="gray.600">
-                    {provider.summary}
-                  </Text>
-                  <HStack spacing={2} flexWrap="wrap">
-                    {provider.specializations.map((specialization) => (
-                      <Tag key={specialization} colorScheme="green" variant="subtle">
-                        {specialization}
-                      </Tag>
-                    ))}
-                  </HStack>
+                  {provider.summary && (
+                    <Text fontSize="sm" color="gray.600" noOfLines={3}>
+                      {provider.summary}
+                    </Text>
+                  )}
                 </Flex>
               </Flex>
 
-              <VStack align="flex-start" spacing={2} minW={{ base: '100%', md: '150px' }}>
+              <VStack align="flex-start" spacing={2} minW={{ base: '100%', md: '160px' }}>
                 <Text fontSize="sm" fontWeight="semibold" color="gray.700">
                   Next available
                 </Text>
+                {provider.nextDates.length === 0 && (
+                  <Text fontSize="xs" color="gray.500">
+                    No availability set
+                  </Text>
+                )}
                 <Flex gap={2} wrap="wrap">
                   {provider.nextDates.slice(0, 10).map((date) => (
                     <Button

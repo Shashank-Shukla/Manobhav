@@ -344,6 +344,48 @@ public sealed class AdminProviderControllerTests
         Assert.True(profile.IsActive);
         Assert.Equal("Published", profile.VisibilityStatus);
         Assert.NotNull(profile.PublishedAtUtc);
+        // The onboarding details must be carried onto the published profile so the public directory
+        // is not empty (the P0 regression this guards against).
+        Assert.Equal("Asha Rao", profile.DisplayName);
+        Assert.Equal("Trauma informed therapist", profile.Summary);
+        Assert.Contains("Anxiety", profile.SpecializationsJson);
+        Assert.Contains("English", profile.LanguagesJson);
+        Assert.Contains("\"dayOfWeek\":1", profile.WeeklyAvailabilityJson);
+        Assert.Contains("09:00", profile.WeeklyAvailabilityJson);
+    }
+
+    [Fact]
+    public async Task Publish_BackfillsProfileDataFromApplication()
+    {
+        await using var db = CreateDbContext();
+        var user = await AddUserAsync(db);
+        var application = await AddSubmittedApplicationAsync(db, user.Id, includeAllSections: true);
+        application.Status = "Approved";
+        // A profile materialized before the data-copy fix: published but with empty details.
+        var profile = new ProviderProfile
+        {
+            ProviderApplicationId = application.Id,
+            UserId = user.Id,
+            Name = "Asha Rao",
+            VisibilityStatus = "Published",
+            IsActive = true,
+            Summary = string.Empty,
+            SpecializationsJson = "[]",
+            WeeklyAvailabilityJson = "[]",
+        };
+        db.ProviderProfiles.Add(profile);
+        await db.SaveChangesAsync();
+        var controller = new AdminProviderController(db);
+
+        var result = await controller.Publish(profile.Id, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+        var saved = await db.ProviderProfiles.FindAsync([profile.Id], CancellationToken.None);
+        Assert.Equal("Trauma informed therapist", saved!.Summary);
+        Assert.Contains("Anxiety", saved.SpecializationsJson);
+        Assert.Contains("\"dayOfWeek\":1", saved.WeeklyAvailabilityJson);
+        Assert.True(saved.IsActive);
+        Assert.Equal("Published", saved.VisibilityStatus);
     }
 
     [Fact]

@@ -1,7 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../../../shared/api/apiClient';
 import { requestEmailOtp, verifyEmailOtp } from '../../../shared/auth/cognitoAuth';
 import { EmailOtpAuthPanel } from './EmailOtpAuthPanel';
 
@@ -63,19 +62,29 @@ describe('EmailOtpAuthPanel', () => {
     expect(screen.getByRole('textbox', { name: /one-time code/i })).toHaveFocus();
   });
 
-  it('shows a friendly redirect message on duplicate sign-up (409)', async () => {
+  it('routes an already-registered email straight to the OTP step using the backend-chosen flow', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const apiMessage = "We believe you've already registered with us, you might want to try Signing in.";
-    vi.mocked(requestEmailOtp).mockRejectedValue(
-      new ApiError(apiMessage, 409, { title: apiMessage, status: 409 }),
-    );
+    // The API decides the email is already registered and returns a sign-in challenge (no 409).
+    vi.mocked(requestEmailOtp).mockResolvedValue({
+      ...firstChallenge,
+      challengeId: 'challenge-signin',
+      flow: 'sign-in',
+    });
     renderPanel();
 
     await user.click(screen.getByRole('button', { name: /register with email otp/i }));
     await user.type(screen.getByRole('textbox', { name: /email address/i }), 'person@example.com');
     await user.click(screen.getByRole('button', { name: /send verification code/i }));
 
-    expect(await screen.findByText(/already registered.*sign in/i)).toBeInTheDocument();
+    // No dead-end: the panel advances to OTP entry and verifies with the backend-chosen sign-in flow.
+    expect(await screen.findByRole('textbox', { name: /one-time code/i })).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: /one-time code/i }), '123456{Enter}');
+    expect(verifyEmailOtp).toHaveBeenCalledWith({
+      email: 'person@example.com',
+      flow: 'sign-in',
+      challengeId: 'challenge-signin',
+      otp: '123456',
+    });
   });
 
   it('disables resend until the server resend time elapses without layout shift', async () => {
