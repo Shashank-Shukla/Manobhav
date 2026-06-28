@@ -79,6 +79,7 @@ function ProvidersDirectory({ onBackHome: _onBackHome, onBook }: ProvidersRouteP
       onBook={() => void bookSelectedProvider()}
       onCalendarCancel={directory.cancelCalendar}
       onCalendarChoose={directory.chooseCalendarDate}
+      onOpenCalendar={directory.openCalendar}
       onTempCalendarChange={directory.setTempCalendarIso}
       selected={directory.selected}
       selectedDateIso={directory.selectedDateIso}

@@ -9,6 +9,7 @@ import { theme } from '../../../utils/theme';
 import { muiCalendarTheme } from '../providerCalendarTheme';
 
 type ProviderDatePickerProps = {
+  availableDaysOfWeek: number[];
   onCancel: () => void;
   onChoose: (iso: string, label: string) => void;
   onTempDateChange: (iso: string) => void;
@@ -18,6 +19,7 @@ type ProviderDatePickerProps = {
 };
 
 export function ProviderDatePicker({
+  availableDaysOfWeek,
   onCancel,
   onChoose,
   onTempDateChange,
@@ -25,6 +27,9 @@ export function ProviderDatePicker({
   selectedDateLabel,
   tempCalendarIso,
 }: ProviderDatePickerProps) {
+  const availableDays = new Set(availableDaysOfWeek);
+  // Only leave enabled the weekdays the provider actually works (dayjs day(): 0=Sunday..6=Saturday).
+  const isDateDisabled = (day: Dayjs) => !availableDays.has(day.day());
   const activeIso = tempCalendarIso || selectedDateIso || dayjs().format('YYYY-MM-DD');
 
   return (
@@ -34,6 +39,7 @@ export function ProviderDatePicker({
           <StaticDatePicker
             displayStaticWrapperAs="mobile"
             disablePast
+            shouldDisableDate={isDateDisabled}
             value={dayjs(activeIso)}
             onChange={(value: Dayjs | null) => {
               if (value) {

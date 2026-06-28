@@ -120,24 +120,137 @@ public sealed class AdminProviderController : ControllerBase
             .FirstOrDefaultAsync(profile => profile.ProviderApplicationId == application.Id, cancellationToken);
         if (existing is not null)
         {
+            ApplyOnboardingProfileData(existing, application);
             PublishProfile(existing, now);
             return;
         }
 
-        var (displayName, legalName) = ReadApplicationNames(application);
-        var name = FirstNonEmpty(displayName, legalName) ?? "Provider";
-        await _db.ProviderProfiles.AddAsync(new ProviderProfile
+        var profile = new ProviderProfile
         {
             ProviderApplicationId = application.Id,
             UserId = application.UserId,
-            Name = name,
-            DisplayName = FirstNonEmpty(displayName, legalName),
             Role = "Therapist",
             VisibilityStatus = "Published",
             IsActive = true,
             CreatedAtUtc = now,
             PublishedAtUtc = now,
-        }, cancellationToken);
+        };
+        ApplyOnboardingProfileData(profile, application);
+        await _db.ProviderProfiles.AddAsync(profile, cancellationToken);
+    }
+
+    /// <summary>
+    /// Copies the provider's submitted onboarding details — name, short/long bio, focus areas,
+    /// languages, location and recurring weekly availability — from the application's section JSON
+    /// blobs onto the materialized <see cref="ProviderProfile"/>. Without this the public directory
+    /// renders an empty card even though the application captured everything. It runs on first
+    /// approval and on every re-approval, so an edited-and-resubmitted application republishes with
+    /// fresh data.
+    /// </summary>
+    private static void ApplyOnboardingProfileData(ProviderProfile profile, ProviderOnboardingApplication application)
+    {
+        var (displayName, legalName) = ReadApplicationNames(application);
+        profile.Name = FirstNonEmpty(displayName, legalName) ?? "Provider";
+        profile.DisplayName = FirstNonEmpty(displayName, legalName);
+
+        var basic = ReadSection<ProviderBasicIdentitySection>(application.BasicProfileJson, nestedProperty: null);
+        if (!string.IsNullOrWhiteSpace(basic?.Location))
+        {
+            profile.Location = basic!.Location!.Trim();
+        }
+
+        var bio = ReadSection<ProviderBioSection>(application.BioJson, "bio");
+        profile.Summary = Clamp(bio?.ShortBio, 512);
+        profile.LongDescription = Clamp(bio?.LongBio, 2000);
+        profile.Bio = string.IsNullOrWhiteSpace(bio?.LongBio) ? null : Clamp(bio!.LongBio, 2000);
+        profile.LanguagesJson = SerializeStrings(bio?.Languages);
+
+        var specializations = ReadSection<ProviderSpecializationsSection>(application.BioJson, "specializations");
+        profile.SpecializationsJson = SerializeStrings(specializations?.FocusAreas);
+
+        var sessionDetails = ReadSection<ProviderSessionDetailsSection>(application.SessionDetailsJson, "sessionDetails");
+        profile.WeeklyAvailabilityJson = SerializeWeeklyAvailability(sessionDetails?.AvailabilitySlots);
+    }
+
+    private static readonly JsonSerializerOptions OnboardingJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>
+    /// Deserializes a typed section from a section JSON blob. When <paramref name="nestedProperty"/>
+    /// is supplied the section lives under that key (e.g. <c>BioJson.bio</c>); otherwise the whole
+    /// document is the section (e.g. <c>BasicProfileJson</c>). Returns null on any malformed input.
+    /// </summary>
+    private static T? ReadSection<T>(string json, string? nestedProperty) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            if (nestedProperty is null)
+            {
+                return JsonSerializer.Deserialize<T>(json, OnboardingJsonOptions);
+            }
+
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !document.RootElement.TryGetProperty(nestedProperty, out var nested))
+            {
+                return null;
+            }
+
+            return nested.Deserialize<T>(OnboardingJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string Clamp(string? value, int maxLength)
+    {
+        var trimmed = value?.Trim() ?? string.Empty;
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static string SerializeStrings(IReadOnlyList<string>? values)
+    {
+        var cleaned = (values ?? [])
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .ToList();
+        return JsonSerializer.Serialize(cleaned);
+    }
+
+    /// <summary>
+    /// Normalizes the onboarding weekly slots into the directory's wire shape
+    /// (<c>{ dayOfWeek, startTime, endTime }</c>, dayOfWeek 0=Sunday..6=Saturday), dropping any
+    /// entry whose times aren't 24-hour "HH:mm". This JSON is read verbatim by the public API.
+    /// </summary>
+    private static string SerializeWeeklyAvailability(IReadOnlyList<AvailabilitySlotDto>? slots)
+    {
+        var cleaned = (slots ?? [])
+            .Where(slot => slot is not null && IsTimeOfDay(slot.StartTime) && IsTimeOfDay(slot.EndTime))
+            .Select(slot => new
+            {
+                dayOfWeek = ((slot.DayOfWeek % 7) + 7) % 7,
+                startTime = slot.StartTime,
+                endTime = slot.EndTime,
+            })
+            .ToList();
+        return JsonSerializer.Serialize(cleaned);
+    }
+
+    private static bool IsTimeOfDay(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length != 5 || value[2] != ':')
+        {
+            return value == "24:00";
+        }
+
+        return int.TryParse(value[..2], out var hours) && hours is >= 0 and <= 23 &&
+            int.TryParse(value[3..], out var minutes) && minutes is >= 0 and <= 59;
     }
 
     private static void PublishProfile(ProviderProfile profile, DateTimeOffset now)
@@ -402,10 +515,32 @@ public sealed class AdminProviderController : ControllerBase
             return NotFound();
         }
 
+        var now = DateTimeOffset.UtcNow;
+        if (string.Equals(visibility, "Published", StringComparison.Ordinal))
+        {
+            // Publishing re-syncs the public profile from the latest onboarding application and
+            // reactivates it. This also backfills providers that were approved before their details
+            // were materialized onto the profile (re-publish to refresh an empty card).
+            if (profile.ProviderApplicationId is { } applicationId)
+            {
+                var application = await _db.ProviderOnboardingApplications
+                    .FirstOrDefaultAsync(item => item.Id == applicationId, cancellationToken);
+                if (application is not null)
+                {
+                    ApplyOnboardingProfileData(profile, application);
+                }
+            }
+
+            profile.IsActive = true;
+            profile.PublishedAtUtc = now;
+        }
+        else if (string.Equals(visibility, "Unpublished", StringComparison.Ordinal))
+        {
+            profile.UnpublishedAtUtc = now;
+        }
+
         profile.VisibilityStatus = visibility;
-        profile.PublishedAtUtc = visibility == "Published" ? DateTimeOffset.UtcNow : profile.PublishedAtUtc;
-        profile.UnpublishedAtUtc = visibility == "Unpublished" ? DateTimeOffset.UtcNow : profile.UnpublishedAtUtc;
-        profile.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        profile.UpdatedAtUtc = now;
         await _db.SaveChangesAsync(cancellationToken);
         return NoContent();
     }

@@ -67,7 +67,6 @@ public sealed class PublicContentController : ControllerBase
             .Where(provider => !featured || provider.IsFeatured)
             .OrderBy(provider => provider.DisplayOrder)
             .ThenBy(provider => provider.DisplayName ?? provider.Name)
-            .Include(provider => provider.AvailabilitySlots.Where(slot => slot.Status == "Available" && slot.StartsAtUtc >= DateTimeOffset.UtcNow))
             .Take(limit)
             .ToListAsync(cancellationToken);
 
@@ -76,26 +75,39 @@ public sealed class PublicContentController : ControllerBase
             provider.DisplayName ?? provider.Name,
             provider.Summary,
             provider.Bio ?? provider.LongDescription,
-            ReadSpecializations(provider.SpecializationsJson),
+            ReadStringList(provider.SpecializationsJson),
             provider.AvatarColor,
             provider.Sessions,
             provider.RatingAverage > 0 ? provider.RatingAverage : provider.Rating,
-            provider.AvailabilitySlots
-                .OrderBy(slot => slot.StartsAtUtc)
-                .Take(10)
-                .Select(slot => new ProviderDateDto(
-                    slot.StartsAtUtc.ToString("MMM d"),
-                    slot.StartsAtUtc.ToString("yyyy-MM-dd")))
-                .ToList())).ToList();
+            ReadWeeklyAvailability(provider.WeeklyAvailabilityJson))).ToList();
 
         return Ok(response);
     }
 
-    private static IReadOnlyList<string> ReadSpecializations(string value)
+    private static IReadOnlyList<string> ReadStringList(string value)
     {
         try
         {
             return JsonSerializer.Deserialize<IReadOnlyList<string>>(value) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static readonly JsonSerializerOptions WeeklyAvailabilityJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>
+    /// Reads the provider's recurring weekly availability. The directory UI derives the next
+    /// available dates (in the visitor's local time) and the booking calendar's enabled weekdays
+    /// from this, rather than from pre-generated dated slots.
+    /// </summary>
+    private static IReadOnlyList<ProviderWeeklySlotDto> ReadWeeklyAvailability(string value)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<IReadOnlyList<ProviderWeeklySlotDto>>(value, WeeklyAvailabilityJsonOptions) ?? [];
         }
         catch (JsonException)
         {
@@ -121,6 +133,7 @@ public sealed record ProviderDirectoryItemDto(
     string AvatarColor,
     int Sessions,
     decimal Rating,
-    IReadOnlyList<ProviderDateDto> NextDates);
+    IReadOnlyList<ProviderWeeklySlotDto> WeeklyAvailability);
 
-public sealed record ProviderDateDto(string Display, string Iso);
+/// <summary>A recurring weekly availability window. DayOfWeek is 0=Sunday..6=Saturday; times are 24-hour "HH:mm".</summary>
+public sealed record ProviderWeeklySlotDto(int DayOfWeek, string StartTime, string EndTime);

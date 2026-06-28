@@ -19,22 +19,14 @@ const navItems = [
   { label: "Today's appointments", href: '/dashboard#todays-appointments', icon: Clock },
 ];
 
-const HOVER_EXPAND_DELAY_MS = 1000;
+const HOVER_EXPAND_DELAY_MS = 250;
 
-type ProviderDashboardSidebarProps = {
-  onExpandedChange?: (expanded: boolean) => void;
-};
-
-export function ProviderDashboardSidebar({ onExpandedChange }: ProviderDashboardSidebarProps) {
+export function ProviderDashboardSidebar() {
   const location = useLocation();
   const [pinned, setPinned] = useState(false);
   const [hovering, setHovering] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const expanded = pinned || hovering;
-
-  useEffect(() => {
-    onExpandedChange?.(expanded);
-  }, [expanded, onExpandedChange]);
 
   useEffect(() => () => {
     if (hoverTimer.current) {
@@ -60,7 +52,9 @@ export function ProviderDashboardSidebar({ onExpandedChange }: ProviderDashboard
   return (
     <nav
       aria-label="Provider dashboard navigation"
-      className="relative flex min-w-0 items-center gap-2 overflow-x-auto border-b px-3 py-3 lg:h-full lg:flex-col lg:items-stretch lg:overflow-visible lg:border-b-0 lg:border-r lg:px-3 lg:py-5"
+      className={`relative flex min-w-0 items-center gap-2 overflow-x-auto border-b px-3 py-3 lg:absolute lg:inset-y-0 lg:left-0 lg:z-30 lg:flex-col lg:items-stretch lg:overflow-visible lg:border-b-0 lg:border-r lg:px-3 lg:py-5 lg:transition-[width] lg:duration-200 lg:ease-out ${
+        expanded ? 'lg:w-60 lg:shadow-xl' : 'lg:w-20'
+      }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{ backgroundColor: theme.colors.white, borderColor: theme.colors.grey.DEFAULT }}
@@ -79,7 +73,7 @@ export function ProviderDashboardSidebar({ onExpandedChange }: ProviderDashboard
         type="button"
         aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
         aria-pressed={pinned}
-        className="absolute left-[3.75rem] top-[4.25rem] z-10 hidden h-7 w-7 translate-x-[-50%] items-center justify-center rounded-full border bg-white shadow-md transition hover:shadow-lg lg:flex"
+        className="absolute right-0 top-[4.75rem] z-40 hidden h-7 w-7 translate-x-1/2 items-center justify-center rounded-full border bg-white shadow-md transition hover:shadow-lg lg:flex"
         onClick={() => setPinned((current) => !current)}
         style={{ borderColor: theme.colors.sage.DEFAULT, color: theme.colors.sage.dark }}
       >

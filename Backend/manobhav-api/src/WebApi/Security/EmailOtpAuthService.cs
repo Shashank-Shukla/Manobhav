@@ -102,15 +102,17 @@ public sealed class EmailOtpAuthService(
         var normalized = Normalize(request);
         var now = clock.UtcNow;
 
-        if (normalized.Flow == "sign-up" && await cognito.UserExistsAsync(normalized.Email, cancellationToken))
-        {
-            throw new EmailOtpConflictException(DuplicateRegistrationMessage);
-        }
+        // The API owns the sign-in vs sign-up decision: a known email signs in, an unknown email
+        // registers. The client's requested flow is only a hint, so a registered user landing on
+        // "sign up" (or a brand-new user on "sign in") is routed correctly in a single request
+        // instead of dead-ending on a 409. The chosen flow is stored on the challenge and echoed
+        // back so verification matches it.
+        var flow = await cognito.UserExistsAsync(normalized.Email, cancellationToken) ? "sign-in" : "sign-up";
 
-        var reservation = await rateLimiter.ReserveAsync(normalized.Email, normalized.Flow, now, cancellationToken);
+        var reservation = await rateLimiter.ReserveAsync(normalized.Email, flow, now, cancellationToken);
 
         var userCreated = false;
-        if (normalized.Flow == "sign-up")
+        if (flow == "sign-up")
         {
             try
             {
@@ -119,8 +121,9 @@ public sealed class EmailOtpAuthService(
             }
             catch (CognitoEmailOtpException exception) when (IsDuplicateCognitoUser(exception))
             {
-                await ReleaseReservationAsync(reservation, now, cancellationToken);
-                throw new EmailOtpConflictException(DuplicateRegistrationMessage);
+                // Raced with another registration between the existence check and create: the account
+                // now exists, so fall back to signing the user in rather than failing.
+                flow = "sign-in";
             }
             catch
             {
@@ -129,7 +132,7 @@ public sealed class EmailOtpAuthService(
             }
         }
 
-        var saved = AddChallenge(normalized.Email, normalized.Flow, now, httpContext);
+        var saved = AddChallenge(normalized.Email, flow, now, httpContext);
 
         try
         {
@@ -158,7 +161,7 @@ public sealed class EmailOtpAuthService(
             await InvalidateChallengeAsync(
                 saved.Id,
                 normalized.Email,
-                normalized.Flow,
+                flow,
                 now,
                 "cognito-challenge-failed",
                 "failed",

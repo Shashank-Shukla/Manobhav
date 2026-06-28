@@ -254,7 +254,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(provider => provider.Location).HasMaxLength(160);
             entity.Property(provider => provider.Bio).HasMaxLength(2000);
             entity.Property(provider => provider.TherapyApproach).HasMaxLength(2000);
-            entity.Property(provider => provider.SpecializationsJson).HasMaxLength(1024).IsRequired();
+            entity.Property(provider => provider.SpecializationsJson).HasColumnType("jsonb").HasDefaultValue("[]").IsRequired();
+            entity.Property(provider => provider.WeeklyAvailabilityJson).HasColumnType("jsonb").HasDefaultValue("[]");
             entity.Property(provider => provider.AvatarColor).HasMaxLength(16).IsRequired();
             entity.Property(provider => provider.VisibilityStatus).HasMaxLength(40).IsRequired();
             entity.Property(provider => provider.Rating).HasPrecision(3, 2);
