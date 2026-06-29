@@ -9,24 +9,14 @@ using Microsoft.EntityFrameworkCore.Metadata;
 namespace Infrastructure.Repositories;
 
 /// <summary>
-/// Generic, reflection-driven reader over every EF entity type. Returns raw scalar column values so
-/// the diagnostics endpoint can surface ALL data unredacted (the endpoint is intentionally ungated in
-/// alpha). The ONLY values held back are live auth secrets in <see cref="SuppressedColumns"/> — OTP
-/// hashes and Cognito session/lock tokens — which are replayable credentials, not data to verify;
-/// their column still appears, with a placeholder value, so the shape stays visible.
+/// Generic, reflection-driven reader over every EF entity type. Returns every scalar column value
+/// fully RAW and unredacted — including PII, IPs, ciphertext and live auth secrets (OTP hashes,
+/// Cognito session/lock tokens) — because the endpoint is intentionally ungated in alpha and the owner
+/// wants the complete picture to verify data correctness. NOTHING is masked or suppressed; this MUST
+/// be re-gated and re-redacted before real users onboard.
 /// </summary>
 public sealed class AiDbDiagnosticsRepository : IAiDbDiagnosticsRepository
 {
-    private const string SuppressedPlaceholder = "[suppressed: live auth secret]";
-
-    private static readonly HashSet<string> SuppressedColumns = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "OtpHash",
-        "OtpSalt",
-        "ProviderSession",
-        "VerificationLockToken",
-    };
-
     private static readonly MethodInfo ReadRowsMethod = typeof(AiDbDiagnosticsRepository)
         .GetMethod(nameof(ReadRowsGenericAsync), BindingFlags.Instance | BindingFlags.NonPublic)!;
 
@@ -102,9 +92,7 @@ public sealed class AiDbDiagnosticsRepository : IAiDbDiagnosticsRepository
         return entities
             .Select(entity => (IReadOnlyDictionary<string, object?>)properties.ToDictionary(
                 property => property.Name,
-                property => SuppressedColumns.Contains(property.Name)
-                    ? SuppressedPlaceholder
-                    : property.PropertyInfo!.GetValue(entity),
+                property => property.PropertyInfo!.GetValue(entity),
                 StringComparer.Ordinal))
             .ToList();
     }

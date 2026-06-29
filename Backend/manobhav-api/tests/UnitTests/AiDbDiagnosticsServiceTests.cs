@@ -68,17 +68,17 @@ public sealed class AiDbDiagnosticsServiceTests
     }
 
     [Fact]
-    public async Task GetTable_EmailOtpChallenge_SuppressesLiveAuthSecretsButExposesMetadata()
+    public async Task GetTable_EmailOtpChallenge_ExposesEveryColumnRawIncludingAuthFields()
     {
         await using var db = CreateDbContext();
         db.EmailOtpChallenges.Add(new EmailOtpChallenge
         {
             Email = "patient@example.com",
             Flow = "sign-in",
-            OtpHash = "hash-should-not-leak",
-            OtpSalt = "salt-should-not-leak",
-            ProviderSession = "cognito-session-should-not-leak",
-            VerificationLockToken = "lock-token-should-not-leak",
+            OtpHash = "the-otp-hash",
+            OtpSalt = "the-otp-salt",
+            ProviderSession = "cognito-session",
+            VerificationLockToken = "lock-token",
             ExternalSendStatus = "sent",
             IpAddress = "203.0.113.7",
         });
@@ -89,16 +89,14 @@ public sealed class AiDbDiagnosticsServiceTests
             await service.GetTableAsync("email-otp-challenge", 50, 0, CancellationToken.None));
 
         var challenge = Assert.Single(rows);
-        // Business/metadata columns are exposed raw...
+        // Nothing is suppressed anymore — every column is returned exactly as stored, auth fields included.
         Assert.Equal("patient@example.com", challenge["Email"]);
         Assert.Equal("sign-in", challenge["Flow"]);
         Assert.Equal("203.0.113.7", challenge["IpAddress"]);
-        // ...but live auth secrets are suppressed (column stays, value replaced).
-        const string suppressed = "[suppressed: live auth secret]";
-        Assert.Equal(suppressed, challenge["OtpHash"]);
-        Assert.Equal(suppressed, challenge["OtpSalt"]);
-        Assert.Equal(suppressed, challenge["ProviderSession"]);
-        Assert.Equal(suppressed, challenge["VerificationLockToken"]);
+        Assert.Equal("the-otp-hash", challenge["OtpHash"]);
+        Assert.Equal("the-otp-salt", challenge["OtpSalt"]);
+        Assert.Equal("cognito-session", challenge["ProviderSession"]);
+        Assert.Equal("lock-token", challenge["VerificationLockToken"]);
     }
 
     [Fact]

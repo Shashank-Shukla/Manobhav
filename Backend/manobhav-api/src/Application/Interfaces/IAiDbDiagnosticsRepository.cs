@@ -2,9 +2,9 @@ namespace Application.Interfaces;
 
 /// <summary>
 /// Read-only, paged access to every mapped table for the AI diagnostics endpoint. Rows are returned
-/// as ordered column→value maps (raw, unredacted) so the agent can verify data correctness. A small
-/// denylist of live auth-secret columns (OTP hashes, Cognito session tokens) is suppressed at this
-/// layer — see the implementation — because those are replayable secrets, not data to verify.
+/// as ordered column→value maps, fully raw and unredacted (including PII and live auth secrets), so the
+/// agent can verify data correctness. Nothing is masked or suppressed — this must be re-gated and
+/// re-redacted before real users onboard.
 /// </summary>
 public interface IAiDbDiagnosticsRepository
 {
