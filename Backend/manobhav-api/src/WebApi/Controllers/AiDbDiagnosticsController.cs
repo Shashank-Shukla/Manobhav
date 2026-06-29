@@ -2,20 +2,27 @@ using Application.DTOs;
 using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using WebApi.Security;
 
 namespace WebApi.Controllers;
 
 /// <summary>
 /// Read-only, PII-redacted diagnostics over a curated subset of operational tables, for an AI agent
-/// to inspect production data when the private database isn't otherwise reachable. Disabled by
-/// default and gated by <see cref="AiDbDiagnosticsKeyAuthorizationFilter"/> (SSM-configured key); highly
-/// sensitive tables (OTP, payout, raw intake answers, audit, visitor IPs) are never exposed.
+/// to inspect production data when the private database isn't otherwise reachable. Highly sensitive
+/// tables (OTP, payout, raw intake answers, audit, visitor IPs) are never exposed, and fields such as
+/// email/phone are masked.
 /// </summary>
+/// <remarks>
+/// ⚠ SECURITY — this endpoint is intentionally UNGATED (publicly reachable, no key and no auth) while
+/// the product is in alpha with no real users (owner decision, 2026-06-29). It still returns redacted
+/// rows from appointments, user-roles and provider-applications, so it MUST be re-gated or further
+/// redacted before real users onboard. Re-gating recipe (tracked in docs/WORK_TRACKER.md): restore
+/// AiDbDiagnosticsOptions + AiDbDiagnosticsKeyAuthorizationFilter (see git history of PR #28), re-add
+/// [ServiceFilter(typeof(AiDbDiagnosticsKeyAuthorizationFilter))] to this controller, and re-bind the
+/// "AiDbDiagnostics" config section + filter registration in Program.cs.
+/// </remarks>
 [ApiController]
 [AllowAnonymous]
 [Route("api/ai-db-diagnostics")]
-[ServiceFilter(typeof(AiDbDiagnosticsKeyAuthorizationFilter))]
 public sealed class AiDbDiagnosticsController : ControllerBase
 {
     private readonly IAiDbDiagnosticsService _diagnostics;

@@ -84,8 +84,6 @@ builder.Services.AddSingleton(authOptions);
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 builder.Services.Configure<ProviderOnboardingNotificationOptions>(
     builder.Configuration.GetSection("ProviderOnboarding:AdminNotifications"));
-builder.Services.Configure<AiDbDiagnosticsOptions>(builder.Configuration.GetSection(AiDbDiagnosticsOptions.SectionName));
-builder.Services.AddScoped<AiDbDiagnosticsKeyAuthorizationFilter>();
 builder.Services.AddSingleton<AuthCookieManager>();
 builder.Services.AddHttpClient<ICognitoTokenExchange, CognitoTokenExchangeService>();
 builder.Services.AddHttpClient<ICognitoEmailOtpAuth, CognitoEmailOtpAuthService>();

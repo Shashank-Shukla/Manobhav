@@ -254,17 +254,20 @@ public sealed class WebApiPipelineTests
     }
 
     [Fact]
-    public async Task Diagnostics_IsDisabledByDefaultAndReturnsNotFound()
+    public async Task Diagnostics_IsPubliclyAccessibleWithoutAGate()
     {
         await using var factory = new ManobhavApiFactory();
         using var client = factory.CreateHttpsClient();
 
-        // With no Diagnostics key/enabled configured, the gated endpoint is hidden entirely.
+        // The AI-DB diagnostics endpoint is intentionally ungated during alpha (no key/auth required).
+        // 404 is now reserved for unknown table names, not for a hidden/disabled route.
         var summaryResponse = await client.GetAsync("/api/ai-db-diagnostics");
         var tableResponse = await client.GetAsync("/api/ai-db-diagnostics/provider-profiles");
+        var unknownTableResponse = await client.GetAsync("/api/ai-db-diagnostics/not-a-real-table");
 
-        Assert.Equal(HttpStatusCode.NotFound, summaryResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, tableResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, summaryResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, tableResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unknownTableResponse.StatusCode);
     }
 
     [Fact]
