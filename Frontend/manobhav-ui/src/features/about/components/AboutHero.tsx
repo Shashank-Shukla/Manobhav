@@ -15,7 +15,7 @@ function SpeechBubble({
 }) {
   return (
     <div
-      className={`absolute hidden rounded-[1.8rem] px-6 py-5 md:block ${getBubbleTone(tone)} ${className ?? ''}`}
+      className={`absolute hidden rounded-[1.8rem] px-6 py-5 lg:block ${getBubbleTone(tone)} ${className ?? ''}`}
       aria-hidden="true"
     >
       <div className="flex items-center gap-3">
@@ -65,20 +65,20 @@ function ScrollIndicator({ onClick }: { onClick: () => void }) {
 export function AboutHero({ onAdvanceSection }: AboutHeroProps) {
   return (
     <section
-      className="relative h-full overflow-hidden px-6 pb-20 pt-24 md:pb-24 md:pt-28"
+      className="relative min-h-full px-4 pb-16 pt-28 sm:px-6 sm:pt-32 md:pb-24 md:pt-28"
       style={{ backgroundColor: 'rgb(241, 229, 191)' }}
     >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-10 top-28 h-24 w-24 rounded-full bg-white/20 blur-2xl" />
-        <div className="absolute right-12 top-24 h-32 w-32 rounded-full bg-[#f3d1c8]/30 blur-3xl" />
-        <div className="absolute bottom-28 right-1/3 h-28 w-28 rounded-full bg-white/20 blur-2xl" />
-        <HeroLeafVector className="absolute bottom-28 left-0 hidden h-40 w-24 md:block lg:left-10 lg:h-48 lg:w-28" color="#92c29c" />
-        <HeroLeafVector className="absolute bottom-24 right-6 hidden h-36 w-20 md:block lg:right-20 lg:h-44 lg:w-24" color="#9acdb4" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-10 top-28 hidden h-24 w-24 rounded-full bg-white/20 blur-2xl lg:block" />
+        <div className="absolute right-12 top-24 hidden h-32 w-32 rounded-full bg-[#f3d1c8]/30 blur-3xl lg:block" />
+        <div className="absolute bottom-28 right-1/3 hidden h-28 w-28 rounded-full bg-white/20 blur-2xl lg:block" />
+        <HeroLeafVector className="absolute bottom-28 left-0 hidden h-40 w-24 lg:left-10 lg:block lg:h-48 lg:w-28" color="#92c29c" />
+        <HeroLeafVector className="absolute bottom-24 right-6 hidden h-36 w-20 lg:right-20 lg:block lg:h-44 lg:w-24" color="#9acdb4" />
         <SpeechBubble className="left-[10%] top-32" tone="blue" tailSide="left" />
         <SpeechBubble className="top-28 right-[24%]" tone="mint" tailSide="right" />
       </div>
 
-      <div className="relative mx-auto grid h-full max-w-7xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
+      <div className="relative mx-auto grid min-h-full max-w-7xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
         <div className="relative order-2 flex justify-center lg:order-1 lg:justify-start">
           <div className="relative w-full max-w-3xl">
             <div className="absolute inset-x-12 bottom-2 h-12 rounded-full bg-[#d7e5ef] opacity-80 blur-md" />
@@ -92,7 +92,7 @@ export function AboutHero({ onAdvanceSection }: AboutHeroProps) {
         </div>
 
         <div className="order-1 max-w-xl justify-self-end text-center lg:order-2 lg:text-left">
-          <h1 className="mt-4 text-5xl font-extrabold uppercase leading-[0.88] text-[#243b6b] sm:text-6xl md:text-7xl">
+          <h1 className="mt-4 text-3xl font-extrabold uppercase leading-[0.88] text-[#243b6b] sm:text-5xl md:text-6xl lg:text-7xl">
             <span className="block">About</span>
             <span className="block text-[#dc8f83]">Manobhav</span>
           </h1>

@@ -33,7 +33,7 @@ public sealed class AdminController : ControllerBase
     [ProducesResponseType(typeof(AdminDashboardDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<AdminDashboardDto>> GetDashboard(CancellationToken cancellationToken)
+    public async Task<ActionResult<AdminDashboardDto>> GetDashboard(CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
         var todayStart = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
@@ -223,7 +223,7 @@ public sealed class AdminController : ControllerBase
         return "Patient";
     }
 
-    private async Task<IReadOnlyList<AdminProviderRecordDto>> ReadProvidersAsync(CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<AdminProviderRecordDto>> ReadProvidersAsync(CancellationToken cancellationToken = default)
     {
         var providers = await _db.ProviderProfiles
             .AsNoTracking()
@@ -282,7 +282,7 @@ public sealed class AdminController : ControllerBase
         }).ToList();
     }
 
-    private async Task<IReadOnlyList<AdminBookingRecordDto>> ReadBookingsAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<AdminBookingRecordDto>> ReadBookingsAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         var appointments = await _db.Appointments
             .AsNoTracking()
@@ -310,7 +310,7 @@ public sealed class AdminController : ControllerBase
             0)).ToList();
     }
 
-    private async Task<IReadOnlyList<AdminSlotRecordDto>> ReadSlotsAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<AdminSlotRecordDto>> ReadSlotsAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         var slots = await _db.ProviderAvailabilitySlots
             .AsNoTracking()
@@ -341,7 +341,7 @@ public sealed class AdminController : ControllerBase
     private async Task<IReadOnlyList<AdminInsightMetricDto>> ReadMetricsAsync(
         DateTimeOffset todayStart,
         DateTimeOffset tomorrowStart,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var sessionsToday = await _db.Appointments.CountAsync(
             appointment => appointment.StartsAtUtc >= todayStart && appointment.StartsAtUtc < tomorrowStart,
@@ -359,7 +359,7 @@ public sealed class AdminController : ControllerBase
         ];
     }
 
-    private async Task<IReadOnlyList<AdminQueueItemDto>> ReadQueuesAsync(CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<AdminQueueItemDto>> ReadQueuesAsync(CancellationToken cancellationToken = default)
     {
         var submittedApplications = await _db.ProviderOnboardingApplications.CountAsync(item => item.Status == "Submitted", cancellationToken);
         var activeHolds = await _db.BookingHolds.CountAsync(item => item.Status == "Active" && item.ExpiresAtUtc > DateTimeOffset.UtcNow, cancellationToken);

@@ -24,16 +24,16 @@ const typedPrinciples = principles as Principle[];
 
 export function CarePhilosophy() {
   return (
-    <section className="relative h-full overflow-hidden bg-[#FCF2F5] px-6 py-16 md:py-20">
+    <section className="relative min-h-full bg-[#FCF2F5] px-4 py-10 sm:px-6 sm:py-14 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#FCF2F5" />
       <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full rotate-180 md:h-32" fill="#FCF2F5" />
 
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[12%] top-40 h-32 w-32 rounded-full bg-[#F2D2D9]/45 blur-3xl" />
-        <div className="absolute bottom-28 right-[12%] h-36 w-36 rounded-full bg-[#e0edf2]/45 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-[12%] top-40 hidden h-32 w-32 rounded-full bg-[#F2D2D9]/45 blur-3xl lg:block" />
+        <div className="absolute bottom-28 right-[12%] hidden h-36 w-36 rounded-full bg-[#e0edf2]/45 blur-3xl lg:block" />
       </div>
 
-      <SectionReveal className="relative mx-auto flex h-full max-w-7xl items-center">
+      <SectionReveal className="relative mx-auto flex min-h-full max-w-7xl items-center">
         <div className="w-full">
         <div className="mb-10 max-w-3xl">
           <Text variant="caption" className="text-[#7d8f8a]">
@@ -48,7 +48,7 @@ export function CarePhilosophy() {
           </Text>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {typedPrinciples.map((principle) => {
             const Icon = iconMap[principle.icon];
             return (

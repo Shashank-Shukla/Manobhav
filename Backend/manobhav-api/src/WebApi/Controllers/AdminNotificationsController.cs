@@ -22,7 +22,7 @@ public sealed class AdminNotificationsController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AdminNotificationDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<AdminNotificationDto>>> List(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<AdminNotificationDto>>> List(CancellationToken cancellationToken = default)
     {
         var storedNotifications = await _db.AdminNotifications
             .AsNoTracking()
@@ -46,7 +46,7 @@ public sealed class AdminNotificationsController : ControllerBase
 
     [HttpPost("{notificationId}/read")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> MarkRead(string notificationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> MarkRead(string notificationId, CancellationToken cancellationToken = default)
     {
         var notification = await _db.AdminNotifications
             .FirstOrDefaultAsync(item => item.NotificationKey == notificationId, cancellationToken);
@@ -89,7 +89,7 @@ public sealed class AdminNotificationsController : ControllerBase
         return NoContent();
     }
 
-    private async Task<IReadOnlyList<AdminNotificationDto>> ReadSubmittedApplicationNotificationsAsync(CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<AdminNotificationDto>> ReadSubmittedApplicationNotificationsAsync(CancellationToken cancellationToken = default)
     {
         var applications = await _db.ProviderOnboardingApplications
             .AsNoTracking()
@@ -116,7 +116,7 @@ public sealed class AdminNotificationsController : ControllerBase
 
     private async Task<ISet<string>> ReadProviderApplicationReadKeysAsync(
         IReadOnlyCollection<string> candidateNotificationKeys,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         if (candidateNotificationKeys.Count == 0)
         {
@@ -135,7 +135,7 @@ public sealed class AdminNotificationsController : ControllerBase
         return readKeys.ToHashSet(StringComparer.Ordinal);
     }
 
-    private async Task<bool> NotificationKeyExistsAsync(string notificationId, CancellationToken cancellationToken)
+    private async Task<bool> NotificationKeyExistsAsync(string notificationId, CancellationToken cancellationToken = default)
     {
         return await _db.AdminNotifications
             .AsNoTracking()

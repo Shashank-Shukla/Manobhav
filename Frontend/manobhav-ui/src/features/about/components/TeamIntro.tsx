@@ -34,15 +34,15 @@ const teamSignals = [
 
 export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
   return (
-    <section className="relative h-full overflow-hidden bg-[#FBF1F4] px-6 py-16 md:py-20">
+    <section className="relative min-h-full bg-[#FBF1F4] px-4 py-10 sm:px-6 sm:py-14 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#FBF1F4" />
 
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[9%] top-36 h-28 w-28 rounded-full bg-[#F2DBE0]/50 blur-3xl" />
-        <div className="absolute bottom-20 right-[10%] h-36 w-36 rounded-full bg-[#dde9ef]/50 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-[9%] top-36 hidden h-28 w-28 rounded-full bg-[#F2DBE0]/50 blur-3xl lg:block" />
+        <div className="absolute bottom-20 right-[10%] hidden h-36 w-36 rounded-full bg-[#dde9ef]/50 blur-3xl lg:block" />
       </div>
 
-      <SectionReveal className="relative mx-auto flex h-full max-w-7xl items-center">
+      <SectionReveal className="relative mx-auto flex min-h-full max-w-7xl items-center">
         <div className="w-full">
         <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
@@ -69,7 +69,7 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {teamSignals.map((signal) => {
               const Icon = signal.icon;
               return (

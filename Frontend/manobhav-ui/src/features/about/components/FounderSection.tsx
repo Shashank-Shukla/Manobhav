@@ -5,16 +5,16 @@ import { SectionReveal } from './SectionReveal';
 
 export function FounderSection() {
   return (
-    <section className="relative h-full overflow-hidden bg-[#FBF1F4] px-6 py-16 md:py-20">
+    <section className="relative min-h-full bg-[#FBF1F4] px-4 py-10 sm:px-6 sm:py-14 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#FBF1F4" />
       <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full rotate-180 md:h-32" fill="#FBF1F4" />
 
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[8%] top-36 h-32 w-32 rounded-full bg-[#F2D2D9]/55 blur-3xl" />
-        <div className="absolute bottom-24 right-[10%] h-40 w-40 rounded-full bg-[#dce8ee]/55 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-[8%] top-36 hidden h-32 w-32 rounded-full bg-[#F2D2D9]/55 blur-3xl lg:block" />
+        <div className="absolute bottom-24 right-[10%] hidden h-40 w-40 rounded-full bg-[#dce8ee]/55 blur-3xl lg:block" />
       </div>
 
-      <SectionReveal className="relative mx-auto flex h-full max-w-7xl items-center">
+      <SectionReveal className="relative mx-auto flex min-h-full max-w-7xl items-center">
         <div className="grid w-full gap-6 rounded-[2.5rem] border border-[#ECD9D4] bg-[#F9EAEE]/88 p-6 shadow-[0_24px_60px_rgba(61,72,92,0.08)] backdrop-blur-sm lg:grid-cols-[0.72fr_1.28fr] lg:p-8">
           <div className="relative overflow-hidden rounded-[2rem] border border-[#ECD9D4] bg-[#F2DBE0]/72 p-8">
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/25 to-transparent" />

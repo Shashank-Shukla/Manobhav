@@ -1,11 +1,11 @@
-using System.Text.Json;
 using Application.DTOs;
+using Application.Interfaces;
+using Application.Services;
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace WebApi.Controllers;
 
@@ -13,20 +13,15 @@ namespace WebApi.Controllers;
 [Route("api/booking")]
 public sealed class BookingController : ControllerBase
 {
-    private static readonly TimeSpan HoldDuration = TimeSpan.FromMinutes(15);
-
-    // Sessions are a fixed one hour, and provider availability is captured in India local civil time
-    // (this is an India-only platform — RCI licences, IFSC payouts, DPDP). We materialize bookable
-    // slots from the recurring weekly schedule on demand using this fixed offset (India has no DST).
-    private const int SessionMinutes = 60;
-    private static readonly TimeSpan IndiaOffset = TimeSpan.FromHours(5.5);
-    private static readonly JsonSerializerOptions WeeklyAvailabilityJsonOptions = new() { PropertyNameCaseInsensitive = true };
-
     private readonly ApplicationDbContext _db;
+    private readonly IBookingService _booking;
+    private readonly IProviderAvailabilityService _availability;
 
-    public BookingController(ApplicationDbContext db)
+    public BookingController(ApplicationDbContext db, IBookingService booking, IProviderAvailabilityService availability)
     {
         _db = db;
+        _booking = booking;
+        _availability = availability;
     }
 
     [AllowAnonymous]
@@ -36,261 +31,55 @@ public sealed class BookingController : ControllerBase
         Guid providerId,
         [FromQuery] DateTimeOffset? from,
         [FromQuery] DateTimeOffset? to,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        var fromUtc = from ?? DateTimeOffset.UtcNow;
-        var toUtc = to ?? fromUtc.AddDays(30);
-        await ReleaseExpiredHoldsAsync(providerId, null, cancellationToken);
-        await GenerateWeeklySlotsAsync(providerId, fromUtc, toUtc, cancellationToken);
-
-        var slots = await _db.ProviderAvailabilitySlots
-            .AsNoTracking()
-            .Where(slot =>
-                slot.ProviderProfileId == providerId &&
-                slot.Status == "Available" &&
-                slot.StartsAtUtc >= fromUtc &&
-                slot.StartsAtUtc <= toUtc)
-            .OrderBy(slot => slot.StartsAtUtc)
-            .Take(100)
-            .Select(slot => new ProviderSlotDto(slot.Id, slot.ProviderProfileId, slot.StartsAtUtc, slot.EndsAtUtc, slot.Status))
-            .ToListAsync(cancellationToken);
-
-        return Ok(slots);
+        return Ok(await _availability.GetSlotsAsync(providerId, from, to, cancellationToken));
     }
-
-    /// <summary>
-    /// Materializes concrete, bookable one-hour slots for the requested window from the provider's
-    /// recurring weekly availability (set during onboarding). Idempotent: a slot is only inserted
-    /// when one does not already exist for that exact start, so repeated calls and the hold/finalize
-    /// pipeline stay consistent. Only published, active providers generate slots.
-    /// </summary>
-    private async Task GenerateWeeklySlotsAsync(
-        Guid providerId,
-        DateTimeOffset fromUtc,
-        DateTimeOffset toUtc,
-        CancellationToken cancellationToken)
-    {
-        if (toUtc <= fromUtc)
-        {
-            return;
-        }
-
-        var weeklyJson = await _db.ProviderProfiles
-            .AsNoTracking()
-            .Where(provider => provider.Id == providerId && provider.IsActive && provider.VisibilityStatus == "Published")
-            .Select(provider => provider.WeeklyAvailabilityJson)
-            .FirstOrDefaultAsync(cancellationToken);
-        var weekly = ParseWeeklyAvailability(weeklyJson);
-        if (weekly.Count == 0)
-        {
-            return;
-        }
-
-        var now = DateTimeOffset.UtcNow;
-        var windowStart = fromUtc < now ? now : fromUtc;
-        var existingStarts = await _db.ProviderAvailabilitySlots
-            .AsNoTracking()
-            .Where(slot => slot.ProviderProfileId == providerId && slot.StartsAtUtc >= now.AddDays(-1) && slot.StartsAtUtc <= toUtc)
-            .Select(slot => slot.StartsAtUtc)
-            .ToListAsync(cancellationToken);
-        var known = new HashSet<DateTimeOffset>(existingStarts);
-
-        // Pad the IST day range by one day each side so slots whose IST civil date differs from the
-        // requested UTC date (the +5:30 offset can shift across midnight) are still covered.
-        var firstDate = windowStart.ToOffset(IndiaOffset).Date.AddDays(-1);
-        var lastDate = toUtc.ToOffset(IndiaOffset).Date.AddDays(1);
-        var toAdd = new List<ProviderAvailabilitySlot>();
-
-        for (var date = firstDate; date <= lastDate; date = date.AddDays(1))
-        {
-            var dayOfWeek = (int)date.DayOfWeek;
-            foreach (var entry in weekly.Where(slot => slot.DayOfWeek == dayOfWeek))
-            {
-                AppendDaySlots(date, entry, providerId, now, windowStart, toUtc, known, toAdd);
-            }
-        }
-
-        if (toAdd.Count > 0)
-        {
-            await _db.ProviderAvailabilitySlots.AddRangeAsync(toAdd, cancellationToken);
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-    }
-
-    private static void AppendDaySlots(
-        DateTime istDate,
-        WeeklyAvailabilitySlot entry,
-        Guid providerId,
-        DateTimeOffset now,
-        DateTimeOffset windowStart,
-        DateTimeOffset windowEnd,
-        HashSet<DateTimeOffset> known,
-        List<ProviderAvailabilitySlot> toAdd)
-    {
-        if (!TryParseMinutes(entry.StartTime, out var startMinutes) || !TryParseMinutes(entry.EndTime, out var endMinutes))
-        {
-            return;
-        }
-
-        var midnightIst = new DateTimeOffset(istDate.Year, istDate.Month, istDate.Day, 0, 0, 0, IndiaOffset);
-        for (var minute = startMinutes; minute + SessionMinutes <= endMinutes; minute += SessionMinutes)
-        {
-            var startUtc = midnightIst.AddMinutes(minute).ToUniversalTime();
-            if (startUtc < now || startUtc < windowStart || startUtc > windowEnd || !known.Add(startUtc))
-            {
-                continue;
-            }
-
-            toAdd.Add(new ProviderAvailabilitySlot
-            {
-                ProviderProfileId = providerId,
-                StartsAtUtc = startUtc,
-                EndsAtUtc = startUtc.AddMinutes(SessionMinutes),
-                Status = "Available",
-                CreatedAtUtc = now,
-            });
-        }
-    }
-
-    private static IReadOnlyList<WeeklyAvailabilitySlot> ParseWeeklyAvailability(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return [];
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<WeeklyAvailabilitySlot>>(json, WeeklyAvailabilityJsonOptions) ?? [];
-        }
-        catch (JsonException)
-        {
-            return [];
-        }
-    }
-
-    private static bool TryParseMinutes(string? time, out int minutes)
-    {
-        minutes = 0;
-        if (string.Equals(time, "24:00", StringComparison.Ordinal))
-        {
-            minutes = 24 * 60;
-            return true;
-        }
-
-        if (string.IsNullOrWhiteSpace(time) || time.Length != 5 || time[2] != ':')
-        {
-            return false;
-        }
-
-        if (!int.TryParse(time[..2], out var hours) || hours is < 0 or > 23 ||
-            !int.TryParse(time[3..], out var mins) || mins is < 0 or > 59)
-        {
-            return false;
-        }
-
-        minutes = (hours * 60) + mins;
-        return true;
-    }
-
-    private sealed record WeeklyAvailabilitySlot(int DayOfWeek, string StartTime, string EndTime);
 
     [AllowAnonymous]
     [HttpPost("holds")]
     [ProducesResponseType(typeof(BookingHoldDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> CreateHold(CreateBookingHoldRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateHold(CreateBookingHoldRequest request, CancellationToken cancellationToken = default)
     {
         var owner = await ReadOwnerContextAsync(cancellationToken);
-        if (!HasOwnerContext(owner))
+        try
         {
-            return Problem(title: "Booking owner context is required.", statusCode: StatusCodes.Status400BadRequest);
+            var hold = await _booking.CreateHoldAsync(
+                request,
+                owner,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Request.Headers.UserAgent.ToString(),
+                cancellationToken);
+            return Created($"/api/booking/holds/{hold.Id}", hold);
         }
-
-        await ReleaseExpiredHoldsAsync(request.ProviderId, request.SlotId, cancellationToken);
-
-        var provider = await _db.ProviderProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == request.ProviderId && item.VisibilityStatus == "Published" && item.IsActive, cancellationToken);
-        if (provider is null)
+        catch (BookingException exception)
         {
-            return Problem(title: "Provider is not available for booking.", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: exception.Message, statusCode: exception.StatusCode);
         }
-
-        if (!await IntakeSubmissionBelongsToOwnerAsync(request.IntakeSubmissionId, owner, cancellationToken))
-        {
-            return Problem(title: "Intake submission is required before booking.", statusCode: StatusCodes.Status400BadRequest);
-        }
-
-        await using var transaction = await BeginRelationalTransactionAsync(cancellationToken);
-        var now = DateTimeOffset.UtcNow;
-        var slot = await TryHoldSlotAsync(request.ProviderId, request.SlotId, now, cancellationToken);
-        if (slot is null)
-        {
-            return Problem(title: "Selected slot is not available.", statusCode: StatusCodes.Status409Conflict);
-        }
-
-        var hold = new BookingHold
-        {
-            ProviderProfileId = provider.Id,
-            SlotId = slot.Id,
-            VisitorSessionId = owner.VisitorSessionId,
-            UserId = owner.UserId,
-            IntakeSubmissionId = request.IntakeSubmissionId,
-            ExpiresAtUtc = now.Add(HoldDuration),
-            ProviderSnapshotJson = JsonSerializer.Serialize(new { provider.Id, Name = provider.DisplayName ?? provider.Name, provider.ProfessionalTitle }),
-            SelectedSlotSnapshotJson = JsonSerializer.Serialize(new { slot.Id, slot.StartsAtUtc, slot.EndsAtUtc }),
-            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-            UserAgent = Request.Headers.UserAgent.ToString()
-        };
-        await _db.BookingHolds.AddAsync(hold, cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
-        await CommitTransactionAsync(transaction, cancellationToken);
-
-        return Created($"/api/booking/holds/{hold.Id}", ToDto(hold));
     }
 
     [AllowAnonymous]
     [HttpGet("holds/{holdId:guid}")]
     [ProducesResponseType(typeof(BookingHoldDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetHold(Guid holdId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetHold(Guid holdId, CancellationToken cancellationToken = default)
     {
         var owner = await ReadOwnerContextAsync(cancellationToken);
-        var hold = await _db.BookingHolds.FirstOrDefaultAsync(item => item.Id == holdId, cancellationToken);
-        if (hold is null || !HoldBelongsToOwner(hold, owner))
-        {
-            return NotFound();
-        }
-
-        var now = DateTimeOffset.UtcNow;
-        if (IsExpiredActiveHold(hold, now))
-        {
-            await ExpireHoldAsync(hold, now, cancellationToken);
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-
-        return Ok(ToDto(hold));
+        var hold = await _booking.GetHoldAsync(holdId, owner, cancellationToken);
+        return hold is null ? NotFound() : Ok(hold);
     }
 
     [AllowAnonymous]
     [HttpPatch("holds/{holdId:guid}/flow-state")]
     [ProducesResponseType(typeof(BookingHoldDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> PatchFlowState(Guid holdId, PatchBookingHoldFlowStateRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> PatchFlowState(Guid holdId, PatchBookingHoldFlowStateRequest request, CancellationToken cancellationToken = default)
     {
         var owner = await ReadOwnerContextAsync(cancellationToken);
-        var hold = await _db.BookingHolds.FirstOrDefaultAsync(item => item.Id == holdId, cancellationToken);
-        if (hold is null || !HoldBelongsToOwner(hold, owner))
-        {
-            return NotFound();
-        }
-
-        hold.FlowStateJson = string.IsNullOrWhiteSpace(request.FlowStateJson) ? "{}" : request.FlowStateJson;
-        hold.UpdatedAtUtc = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
-        return Ok(ToDto(hold));
+        var hold = await _booking.PatchFlowStateAsync(holdId, owner, request.FlowStateJson, cancellationToken);
+        return hold is null ? NotFound() : Ok(hold);
     }
 
     [Authorize]
@@ -298,7 +87,7 @@ public sealed class BookingController : ControllerBase
     [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> FinalizeAppointment(Guid holdId, CancellationToken cancellationToken)
+    public async Task<IActionResult> FinalizeAppointment(Guid holdId, CancellationToken cancellationToken = default)
     {
         var user = await EnsureCurrentUserAsync(cancellationToken);
         if (user is null)
@@ -306,202 +95,36 @@ public sealed class BookingController : ControllerBase
             return Problem(title: "Authenticated user subject is required.", statusCode: StatusCodes.Status400BadRequest);
         }
 
-        return await FinalizeOwnedAppointmentAsync(holdId, user, cancellationToken);
-    }
-
-    private async Task<IActionResult> FinalizeOwnedAppointmentAsync(
-        Guid holdId,
-        User user,
-        CancellationToken cancellationToken)
-    {
-        var owner = new BookingOwnerContext(user.Id, TryReadVisitorCookie());
-        var hold = await FindOwnedHoldAsync(holdId, owner, cancellationToken);
-        if (hold is null)
+        try
         {
-            return Problem(title: "Booking hold is not active.", statusCode: StatusCodes.Status409Conflict);
+            var appointment = await _booking.FinalizeAsync(holdId, user.Id, TryReadVisitorCookie(), cancellationToken);
+            return Created($"/api/appointments/{appointment.Id}", appointment);
         }
-
-        var now = DateTimeOffset.UtcNow;
-        if (IsExpiredActiveHold(hold, now))
+        catch (BookingException exception)
         {
-            await ExpireHoldAsync(hold, now, cancellationToken);
-            await _db.SaveChangesAsync(cancellationToken);
-            return Problem(title: "Booking hold is not active.", statusCode: StatusCodes.Status409Conflict);
+            return Problem(title: exception.Message, statusCode: exception.StatusCode);
         }
-
-        if (hold.Status is "Completed" or "Cancelled" or "Expired")
-        {
-            return Problem(title: "Booking hold is not active.", statusCode: StatusCodes.Status409Conflict);
-        }
-
-        var slot = await FindHeldSlotAsync(hold.SlotId, cancellationToken);
-        if (slot is null)
-        {
-            return Problem(title: "Held slot is not available for finalization.", statusCode: StatusCodes.Status409Conflict);
-        }
-
-        slot.Status = "Booked";
-        slot.UpdatedAtUtc = now;
-        hold.UserId = user.Id;
-        hold.Status = "Completed";
-        hold.CompletedAtUtc = now;
-
-        var appointment = new Appointment
-        {
-            BookingHoldId = hold.Id,
-            PatientUserId = user.Id,
-            ProviderProfileId = hold.ProviderProfileId,
-            SlotId = slot.Id,
-            IntakeSubmissionId = hold.IntakeSubmissionId ?? Guid.Empty,
-            StartsAtUtc = slot.StartsAtUtc,
-            EndsAtUtc = slot.EndsAtUtc,
-            Status = "Scheduled",
-            PaymentStatus = "NotRequired"
-        };
-        await _db.Appointments.AddAsync(appointment, cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return Created($"/api/appointments/{appointment.Id}", new AppointmentDto(
-            appointment.Id,
-            appointment.BookingHoldId,
-            appointment.PatientUserId,
-            appointment.ProviderProfileId,
-            appointment.SlotId,
-            appointment.IntakeSubmissionId,
-            appointment.StartsAtUtc,
-            appointment.EndsAtUtc,
-            appointment.Status,
-            appointment.PaymentStatus));
     }
 
     [AllowAnonymous]
     [HttpDelete("holds/{holdId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> CancelHold(Guid holdId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CancelHold(Guid holdId, CancellationToken cancellationToken = default)
     {
         var owner = await ReadOwnerContextAsync(cancellationToken);
-        var hold = await _db.BookingHolds.FirstOrDefaultAsync(item => item.Id == holdId, cancellationToken);
-        if (hold is null || !HoldBelongsToOwner(hold, owner))
-        {
-            return NoContent();
-        }
-
-        hold.Status = "Cancelled";
-        hold.CancelledAtUtc = DateTimeOffset.UtcNow;
-        var slot = await _db.ProviderAvailabilitySlots.FirstOrDefaultAsync(item => item.Id == hold.SlotId, cancellationToken);
-        if (slot is { Status: "Held" })
-        {
-            slot.Status = "Available";
-            slot.UpdatedAtUtc = DateTimeOffset.UtcNow;
-        }
-
-        await _db.SaveChangesAsync(cancellationToken);
+        await _booking.CancelHoldAsync(holdId, owner, cancellationToken);
         return NoContent();
     }
 
-    private async Task<ProviderAvailabilitySlot?> TryHoldSlotAsync(
-        Guid providerId,
-        Guid slotId,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
+    private async Task<BookingOwnerContext> ReadOwnerContextAsync(CancellationToken cancellationToken = default)
     {
-        if (_db.Database.IsRelational())
-        {
-            var updated = await _db.ProviderAvailabilitySlots
-                .Where(item =>
-                    item.Id == slotId &&
-                    item.ProviderProfileId == providerId &&
-                    item.Status == "Available" &&
-                    item.StartsAtUtc > now)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(slot => slot.Status, "Held")
-                    .SetProperty(slot => slot.UpdatedAtUtc, now), cancellationToken);
-
-            return updated == 1
-                ? await _db.ProviderAvailabilitySlots.AsNoTracking().FirstAsync(item => item.Id == slotId, cancellationToken)
-                : null;
-        }
-
-        var slot = await _db.ProviderAvailabilitySlots
-            .FirstOrDefaultAsync(item => item.Id == slotId && item.ProviderProfileId == providerId, cancellationToken);
-        if (slot is null || slot.Status != "Available" || slot.StartsAtUtc <= now)
-        {
-            return null;
-        }
-
-        slot.Status = "Held";
-        slot.UpdatedAtUtc = now;
-        return slot;
-    }
-
-    private async Task<IDbContextTransaction?> BeginRelationalTransactionAsync(CancellationToken cancellationToken)
-    {
-        return _db.Database.IsRelational()
-            ? await _db.Database.BeginTransactionAsync(cancellationToken)
+        var user = User.Identity?.IsAuthenticated == true
+            ? await EnsureCurrentUserAsync(cancellationToken)
             : null;
+        return new BookingOwnerContext(user?.Id, TryReadVisitorCookie());
     }
 
-    private static async Task CommitTransactionAsync(IDbContextTransaction? transaction, CancellationToken cancellationToken)
-    {
-        if (transaction is not null)
-        {
-            await transaction.CommitAsync(cancellationToken);
-        }
-    }
-
-    private async Task ReleaseExpiredHoldsAsync(Guid providerId, Guid? slotId, CancellationToken cancellationToken)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var expiredHolds = await _db.BookingHolds
-            .Where(hold =>
-                hold.ProviderProfileId == providerId &&
-                hold.Status == "Active" &&
-                hold.ExpiresAtUtc <= now &&
-                (slotId == null || hold.SlotId == slotId))
-            .ToListAsync(cancellationToken);
-
-        foreach (var hold in expiredHolds)
-        {
-            await ExpireHoldAsync(hold, now, cancellationToken);
-        }
-
-        if (expiredHolds.Count > 0)
-        {
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-    }
-
-    private async Task ExpireHoldAsync(BookingHold hold, DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        hold.Status = "Expired";
-        hold.UpdatedAtUtc = now;
-
-        var slot = await _db.ProviderAvailabilitySlots.FirstOrDefaultAsync(item => item.Id == hold.SlotId, cancellationToken);
-        if (slot is not { Status: "Held" })
-        {
-            return;
-        }
-
-        var hasCurrentActiveHold = await _db.BookingHolds.AnyAsync(item =>
-            item.Id != hold.Id &&
-            item.SlotId == hold.SlotId &&
-            item.Status == "Active" &&
-            item.ExpiresAtUtc > now, cancellationToken);
-        if (hasCurrentActiveHold)
-        {
-            return;
-        }
-
-        slot.Status = "Available";
-        slot.UpdatedAtUtc = now;
-    }
-
-    private static bool IsExpiredActiveHold(BookingHold hold, DateTimeOffset now)
-    {
-        return hold.Status == "Active" && hold.ExpiresAtUtc <= now;
-    }
-
-    private async Task<User?> EnsureCurrentUserAsync(CancellationToken cancellationToken)
+    private async Task<User?> EnsureCurrentUserAsync(CancellationToken cancellationToken = default)
     {
         var subject = User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(subject))
@@ -526,94 +149,10 @@ public sealed class BookingController : ControllerBase
         return user;
     }
 
-    private async Task<BookingOwnerContext> ReadOwnerContextAsync(CancellationToken cancellationToken)
-    {
-        var user = User.Identity?.IsAuthenticated == true
-            ? await EnsureCurrentUserAsync(cancellationToken)
-            : null;
-        return new BookingOwnerContext(user?.Id, TryReadVisitorCookie());
-    }
-
-    private async Task<bool> IntakeSubmissionBelongsToOwnerAsync(
-        Guid intakeSubmissionId,
-        BookingOwnerContext owner,
-        CancellationToken cancellationToken)
-    {
-        var submission = await _db.IntakeSubmissions
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == intakeSubmissionId, cancellationToken);
-        return submission is not null &&
-            (IntakeBelongsToUser(submission, owner) || IntakeBelongsToVisitor(submission, owner));
-    }
-
-    private async Task<BookingHold?> FindOwnedHoldAsync(
-        Guid holdId,
-        BookingOwnerContext owner,
-        CancellationToken cancellationToken)
-    {
-        var hold = await _db.BookingHolds.FirstOrDefaultAsync(item => item.Id == holdId, cancellationToken);
-        return hold is not null && HoldBelongsToOwner(hold, owner) ? hold : null;
-    }
-
-    private Task<ProviderAvailabilitySlot?> FindHeldSlotAsync(Guid slotId, CancellationToken cancellationToken)
-    {
-        return _db.ProviderAvailabilitySlots
-            .FirstOrDefaultAsync(item => item.Id == slotId && item.Status == "Held", cancellationToken);
-    }
-
     private Guid? TryReadVisitorCookie()
     {
         return Request.Cookies.TryGetValue("mbv_vid", out var value) && Guid.TryParse(value, out var visitorId)
             ? visitorId
             : null;
     }
-
-    private static bool HasOwnerContext(BookingOwnerContext owner)
-    {
-        return owner.UserId.HasValue || owner.VisitorSessionId.HasValue;
-    }
-
-    private static bool HoldBelongsToOwner(BookingHold hold, BookingOwnerContext owner)
-    {
-        return HoldBelongsToUser(hold, owner) || HoldBelongsToVisitor(hold, owner);
-    }
-
-    private static bool HoldBelongsToUser(BookingHold hold, BookingOwnerContext owner)
-    {
-        return hold.UserId.HasValue && hold.UserId == owner.UserId;
-    }
-
-    private static bool HoldBelongsToVisitor(BookingHold hold, BookingOwnerContext owner)
-    {
-        return !hold.UserId.HasValue &&
-            hold.VisitorSessionId.HasValue &&
-            hold.VisitorSessionId == owner.VisitorSessionId;
-    }
-
-    private static bool IntakeBelongsToUser(IntakeSubmission submission, BookingOwnerContext owner)
-    {
-        return submission.UserId.HasValue && submission.UserId == owner.UserId;
-    }
-
-    private static bool IntakeBelongsToVisitor(IntakeSubmission submission, BookingOwnerContext owner)
-    {
-        return !submission.UserId.HasValue &&
-            submission.VisitorSessionId.HasValue &&
-            submission.VisitorSessionId == owner.VisitorSessionId;
-    }
-
-    private static BookingHoldDto ToDto(BookingHold hold)
-    {
-        return new BookingHoldDto(
-            hold.Id,
-            hold.ProviderProfileId,
-            hold.SlotId,
-            hold.VisitorSessionId,
-            hold.UserId,
-            hold.IntakeSubmissionId,
-            hold.Status,
-            hold.ExpiresAtUtc);
-    }
-
-    private sealed record BookingOwnerContext(Guid? UserId, Guid? VisitorSessionId);
 }

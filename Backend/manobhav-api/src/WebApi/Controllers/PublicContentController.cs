@@ -1,8 +1,7 @@
-using System.Text.Json;
-using Infrastructure.Persistence;
+using Application.DTOs;
+using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace WebApi.Controllers;
 
@@ -11,46 +10,25 @@ namespace WebApi.Controllers;
 [Route("api/public")]
 public sealed class PublicContentController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IPublicContentService _content;
 
-    public PublicContentController(ApplicationDbContext db)
+    public PublicContentController(IPublicContentService content)
     {
-        _db = db;
+        _content = content;
     }
 
     [HttpGet("landing")]
     [ProducesResponseType(typeof(LandingContentResponse), StatusCodes.Status200OK)]
-    public async Task<ActionResult<LandingContentResponse>> GetLanding(CancellationToken cancellationToken)
+    public async Task<ActionResult<LandingContentResponse>> GetLanding(CancellationToken cancellationToken = default)
     {
-        var experts = await _db.ProviderProfiles
-            .AsNoTracking()
-            .Where(provider => provider.IsActive && provider.IsFeatured && provider.VisibilityStatus == "Published")
-            .OrderBy(provider => provider.DisplayOrder)
-            .ThenBy(provider => provider.DisplayName ?? provider.Name)
-            .Take(4)
-            .Select(provider => new FeaturedExpertDto(
-                provider.Id,
-                provider.DisplayName ?? provider.Name,
-                provider.ProfessionalTitle ?? provider.Role,
-                "Availability managed by API"))
-            .ToListAsync(cancellationToken);
-
-        return Ok(new LandingContentResponse(experts));
+        return Ok(await _content.GetLandingAsync(cancellationToken));
     }
 
     [HttpGet("visitor-flow")]
     [ProducesResponseType(typeof(VisitorFlowResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<VisitorFlowResponse>> GetVisitorFlow([FromQuery] string flowKey = "default", CancellationToken cancellationToken = default)
     {
-        var questions = await _db.VisitorFlowQuestions
-            .AsNoTracking()
-            .Where(question => question.FlowKey == flowKey && question.IsActive)
-            .OrderBy(question => question.StepOrder)
-            .Take(50)
-            .Select(question => new VisitorFlowQuestionDto(question.Id, question.StepOrder, question.Text))
-            .ToListAsync(cancellationToken);
-
-        return Ok(new VisitorFlowResponse(flowKey, questions));
+        return Ok(await _content.GetVisitorFlowAsync(flowKey, cancellationToken));
     }
 
     [HttpGet("providers")]
@@ -60,80 +38,6 @@ public sealed class PublicContentController : ControllerBase
         [FromQuery] int limit = 50,
         CancellationToken cancellationToken = default)
     {
-        limit = Math.Clamp(limit, 1, 100);
-        var providers = await _db.ProviderProfiles
-            .AsNoTracking()
-            .Where(provider => provider.IsActive && provider.VisibilityStatus == "Published")
-            .Where(provider => !featured || provider.IsFeatured)
-            .OrderBy(provider => provider.DisplayOrder)
-            .ThenBy(provider => provider.DisplayName ?? provider.Name)
-            .Take(limit)
-            .ToListAsync(cancellationToken);
-
-        var response = providers.Select(provider => new ProviderDirectoryItemDto(
-            provider.Id,
-            provider.DisplayName ?? provider.Name,
-            provider.Summary,
-            provider.Bio ?? provider.LongDescription,
-            ReadStringList(provider.SpecializationsJson),
-            provider.AvatarColor,
-            provider.Sessions,
-            provider.RatingAverage > 0 ? provider.RatingAverage : provider.Rating,
-            ReadWeeklyAvailability(provider.WeeklyAvailabilityJson))).ToList();
-
-        return Ok(response);
-    }
-
-    private static IReadOnlyList<string> ReadStringList(string value)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<string>>(value) ?? [];
-        }
-        catch (JsonException)
-        {
-            return [];
-        }
-    }
-
-    private static readonly JsonSerializerOptions WeeklyAvailabilityJsonOptions = new() { PropertyNameCaseInsensitive = true };
-
-    /// <summary>
-    /// Reads the provider's recurring weekly availability. The directory UI derives the next
-    /// available dates (in the visitor's local time) and the booking calendar's enabled weekdays
-    /// from this, rather than from pre-generated dated slots.
-    /// </summary>
-    private static IReadOnlyList<ProviderWeeklySlotDto> ReadWeeklyAvailability(string value)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<ProviderWeeklySlotDto>>(value, WeeklyAvailabilityJsonOptions) ?? [];
-        }
-        catch (JsonException)
-        {
-            return [];
-        }
+        return Ok(await _content.GetProvidersAsync(featured, limit, cancellationToken));
     }
 }
-
-public sealed record LandingContentResponse(IReadOnlyList<FeaturedExpertDto> FeaturedExperts);
-
-public sealed record FeaturedExpertDto(Guid Id, string Name, string Role, string Availability);
-
-public sealed record VisitorFlowResponse(string FlowKey, IReadOnlyList<VisitorFlowQuestionDto> Questions);
-
-public sealed record VisitorFlowQuestionDto(Guid Id, int StepOrder, string Text);
-
-public sealed record ProviderDirectoryItemDto(
-    Guid Id,
-    string Name,
-    string Summary,
-    string LongDescription,
-    IReadOnlyList<string> Specializations,
-    string AvatarColor,
-    int Sessions,
-    decimal Rating,
-    IReadOnlyList<ProviderWeeklySlotDto> WeeklyAvailability);
-
-/// <summary>A recurring weekly availability window. DayOfWeek is 0=Sunday..6=Saturday; times are 24-hour "HH:mm".</summary>
-public sealed record ProviderWeeklySlotDto(int DayOfWeek, string StartTime, string EndTime);

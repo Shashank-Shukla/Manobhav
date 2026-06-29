@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
+using Application.DTOs;
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
@@ -250,6 +252,65 @@ public sealed class WebApiPipelineTests
         Assert.NotNull(providers);
         var provider = Assert.Single(providers);
         Assert.Equal("Earlier Featured", provider.Name);
+    }
+
+    [Fact]
+    public async Task Diagnostics_IsPubliclyAccessibleWithoutAGate()
+    {
+        await using var factory = new ManobhavApiFactory();
+        using var client = factory.CreateHttpsClient();
+
+        // The AI-DB diagnostics endpoint is intentionally ungated during alpha (no key/auth required).
+        // 404 is now reserved for unknown table names, not for a hidden/disabled route.
+        var summaryResponse = await client.GetAsync("/api/ai-db-diagnostics");
+        var tableResponse = await client.GetAsync("/api/ai-db-diagnostics/provider-profile");
+        var unknownTableResponse = await client.GetAsync("/api/ai-db-diagnostics/not-a-real-table");
+
+        Assert.Equal(HttpStatusCode.OK, summaryResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, tableResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unknownTableResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Diagnostics_SummaryListsTablesAndEveryTableIsReadable()
+    {
+        await using var factory = new ManobhavApiFactory();
+        using var client = factory.CreateHttpsClient();
+
+        var summary = await client.GetFromJsonAsync<List<AiDbDiagnosticsTableSummaryDto>>("/api/ai-db-diagnostics");
+
+        Assert.NotNull(summary);
+        Assert.True(summary!.Count >= 20, $"expected the full table set, got {summary.Count}");
+        Assert.Contains(summary, item => item.Table == "user");
+        Assert.Contains(summary, item => item.Table == "email-otp-challenge");
+
+        // The generic reader must succeed for EVERY exposed table through the full HTTP pipeline.
+        foreach (var entry in summary)
+        {
+            var response = await client.GetAsync($"/api/ai-db-diagnostics/{entry.Table}?limit=1");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Diagnostics_ClampsPagingQueryParameters()
+    {
+        await using var factory = new ManobhavApiFactory();
+        using var client = factory.CreateHttpsClient();
+
+        // limit<=0 and a negative offset are clamped server-side rather than erroring.
+        var clamped = await client.GetAsync("/api/ai-db-diagnostics/user?limit=0&offset=-10");
+        Assert.Equal(HttpStatusCode.OK, clamped.StatusCode);
+
+        // A huge offset returns an empty page, not an error.
+        var pastEnd = await client.GetFromJsonAsync<List<Dictionary<string, JsonElement>>>(
+            "/api/ai-db-diagnostics/user?limit=5&offset=100000");
+        Assert.NotNull(pastEnd);
+        Assert.Empty(pastEnd!);
+
+        // An over-large limit is accepted (clamped to the configured maximum) and still returns an array.
+        var bigLimit = await client.GetAsync("/api/ai-db-diagnostics/user?limit=100000");
+        Assert.Equal(HttpStatusCode.OK, bigLimit.StatusCode);
     }
 
     [Fact]

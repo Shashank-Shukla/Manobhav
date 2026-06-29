@@ -3,9 +3,9 @@ import { SectionReveal } from './SectionReveal';
 
 function VectorMotion() {
   return (
-    <div className="relative mx-auto w-full max-w-[420px] animate-float-soft">
-      <OrganicBlob className="absolute -left-8 top-8 h-32 w-32" color="#f6d8cf" />
-      <OrganicBlob className="absolute -right-6 bottom-10 h-24 w-24" color="#d7ebe2" />
+    <div className="relative mx-auto w-full max-w-[280px] animate-float-soft md:max-w-[340px] lg:max-w-[420px]">
+      <OrganicBlob className="absolute -left-8 top-8 hidden h-32 w-32 lg:block" color="#f6d8cf" />
+      <OrganicBlob className="absolute -right-6 bottom-10 hidden h-24 w-24 lg:block" color="#d7ebe2" />
       <div className="relative z-10 rounded-[2.5rem] bg-white/70 p-6 shadow-[0_28px_60px_rgba(50,63,92,0.10)] backdrop-blur-sm">
         <div className="relative overflow-hidden rounded-[2rem] bg-[#FBEEF2] px-6 py-8">
           <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#dce8ee] opacity-80 animate-spin-slow" />
@@ -64,16 +64,16 @@ function SquishyCard({
 
 export function VisionSection() {
   return (
-    <section id="vision-section" className="relative h-full overflow-hidden bg-[#FCF2F5] px-6 py-16 md:py-20">
+    <section id="vision-section" className="relative min-h-full bg-[#FCF2F5] px-4 py-10 sm:px-6 sm:py-14 md:py-20">
       <RollingSectionWave className="absolute left-0 top-0 h-28 w-full md:h-36" />
       <RollingSectionWave className="absolute bottom-0 left-0 h-28 w-full rotate-180 md:h-36" />
 
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[8%] top-40 h-32 w-32 rounded-full bg-[#FBEEF2] blur-3xl" />
-        <div className="absolute bottom-32 right-[10%] h-36 w-36 rounded-full bg-[#e0eef4] blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-[8%] top-40 hidden h-32 w-32 rounded-full bg-[#FBEEF2] blur-3xl lg:block" />
+        <div className="absolute bottom-32 right-[10%] hidden h-36 w-36 rounded-full bg-[#e0eef4] blur-3xl lg:block" />
       </div>
 
-      <div className="relative mx-auto grid h-full max-w-7xl items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12">
+      <div className="relative mx-auto grid min-h-full max-w-7xl items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12">
         <SectionReveal className="lg:pr-4">
           <div className="space-y-6">
             <div className="max-w-xl">

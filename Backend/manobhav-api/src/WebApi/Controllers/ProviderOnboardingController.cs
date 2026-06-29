@@ -35,7 +35,7 @@ public sealed class ProviderOnboardingController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ProviderApplicationDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> StartOrResume(CancellationToken cancellationToken)
+    public async Task<IActionResult> StartOrResume(CancellationToken cancellationToken = default)
     {
         var user = await EnsureCurrentUserAsync(cancellationToken);
         if (user is null)
@@ -66,7 +66,7 @@ public sealed class ProviderOnboardingController : ControllerBase
     [HttpGet("me")]
     [ProducesResponseType(typeof(ProviderApplicationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetMine(CancellationToken cancellationToken = default)
     {
         var user = await EnsureCurrentUserAsync(cancellationToken);
         if (user is null)
@@ -91,7 +91,7 @@ public sealed class ProviderOnboardingController : ControllerBase
         Guid applicationId,
         string sectionKey,
         SaveProviderSectionRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var application = await GetOwnedApplicationAsync(applicationId, cancellationToken);
         if (application is null)
@@ -123,7 +123,7 @@ public sealed class ProviderOnboardingController : ControllerBase
     [HttpPost("{applicationId:guid}/submit")]
     [ProducesResponseType(typeof(ProviderApplicationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Submit(Guid applicationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Submit(Guid applicationId, CancellationToken cancellationToken = default)
     {
         var application = await GetOwnedMutableApplicationAsync(applicationId, cancellationToken);
         if (application is null)
@@ -181,7 +181,7 @@ public sealed class ProviderOnboardingController : ControllerBase
     [HttpPost("{applicationId:guid}/documents/{documentId:guid}/complete")]
     [ProducesResponseType(typeof(ProviderDocumentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CompleteDocument(Guid applicationId, Guid documentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CompleteDocument(Guid applicationId, Guid documentId, CancellationToken cancellationToken = default)
     {
         var application = await GetOwnedMutableApplicationAsync(applicationId, cancellationToken);
         if (application is null)
@@ -201,7 +201,7 @@ public sealed class ProviderOnboardingController : ControllerBase
         return Ok(new ProviderDocumentDto(document.Id, document.ProviderApplicationId, document.Category, document.Status, document.S3Key));
     }
 
-    private async Task<ProviderOnboardingApplication?> GetOwnedMutableApplicationAsync(Guid applicationId, CancellationToken cancellationToken)
+    private async Task<ProviderOnboardingApplication?> GetOwnedMutableApplicationAsync(Guid applicationId, CancellationToken cancellationToken = default)
     {
         var application = await GetOwnedApplicationAsync(applicationId, cancellationToken);
         return application is not null &&
@@ -211,7 +211,7 @@ public sealed class ProviderOnboardingController : ControllerBase
             : null;
     }
 
-    private async Task<ProviderOnboardingApplication?> GetOwnedApplicationAsync(Guid applicationId, CancellationToken cancellationToken)
+    private async Task<ProviderOnboardingApplication?> GetOwnedApplicationAsync(Guid applicationId, CancellationToken cancellationToken = default)
     {
         var user = await EnsureCurrentUserAsync(cancellationToken);
         if (user is null)
@@ -226,7 +226,7 @@ public sealed class ProviderOnboardingController : ControllerBase
                 cancellationToken);
     }
 
-    private async Task<User?> EnsureCurrentUserAsync(CancellationToken cancellationToken)
+    private async Task<User?> EnsureCurrentUserAsync(CancellationToken cancellationToken = default)
     {
         var subject = User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(subject))
@@ -251,7 +251,7 @@ public sealed class ProviderOnboardingController : ControllerBase
         return user;
     }
 
-    private async Task BackfillEmailFromCognitoAsync(User user, CancellationToken cancellationToken)
+    private async Task BackfillEmailFromCognitoAsync(User user, CancellationToken cancellationToken = default)
     {
         if (!string.IsNullOrWhiteSpace(user.Email))
         {
@@ -279,7 +279,7 @@ public sealed class ProviderOnboardingController : ControllerBase
         }
     }
 
-    private async Task EnsureRoleAsync(Guid userId, string role, CancellationToken cancellationToken)
+    private async Task EnsureRoleAsync(Guid userId, string role, CancellationToken cancellationToken = default)
     {
         var exists = await _db.UserRoles.AnyAsync(item => item.UserId == userId && item.Role == role && item.IsActive, cancellationToken);
         if (exists)
@@ -308,7 +308,7 @@ public sealed class ProviderOnboardingController : ControllerBase
     private async Task<IActionResult?> TryNotifySubmittedAsync(
         ProviderOnboardingApplication application,
         DateTimeOffset submittedAt,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         try
         {
