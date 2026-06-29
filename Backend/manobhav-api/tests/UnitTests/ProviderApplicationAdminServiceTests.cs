@@ -1,15 +1,14 @@
 using Application.DTOs;
+using Application.Services;
 using Domain.Entities;
 using Infrastructure.Persistence;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+using Infrastructure.Repositories;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using WebApi.Controllers;
 
 namespace UnitTests;
 
-public sealed class AdminProviderControllerTests
+public sealed class ProviderApplicationAdminServiceTests
 {
     private static readonly string[] RequiredReviewSectionKeys =
     [
@@ -23,28 +22,28 @@ public sealed class AdminProviderControllerTests
     ];
 
     [Fact]
-    public async Task SaveSectionReview_ReturnsConflictForNonSubmittedApplication()
+    public async Task SaveSectionReview_ThrowsConflictForNonSubmittedApplication()
     {
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
         application.Status = "Approved";
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.SaveSectionReview(
-            application.Id,
-            "basicIdentity",
-            new ProviderApplicationSectionReviewRequest { Status = "Approved" },
-            CancellationToken.None);
+        var exception = await Assert.ThrowsAsync<ProviderApplicationConflictException>(() =>
+            service.SaveSectionReviewAsync(
+                application.Id,
+                "basicIdentity",
+                new ProviderApplicationSectionReviewRequest { Status = "Approved" },
+                CancellationToken.None));
 
-        var problem = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
+        Assert.Equal(409, exception.StatusCode);
         Assert.Empty(db.ProviderApplicationSectionReviews);
     }
 
     [Fact]
-    public async Task Approve_ReturnsConflictForNonSubmittedApplicationAndDoesNotGrantProviderRole()
+    public async Task Approve_ThrowsConflictForNonSubmittedApplicationAndDoesNotGrantProviderRole()
     {
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
@@ -52,29 +51,29 @@ public sealed class AdminProviderControllerTests
         application.Status = "Approved";
         AddApprovedReviews(db, application.Id, RequiredReviewSectionKeys);
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.Approve(application.Id, CancellationToken.None);
+        var exception = await Assert.ThrowsAsync<ProviderApplicationConflictException>(() =>
+            service.ApproveAsync(application.Id, CancellationToken.None));
 
-        var problem = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
+        Assert.Equal(409, exception.StatusCode);
         Assert.False(await db.UserRoles.AnyAsync(role => role.UserId == user.Id && role.Role == "Provider"));
     }
 
     [Fact]
-    public async Task Reject_ReturnsConflictForAlreadyRejectedApplication()
+    public async Task Reject_ThrowsConflictForAlreadyRejectedApplication()
     {
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
         application.Status = "Rejected";
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.Reject(application.Id, CancellationToken.None);
+        var exception = await Assert.ThrowsAsync<ProviderApplicationConflictException>(() =>
+            service.RejectAsync(application.Id, CancellationToken.None));
 
-        var problem = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
+        Assert.Equal(409, exception.StatusCode);
         var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
         Assert.Equal("Rejected", saved!.Status);
     }
@@ -85,20 +84,16 @@ public sealed class AdminProviderControllerTests
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.SaveSectionReview(
-            application.Id,
-            "basicIdentity",
-            new ProviderApplicationSectionReviewRequest
-            {
-                Status = "Rejected",
-                Comment = "   "
-            },
-            CancellationToken.None);
+        var exception = await Assert.ThrowsAsync<ProviderApplicationValidationException>(() =>
+            service.SaveSectionReviewAsync(
+                application.Id,
+                "basicIdentity",
+                new ProviderApplicationSectionReviewRequest { Status = "Rejected", Comment = "   " },
+                CancellationToken.None));
 
-        var problem = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+        Assert.Equal(400, exception.StatusCode);
         Assert.Empty(db.ProviderApplicationSectionReviews);
     }
 
@@ -108,19 +103,16 @@ public sealed class AdminProviderControllerTests
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.SaveSectionReview(
-            application.Id,
-            "credentials",
-            new ProviderApplicationSectionReviewRequest
-            {
-                Status = "Approved"
-            },
-            CancellationToken.None);
+        var exception = await Assert.ThrowsAsync<ProviderApplicationValidationException>(() =>
+            service.SaveSectionReviewAsync(
+                application.Id,
+                "credentials",
+                new ProviderApplicationSectionReviewRequest { Status = "Approved" },
+                CancellationToken.None));
 
-        var problem = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+        Assert.Equal(400, exception.StatusCode);
         Assert.Empty(db.ProviderApplicationSectionReviews);
     }
 
@@ -130,20 +122,16 @@ public sealed class AdminProviderControllerTests
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.SaveSectionReview(
-            application.Id,
-            "basicIdentity",
-            new ProviderApplicationSectionReviewRequest
-            {
-                Status = "Approved",
-                Comment = new string('x', 2001)
-            },
-            CancellationToken.None);
+        var exception = await Assert.ThrowsAsync<ProviderApplicationValidationException>(() =>
+            service.SaveSectionReviewAsync(
+                application.Id,
+                "basicIdentity",
+                new ProviderApplicationSectionReviewRequest { Status = "Approved", Comment = new string('x', 2001) },
+                CancellationToken.None));
 
-        var problem = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+        Assert.Equal(400, exception.StatusCode);
         Assert.Empty(db.ProviderApplicationSectionReviews);
     }
 
@@ -153,35 +141,23 @@ public sealed class AdminProviderControllerTests
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var approvedResult = await controller.SaveSectionReview(
+        var approvedDto = await service.SaveSectionReviewAsync(
             application.Id,
             "basicIdentity",
-            new ProviderApplicationSectionReviewRequest
-            {
-                Status = "Approved",
-                Comment = "Identity verified."
-            },
+            new ProviderApplicationSectionReviewRequest { Status = "Approved", Comment = "Identity verified." },
             CancellationToken.None);
 
-        var approvedOk = Assert.IsType<OkObjectResult>(approvedResult.Result);
-        var approvedDto = Assert.IsType<ProviderApplicationDto>(approvedOk.Value);
         Assert.Equal("Approved", approvedDto.SectionReviews["basicIdentity"].Status);
         Assert.Equal("Identity verified.", approvedDto.SectionReviews["basicIdentity"].Comment);
 
-        var rejectedResult = await controller.SaveSectionReview(
+        var rejectedDto = await service.SaveSectionReviewAsync(
             application.Id,
             "basicIdentity",
-            new ProviderApplicationSectionReviewRequest
-            {
-                Status = "Rejected",
-                Comment = "Email does not match credential documents."
-            },
+            new ProviderApplicationSectionReviewRequest { Status = "Rejected", Comment = "Email does not match credential documents." },
             CancellationToken.None);
 
-        var rejectedOk = Assert.IsType<OkObjectResult>(rejectedResult.Result);
-        var rejectedDto = Assert.IsType<ProviderApplicationDto>(rejectedOk.Value);
         var storedReview = Assert.Single(db.ProviderApplicationSectionReviews);
         Assert.Equal(storedReview.Id, rejectedDto.SectionReviews["basicIdentity"].Id);
         Assert.Equal("Rejected", rejectedDto.SectionReviews["basicIdentity"].Status);
@@ -212,20 +188,14 @@ public sealed class AdminProviderControllerTests
             ThrowOnNextSectionReviewInsert = true
         };
         var application = await db.ProviderOnboardingApplications.SingleAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.SaveSectionReview(
+        var dto = await service.SaveSectionReviewAsync(
             application.Id,
             "basicIdentity",
-            new ProviderApplicationSectionReviewRequest
-            {
-                Status = "Approved",
-                Comment = "Identity verified after concurrent review."
-            },
+            new ProviderApplicationSectionReviewRequest { Status = "Approved", Comment = "Identity verified after concurrent review." },
             CancellationToken.None);
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
         var storedReview = Assert.Single(await db.ProviderApplicationSectionReviews.ToListAsync());
         Assert.Equal(storedReview.Id, dto.SectionReviews["basicIdentity"].Id);
         Assert.Equal("Approved", storedReview.Status);
@@ -250,12 +220,11 @@ public sealed class AdminProviderControllerTests
             """;
         AddApprovedReviews(db, application.Id, ["basicIdentity", "credentials"]);
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var blockedResult = await controller.Approve(application.Id, CancellationToken.None);
-
-        var problem = Assert.IsType<ObjectResult>(blockedResult);
-        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
+        var blocked = await Assert.ThrowsAsync<ProviderApplicationValidationException>(() =>
+            service.ApproveAsync(application.Id, CancellationToken.None));
+        Assert.Equal(400, blocked.StatusCode);
         Assert.False(await db.UserRoles.AnyAsync(role => role.UserId == user.Id && role.Role == "Provider"));
 
         SeedCompleteApplicationSections(application);
@@ -265,9 +234,8 @@ public sealed class AdminProviderControllerTests
             RequiredReviewSectionKeys.Except(["basicIdentity", "credentials"], StringComparer.Ordinal));
         await db.SaveChangesAsync();
 
-        var approvedResult = await controller.Approve(application.Id, CancellationToken.None);
+        await service.ApproveAsync(application.Id, CancellationToken.None);
 
-        Assert.IsType<NoContentResult>(approvedResult);
         var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
         Assert.Equal("Approved", saved!.Status);
         Assert.True(await db.UserRoles.AnyAsync(role => role.UserId == user.Id && role.Role == "Provider"));
@@ -279,11 +247,10 @@ public sealed class AdminProviderControllerTests
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id);
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.Reject(application.Id, CancellationToken.None);
+        await service.RejectAsync(application.Id, CancellationToken.None);
 
-        Assert.IsType<NoContentResult>(result);
         var saved = await db.ProviderOnboardingApplications.FindAsync([application.Id], CancellationToken.None);
         Assert.Equal("Rejected", saved!.Status);
         Assert.NotNull(saved.RejectedAtUtc);
@@ -315,11 +282,10 @@ public sealed class AdminProviderControllerTests
             Status = "Scheduled",
         });
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.Reject(application.Id, CancellationToken.None);
+        await service.RejectAsync(application.Id, CancellationToken.None);
 
-        Assert.IsType<NoContentResult>(result);
         var savedProfile = await db.ProviderProfiles.FindAsync([profile.Id], CancellationToken.None);
         Assert.False(savedProfile!.IsActive);
         Assert.Equal("Hidden", savedProfile.VisibilityStatus);
@@ -328,24 +294,22 @@ public sealed class AdminProviderControllerTests
     }
 
     [Fact]
-    public async Task Approve_MaterializesPublishedProviderProfile()
+    public async Task Approve_MaterializesPublishedProviderProfileWithOnboardingDetails()
     {
         await using var db = CreateDbContext();
         var user = await AddUserAsync(db);
         var application = await AddSubmittedApplicationAsync(db, user.Id, includeAllSections: true);
         AddApprovedReviews(db, application.Id, RequiredReviewSectionKeys);
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.Approve(application.Id, CancellationToken.None);
+        await service.ApproveAsync(application.Id, CancellationToken.None);
 
-        Assert.IsType<NoContentResult>(result);
         var profile = await db.ProviderProfiles.SingleAsync(item => item.ProviderApplicationId == application.Id);
         Assert.True(profile.IsActive);
         Assert.Equal("Published", profile.VisibilityStatus);
         Assert.NotNull(profile.PublishedAtUtc);
-        // The onboarding details must be carried onto the published profile so the public directory
-        // is not empty (the P0 regression this guards against).
+        // The onboarding details must be carried onto the published profile (the P0 regression guard).
         Assert.Equal("Asha Rao", profile.DisplayName);
         Assert.Equal("Trauma informed therapist", profile.Summary);
         Assert.Contains("Anxiety", profile.SpecializationsJson);
@@ -375,11 +339,10 @@ public sealed class AdminProviderControllerTests
         };
         db.ProviderProfiles.Add(profile);
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.Publish(profile.Id, CancellationToken.None);
+        await service.PublishProfileAsync(profile.Id, CancellationToken.None);
 
-        Assert.IsType<NoContentResult>(result);
         var saved = await db.ProviderProfiles.FindAsync([profile.Id], CancellationToken.None);
         Assert.Equal("Trauma informed therapist", saved!.Summary);
         Assert.Contains("Anxiety", saved.SpecializationsJson);
@@ -402,15 +365,18 @@ public sealed class AdminProviderControllerTests
             Comment = "Phone number is missing."
         });
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var service = CreateService(db);
 
-        var result = await controller.Get(application.Id, CancellationToken.None);
+        var dto = await service.GetAsync(application.Id, CancellationToken.None);
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
         Assert.Equal("Dr. Asha Rao", dto.Sections["basicIdentity"].GetProperty("legalName").GetString());
         Assert.Equal("Rejected", dto.SectionReviews["basicIdentity"].Status);
         Assert.Equal("Phone number is missing.", dto.SectionReviews["basicIdentity"].Comment);
+    }
+
+    private static ProviderApplicationAdminService CreateService(ApplicationDbContext db)
+    {
+        return new ProviderApplicationAdminService(new ProviderApplicationRepository(db), new ProviderProfileMaterializer());
     }
 
     private static async Task<User> AddUserAsync(ApplicationDbContext db)

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Application.DTOs;
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
@@ -250,6 +251,20 @@ public sealed class WebApiPipelineTests
         Assert.NotNull(providers);
         var provider = Assert.Single(providers);
         Assert.Equal("Earlier Featured", provider.Name);
+    }
+
+    [Fact]
+    public async Task Diagnostics_IsDisabledByDefaultAndReturnsNotFound()
+    {
+        await using var factory = new ManobhavApiFactory();
+        using var client = factory.CreateHttpsClient();
+
+        // With no Diagnostics key/enabled configured, the gated endpoint is hidden entirely.
+        var summaryResponse = await client.GetAsync("/api/diagnostics");
+        var tableResponse = await client.GetAsync("/api/diagnostics/provider-profiles");
+
+        Assert.Equal(HttpStatusCode.NotFound, summaryResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, tableResponse.StatusCode);
     }
 
     [Fact]

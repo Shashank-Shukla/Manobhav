@@ -4,6 +4,7 @@ using Application.DTOs;
 using Application.Services;
 using Domain.Entities;
 using Infrastructure.Persistence;
+using Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -594,11 +595,12 @@ public sealed class ProviderOnboardingControllerTests
             }
             """;
         await db.SaveChangesAsync();
-        var controller = new AdminProviderController(db);
+        var controller = new AdminProviderController(
+            new ProviderApplicationAdminService(new ProviderApplicationRepository(db), new ProviderProfileMaterializer()));
 
         var result = await controller.Get(application.Id, CancellationToken.None);
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var ok = Assert.IsType<OkObjectResult>(result);
         var dto = Assert.IsType<ProviderApplicationDto>(ok.Value);
         Assert.Equal(application.Id, dto.Id);
         Assert.Equal("Dr. Asha Rao", dto.Sections["basicIdentity"].GetProperty("legalName").GetString());

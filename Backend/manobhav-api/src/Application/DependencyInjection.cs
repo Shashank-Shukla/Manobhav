@@ -16,6 +16,12 @@ public static class DependencyInjection
         services.AddScoped<IVisitorAnalyticsService, VisitorAnalyticsService>();
         services.AddScoped<IntakeWorkflowService>();
         services.AddScoped<ProviderOnboardingSectionService>();
+        services.AddScoped<ProviderProfileMaterializer>();
+        services.AddScoped<Application.Interfaces.IProviderApplicationAdminService, ProviderApplicationAdminService>();
+        services.AddScoped<Application.Interfaces.IProviderAvailabilityService, ProviderAvailabilityService>();
+        services.AddScoped<Application.Interfaces.IBookingService, BookingService>();
+        services.AddScoped<Application.Interfaces.IPublicContentService, PublicContentService>();
+        services.AddScoped<Application.Interfaces.IDiagnosticsService, DiagnosticsService>();
         return services;
     }
 }

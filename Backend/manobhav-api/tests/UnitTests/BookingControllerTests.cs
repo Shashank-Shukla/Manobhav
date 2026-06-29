@@ -1,6 +1,8 @@
 using Application.DTOs;
+using Application.Services;
 using Domain.Entities;
 using Infrastructure.Persistence;
+using Infrastructure.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -146,7 +148,8 @@ public sealed class BookingControllerTests
 
     private static BookingController CreateController(ApplicationDbContext db, Guid? visitorId = null)
     {
-        var controller = new BookingController(db)
+        var repository = new BookingRepository(db);
+        var controller = new BookingController(db, new BookingService(repository), new ProviderAvailabilityService(repository))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
