@@ -31,7 +31,7 @@ public sealed class BookingController : ControllerBase
         Guid providerId,
         [FromQuery] DateTimeOffset? from,
         [FromQuery] DateTimeOffset? to,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         return Ok(await _availability.GetSlotsAsync(providerId, from, to, cancellationToken));
     }
@@ -41,7 +41,7 @@ public sealed class BookingController : ControllerBase
     [ProducesResponseType(typeof(BookingHoldDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> CreateHold(CreateBookingHoldRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateHold(CreateBookingHoldRequest request, CancellationToken cancellationToken = default)
     {
         var owner = await ReadOwnerContextAsync(cancellationToken);
         try
@@ -64,7 +64,7 @@ public sealed class BookingController : ControllerBase
     [HttpGet("holds/{holdId:guid}")]
     [ProducesResponseType(typeof(BookingHoldDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetHold(Guid holdId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetHold(Guid holdId, CancellationToken cancellationToken = default)
     {
         var owner = await ReadOwnerContextAsync(cancellationToken);
         var hold = await _booking.GetHoldAsync(holdId, owner, cancellationToken);
@@ -75,7 +75,7 @@ public sealed class BookingController : ControllerBase
     [HttpPatch("holds/{holdId:guid}/flow-state")]
     [ProducesResponseType(typeof(BookingHoldDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> PatchFlowState(Guid holdId, PatchBookingHoldFlowStateRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> PatchFlowState(Guid holdId, PatchBookingHoldFlowStateRequest request, CancellationToken cancellationToken = default)
     {
         var owner = await ReadOwnerContextAsync(cancellationToken);
         var hold = await _booking.PatchFlowStateAsync(holdId, owner, request.FlowStateJson, cancellationToken);
@@ -87,7 +87,7 @@ public sealed class BookingController : ControllerBase
     [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> FinalizeAppointment(Guid holdId, CancellationToken cancellationToken)
+    public async Task<IActionResult> FinalizeAppointment(Guid holdId, CancellationToken cancellationToken = default)
     {
         var user = await EnsureCurrentUserAsync(cancellationToken);
         if (user is null)
@@ -109,14 +109,14 @@ public sealed class BookingController : ControllerBase
     [AllowAnonymous]
     [HttpDelete("holds/{holdId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> CancelHold(Guid holdId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CancelHold(Guid holdId, CancellationToken cancellationToken = default)
     {
         var owner = await ReadOwnerContextAsync(cancellationToken);
         await _booking.CancelHoldAsync(holdId, owner, cancellationToken);
         return NoContent();
     }
 
-    private async Task<BookingOwnerContext> ReadOwnerContextAsync(CancellationToken cancellationToken)
+    private async Task<BookingOwnerContext> ReadOwnerContextAsync(CancellationToken cancellationToken = default)
     {
         var user = User.Identity?.IsAuthenticated == true
             ? await EnsureCurrentUserAsync(cancellationToken)
@@ -124,7 +124,7 @@ public sealed class BookingController : ControllerBase
         return new BookingOwnerContext(user?.Id, TryReadVisitorCookie());
     }
 
-    private async Task<User?> EnsureCurrentUserAsync(CancellationToken cancellationToken)
+    private async Task<User?> EnsureCurrentUserAsync(CancellationToken cancellationToken = default)
     {
         var subject = User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(subject))

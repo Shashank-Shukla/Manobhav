@@ -41,7 +41,7 @@ public sealed class IntakeController : ControllerBase
     [HttpPost("submissions")]
     [ProducesResponseType(typeof(IntakeSubmissionDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateSubmission(CreateIntakeSubmissionRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateSubmission(CreateIntakeSubmissionRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -62,7 +62,7 @@ public sealed class IntakeController : ControllerBase
         Guid submissionId,
         string questionKey,
         SaveIntakeAnswerRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -79,7 +79,7 @@ public sealed class IntakeController : ControllerBase
     [HttpPost("submissions/{submissionId:guid}/submit-partial")]
     [ProducesResponseType(typeof(IntakeSubmissionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SubmitPartial(Guid submissionId, SubmitPartialIntakeRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> SubmitPartial(Guid submissionId, SubmitPartialIntakeRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -96,7 +96,7 @@ public sealed class IntakeController : ControllerBase
     [HttpPost("submissions/{submissionId:guid}/consent")]
     [ProducesResponseType(typeof(IntakeSubmissionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SignConsent(Guid submissionId, SignConsentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> SignConsent(Guid submissionId, SignConsentRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -119,7 +119,7 @@ public sealed class IntakeController : ControllerBase
     [HttpPost("submissions/{submissionId:guid}/complete-profile")]
     [ProducesResponseType(typeof(IntakeSubmissionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CompleteProfile(Guid submissionId, CompleteProfileRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CompleteProfile(Guid submissionId, CompleteProfileRequest request, CancellationToken cancellationToken = default)
     {
         var user = await EnsureCurrentUserAsync(cancellationToken);
         if (user is null)
@@ -156,7 +156,7 @@ public sealed class IntakeController : ControllerBase
         return string.Equals(submissionKind, "PatientIntake", StringComparison.Ordinal);
     }
 
-    private async Task<IntakeOwnerContext> ReadOwnerContextAsync(CancellationToken cancellationToken)
+    private async Task<IntakeOwnerContext> ReadOwnerContextAsync(CancellationToken cancellationToken = default)
     {
         var user = User.Identity?.IsAuthenticated == true
             ? await EnsureCurrentUserAsync(cancellationToken)
@@ -164,7 +164,7 @@ public sealed class IntakeController : ControllerBase
         return new IntakeOwnerContext(user?.Id, TryReadVisitorCookie());
     }
 
-    private async Task<User?> EnsureCurrentUserAsync(CancellationToken cancellationToken)
+    private async Task<User?> EnsureCurrentUserAsync(CancellationToken cancellationToken = default)
     {
         var subject = User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(subject))

@@ -1,79 +1,150 @@
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Text;
 using Application.Interfaces;
-using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Infrastructure.Repositories;
 
+/// <summary>
+/// Generic, reflection-driven reader over every EF entity type. Returns raw scalar column values so
+/// the diagnostics endpoint can surface ALL data unredacted (the endpoint is intentionally ungated in
+/// alpha). The ONLY values held back are live auth secrets in <see cref="SuppressedColumns"/> — OTP
+/// hashes and Cognito session/lock tokens — which are replayable credentials, not data to verify;
+/// their column still appears, with a placeholder value, so the shape stays visible.
+/// </summary>
 public sealed class AiDbDiagnosticsRepository : IAiDbDiagnosticsRepository
 {
+    private const string SuppressedPlaceholder = "[suppressed: live auth secret]";
+
+    private static readonly HashSet<string> SuppressedColumns = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "OtpHash",
+        "OtpSalt",
+        "ProviderSession",
+        "VerificationLockToken",
+    };
+
+    private static readonly MethodInfo ReadRowsMethod = typeof(AiDbDiagnosticsRepository)
+        .GetMethod(nameof(ReadRowsGenericAsync), BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+    private static readonly MethodInfo CountMethod = typeof(AiDbDiagnosticsRepository)
+        .GetMethod(nameof(CountGenericAsync), BindingFlags.Instance | BindingFlags.NonPublic)!;
+
     private readonly ApplicationDbContext _db;
+    private readonly IReadOnlyDictionary<string, IEntityType> _tables;
 
     public AiDbDiagnosticsRepository(ApplicationDbContext db)
     {
         _db = db;
+        _tables = db.Model.GetEntityTypes()
+            .Where(type => !type.IsOwned() && type.ClrType != typeof(object) && type.FindPrimaryKey() is not null)
+            .GroupBy(type => ToTableKey(type.ClrType.Name), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
     }
 
-    public async Task<IReadOnlyDictionary<string, int>> GetTableCountsAsync(IReadOnlyList<string> tables, CancellationToken cancellationToken)
+    public IReadOnlyList<string> TableKeys =>
+        _tables.Keys.OrderBy(key => key, StringComparer.Ordinal).ToList();
+
+    public async Task<IReadOnlyDictionary<string, int>> GetTableCountsAsync(CancellationToken cancellationToken = default)
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var table in tables)
+        foreach (var (key, entityType) in _tables)
         {
-            counts[table] = table switch
-            {
-                "users" => await _db.Users.CountAsync(cancellationToken),
-                "provider-profiles" => await _db.ProviderProfiles.CountAsync(cancellationToken),
-                "provider-applications" => await _db.ProviderOnboardingApplications.CountAsync(cancellationToken),
-                "availability-slots" => await _db.ProviderAvailabilitySlots.CountAsync(cancellationToken),
-                "appointments" => await _db.Appointments.CountAsync(cancellationToken),
-                "booking-holds" => await _db.BookingHolds.CountAsync(cancellationToken),
-                "user-roles" => await _db.UserRoles.CountAsync(cancellationToken),
-                _ => 0,
-            };
+            var task = (Task<int>)CountMethod
+                .MakeGenericMethod(entityType.ClrType)
+                .Invoke(this, [cancellationToken])!;
+            counts[key] = await task;
         }
 
         return counts;
     }
 
-    public async Task<IReadOnlyList<User>> GetUsersAsync(int limit, int offset, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>?> GetRowsAsync(
+        string table,
+        int limit,
+        int offset,
+        CancellationToken cancellationToken = default)
     {
-        return await _db.Users.AsNoTracking()
-            .OrderByDescending(item => item.CreatedAtUtc).Skip(offset).Take(limit).ToListAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(table) || !_tables.TryGetValue(table, out var entityType))
+        {
+            return null;
+        }
+
+        var task = (Task<List<IReadOnlyDictionary<string, object?>>>)ReadRowsMethod
+            .MakeGenericMethod(entityType.ClrType)
+            .Invoke(this, [entityType, limit, offset, cancellationToken])!;
+        return await task;
     }
 
-    public async Task<IReadOnlyList<ProviderProfile>> GetProviderProfilesAsync(int limit, int offset, CancellationToken cancellationToken)
+    private async Task<int> CountGenericAsync<T>(CancellationToken cancellationToken) where T : class
     {
-        return await _db.ProviderProfiles.AsNoTracking()
-            .OrderByDescending(item => item.CreatedAtUtc).Skip(offset).Take(limit).ToListAsync(cancellationToken);
+        return await _db.Set<T>().CountAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ProviderOnboardingApplication>> GetProviderApplicationsAsync(int limit, int offset, CancellationToken cancellationToken)
+    private async Task<List<IReadOnlyDictionary<string, object?>>> ReadRowsGenericAsync<T>(
+        IEntityType entityType,
+        int limit,
+        int offset,
+        CancellationToken cancellationToken) where T : class
     {
-        return await _db.ProviderOnboardingApplications.AsNoTracking()
-            .OrderByDescending(item => item.CreatedAtUtc).Skip(offset).Take(limit).ToListAsync(cancellationToken);
+        var properties = entityType.GetProperties()
+            .Where(property => property.PropertyInfo is not null)
+            .ToList();
+
+        var entities = await ApplyKeyOrder(_db.Set<T>().AsNoTracking(), entityType)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        return entities
+            .Select(entity => (IReadOnlyDictionary<string, object?>)properties.ToDictionary(
+                property => property.Name,
+                property => SuppressedColumns.Contains(property.Name)
+                    ? SuppressedPlaceholder
+                    : property.PropertyInfo!.GetValue(entity),
+                StringComparer.Ordinal))
+            .ToList();
     }
 
-    public async Task<IReadOnlyList<ProviderAvailabilitySlot>> GetAvailabilitySlotsAsync(int limit, int offset, CancellationToken cancellationToken)
+    private static IQueryable<T> ApplyKeyOrder<T>(IQueryable<T> query, IEntityType entityType) where T : class
     {
-        return await _db.ProviderAvailabilitySlots.AsNoTracking()
-            .OrderBy(item => item.StartsAtUtc).Skip(offset).Take(limit).ToListAsync(cancellationToken);
+        var key = entityType.FindPrimaryKey()?.Properties.FirstOrDefault(property => property.PropertyInfo is not null);
+        if (key?.PropertyInfo is null)
+        {
+            return query;
+        }
+
+        // query.OrderBy(e => e.<PrimaryKey>) built dynamically so pagination is deterministic for any key type.
+        var parameter = Expression.Parameter(typeof(T), "entity");
+        var keyAccess = Expression.Property(parameter, key.PropertyInfo);
+        var selector = Expression.Lambda(keyAccess, parameter);
+        var ordered = Expression.Call(
+            typeof(Queryable),
+            nameof(Queryable.OrderBy),
+            [typeof(T), key.PropertyInfo.PropertyType],
+            query.Expression,
+            Expression.Quote(selector));
+
+        return query.Provider.CreateQuery<T>(ordered);
     }
 
-    public async Task<IReadOnlyList<Appointment>> GetAppointmentsAsync(int limit, int offset, CancellationToken cancellationToken)
+    private static string ToTableKey(string typeName)
     {
-        return await _db.Appointments.AsNoTracking()
-            .OrderByDescending(item => item.StartsAtUtc).Skip(offset).Take(limit).ToListAsync(cancellationToken);
-    }
+        var builder = new StringBuilder(typeName.Length + 8);
+        for (var index = 0; index < typeName.Length; index++)
+        {
+            var character = typeName[index];
+            if (char.IsUpper(character) && index > 0)
+            {
+                builder.Append('-');
+            }
 
-    public async Task<IReadOnlyList<BookingHold>> GetBookingHoldsAsync(int limit, int offset, CancellationToken cancellationToken)
-    {
-        return await _db.BookingHolds.AsNoTracking()
-            .OrderByDescending(item => item.ExpiresAtUtc).Skip(offset).Take(limit).ToListAsync(cancellationToken);
-    }
+            builder.Append(char.ToLowerInvariant(character));
+        }
 
-    public async Task<IReadOnlyList<UserRole>> GetUserRolesAsync(int limit, int offset, CancellationToken cancellationToken)
-    {
-        return await _db.UserRoles.AsNoTracking()
-            .OrderBy(item => item.Role).Skip(offset).Take(limit).ToListAsync(cancellationToken);
+        return builder.ToString();
     }
 }

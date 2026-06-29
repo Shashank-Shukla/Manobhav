@@ -29,7 +29,7 @@ public sealed class ProviderController : ControllerBase
     [HttpGet("dashboard")]
     [ProducesResponseType(typeof(ProviderDashboardDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<ProviderDashboardDto>> GetDashboard(CancellationToken cancellationToken)
+    public async Task<ActionResult<ProviderDashboardDto>> GetDashboard(CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
         var user = await ResolveCurrentUserAsync(cancellationToken);
@@ -50,7 +50,7 @@ public sealed class ProviderController : ControllerBase
     private async Task<ProviderDashboardDto> BuildProviderDashboardAsync(
         ProfileContext context,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var profile = context.Profile!;
         var metrics = await ReadMetricsAsync(profile.Id, now, cancellationToken);
@@ -67,7 +67,7 @@ public sealed class ProviderController : ControllerBase
             new ProviderDashboardNotificationsDto(0));
     }
 
-    private async Task<User?> ResolveCurrentUserAsync(CancellationToken cancellationToken)
+    private async Task<User?> ResolveCurrentUserAsync(CancellationToken cancellationToken = default)
     {
         var subject = User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(subject))
@@ -80,7 +80,7 @@ public sealed class ProviderController : ControllerBase
             .FirstOrDefaultAsync(item => item.CognitoSubject == subject, cancellationToken);
     }
 
-    private async Task<ProfileContext> ResolveProfileContextAsync(User user, CancellationToken cancellationToken)
+    private async Task<ProfileContext> ResolveProfileContextAsync(User user, CancellationToken cancellationToken = default)
     {
         var profile = await _db.ProviderProfiles
             .AsNoTracking()
@@ -97,7 +97,7 @@ public sealed class ProviderController : ControllerBase
         return await ResolveApplicantContextAsync(user, cancellationToken);
     }
 
-    private async Task<ProfileContext> ResolveApplicantContextAsync(User user, CancellationToken cancellationToken)
+    private async Task<ProfileContext> ResolveApplicantContextAsync(User user, CancellationToken cancellationToken = default)
     {
         var application = await _db.ProviderOnboardingApplications
             .AsNoTracking()
@@ -121,7 +121,7 @@ public sealed class ProviderController : ControllerBase
     private async Task<ProviderDashboardMetricsDto> ReadMetricsAsync(
         Guid profileId,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var (weekStart, weekEnd) = GetIsoWeekRange(now);
         var sessionsTotal = await _db.Appointments
@@ -140,7 +140,7 @@ public sealed class ProviderController : ControllerBase
     private async Task<IReadOnlyList<ProviderDashboardTodayAppointmentDto>> ReadTodayAppointmentsAsync(
         Guid profileId,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var todayStart = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
         var tomorrowStart = todayStart.AddDays(1);
@@ -168,7 +168,7 @@ public sealed class ProviderController : ControllerBase
     private async Task<IReadOnlyList<ProviderDashboardUpcomingAppointmentDto>> ReadUpcomingAppointmentsAsync(
         Guid profileId,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var appointments = await _db.Appointments
             .AsNoTracking()
@@ -190,7 +190,7 @@ public sealed class ProviderController : ControllerBase
     private async Task<IReadOnlyList<ProviderDashboardCalendarDayDto>> ReadWeekCalendarAsync(
         Guid profileId,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var todayStart = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
         var windowEnd = todayStart.AddDays(CalendarDays);
@@ -215,7 +215,7 @@ public sealed class ProviderController : ControllerBase
 
     private async Task<Dictionary<Guid, string>> ReadPatientNamesAsync(
         IEnumerable<Guid> patientUserIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var ids = patientUserIds.Distinct().ToList();
         if (ids.Count == 0)

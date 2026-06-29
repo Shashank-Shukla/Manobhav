@@ -10,7 +10,7 @@ namespace UnitTests;
 public sealed class AiDbDiagnosticsServiceTests
 {
     [Fact]
-    public async Task GetTable_Users_MasksEmailAndPhoneAndOmitsCognitoSubject()
+    public async Task GetTable_User_ReturnsRawUnmaskedColumnsIncludingCognitoSubject()
     {
         await using var db = CreateDbContext();
         db.Users.Add(new User
@@ -25,18 +25,18 @@ public sealed class AiDbDiagnosticsServiceTests
         await db.SaveChangesAsync();
         var service = CreateService(db);
 
-        var rows = Assert.IsType<List<AiDbDiagnosticsUserDto>>(await service.GetTableAsync("users", 50, 0, CancellationToken.None));
+        var rows = Assert.IsType<List<IReadOnlyDictionary<string, object?>>>(
+            await service.GetTableAsync("user", 50, 0, CancellationToken.None));
 
         var user = Assert.Single(rows);
-        Assert.Equal("j***@example.com", user.Email);
-        Assert.Equal("*******678", user.Phone);
-        Assert.Equal("Dr. John", user.DisplayName);
-        // The DTO has no CognitoSubject member at all — redaction is enforced by the projection type.
-        Assert.DoesNotContain("CognitoSubject", typeof(AiDbDiagnosticsUserDto).GetProperties().Select(property => property.Name));
+        // No masking anymore — the agent needs the real values to verify correctness.
+        Assert.Equal("john@example.com", user["Email"]);
+        Assert.Equal("9812345678", user["Phone"]);
+        Assert.Equal("secret-cognito-subject", user["CognitoSubject"]);
     }
 
     [Fact]
-    public async Task GetTable_ProviderApplications_ExposesBioButExtractsOnlyAvailabilitySlots()
+    public async Task GetTable_ProviderOnboardingApplication_ExposesFullSessionDetailsIncludingPayout()
     {
         await using var db = CreateDbContext();
         var user = new User { CognitoSubject = "s" };
@@ -56,14 +56,49 @@ public sealed class AiDbDiagnosticsServiceTests
         await db.SaveChangesAsync();
         var service = CreateService(db);
 
-        var rows = Assert.IsType<List<AiDbDiagnosticsProviderApplicationDto>>(
-            await service.GetTableAsync("provider-applications", 50, 0, CancellationToken.None));
+        var rows = Assert.IsType<List<IReadOnlyDictionary<string, object?>>>(
+            await service.GetTableAsync("provider-onboarding-application", 50, 0, CancellationToken.None));
 
         var application = Assert.Single(rows);
-        Assert.Contains("dayOfWeek", application.AvailabilitySlotsJson);
-        // The payout/bank details from SessionDetailsJson must never leak through the projection.
-        Assert.DoesNotContain("accountNumber", application.AvailabilitySlotsJson);
-        Assert.DoesNotContain("ifscCode", application.AvailabilitySlotsJson);
+        var sessionDetails = Assert.IsType<string>(application["SessionDetailsJson"]);
+        // The full raw JSON is surfaced now, payout/bank details included.
+        Assert.Contains("availabilitySlots", sessionDetails);
+        Assert.Contains("accountNumber", sessionDetails);
+        Assert.Contains("ifscCode", sessionDetails);
+    }
+
+    [Fact]
+    public async Task GetTable_EmailOtpChallenge_SuppressesLiveAuthSecretsButExposesMetadata()
+    {
+        await using var db = CreateDbContext();
+        db.EmailOtpChallenges.Add(new EmailOtpChallenge
+        {
+            Email = "patient@example.com",
+            Flow = "sign-in",
+            OtpHash = "hash-should-not-leak",
+            OtpSalt = "salt-should-not-leak",
+            ProviderSession = "cognito-session-should-not-leak",
+            VerificationLockToken = "lock-token-should-not-leak",
+            ExternalSendStatus = "sent",
+            IpAddress = "203.0.113.7",
+        });
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        var rows = Assert.IsType<List<IReadOnlyDictionary<string, object?>>>(
+            await service.GetTableAsync("email-otp-challenge", 50, 0, CancellationToken.None));
+
+        var challenge = Assert.Single(rows);
+        // Business/metadata columns are exposed raw...
+        Assert.Equal("patient@example.com", challenge["Email"]);
+        Assert.Equal("sign-in", challenge["Flow"]);
+        Assert.Equal("203.0.113.7", challenge["IpAddress"]);
+        // ...but live auth secrets are suppressed (column stays, value replaced).
+        const string suppressed = "[suppressed: live auth secret]";
+        Assert.Equal(suppressed, challenge["OtpHash"]);
+        Assert.Equal(suppressed, challenge["OtpSalt"]);
+        Assert.Equal(suppressed, challenge["ProviderSession"]);
+        Assert.Equal(suppressed, challenge["VerificationLockToken"]);
     }
 
     [Fact]
@@ -72,11 +107,37 @@ public sealed class AiDbDiagnosticsServiceTests
         await using var db = CreateDbContext();
         var service = CreateService(db);
 
-        Assert.Null(await service.GetTableAsync("email-otp-challenges", 50, 0, CancellationToken.None));
+        Assert.Null(await service.GetTableAsync("not-a-real-table", 50, 0, CancellationToken.None));
+        Assert.Null(await service.GetTableAsync("", 50, 0, CancellationToken.None));
     }
 
     [Fact]
-    public async Task GetSummary_ReportsCountsForExposedTablesOnly()
+    public async Task GetTable_ClampsPagingAndHonoursOffset()
+    {
+        await using var db = CreateDbContext();
+        db.Users.Add(new User { CognitoSubject = "a", Email = "a@example.com" });
+        db.Users.Add(new User { CognitoSubject = "b", Email = "b@example.com" });
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        // limit <= 0 falls back to a sane default rather than returning nothing.
+        var defaulted = Assert.IsType<List<IReadOnlyDictionary<string, object?>>>(
+            await service.GetTableAsync("user", 0, 0, CancellationToken.None));
+        Assert.Equal(2, defaulted.Count);
+
+        // A single page.
+        var firstPage = Assert.IsType<List<IReadOnlyDictionary<string, object?>>>(
+            await service.GetTableAsync("user", 1, 0, CancellationToken.None));
+        Assert.Single(firstPage);
+
+        // Offset past the end yields an empty page (negative offset is clamped to 0).
+        var pastEnd = Assert.IsType<List<IReadOnlyDictionary<string, object?>>>(
+            await service.GetTableAsync("user", 50, 99, CancellationToken.None));
+        Assert.Empty(pastEnd);
+    }
+
+    [Fact]
+    public async Task GetSummary_ReportsCountsForEveryMappedTable()
     {
         await using var db = CreateDbContext();
         db.Users.Add(new User { CognitoSubject = "s" });
@@ -85,8 +146,12 @@ public sealed class AiDbDiagnosticsServiceTests
 
         var summary = await service.GetSummaryAsync(CancellationToken.None);
 
+        // Every table is now exposed (not a curated handful).
         Assert.Equal(service.Tables.OrderBy(table => table), summary.Select(item => item.Table).OrderBy(table => table));
-        Assert.Equal(1, summary.Single(item => item.Table == "users").Count);
+        Assert.Contains(summary, item => item.Table == "user" && item.Count == 1);
+        Assert.Contains(summary, item => item.Table == "email-otp-challenge");
+        Assert.Contains(summary, item => item.Table == "appointment");
+        Assert.True(summary.Count >= 20, $"expected the full table set, got {summary.Count}");
     }
 
     private static AiDbDiagnosticsService CreateService(ApplicationDbContext db)

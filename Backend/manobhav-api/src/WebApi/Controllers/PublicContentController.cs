@@ -19,7 +19,7 @@ public sealed class PublicContentController : ControllerBase
 
     [HttpGet("landing")]
     [ProducesResponseType(typeof(LandingContentResponse), StatusCodes.Status200OK)]
-    public async Task<ActionResult<LandingContentResponse>> GetLanding(CancellationToken cancellationToken)
+    public async Task<ActionResult<LandingContentResponse>> GetLanding(CancellationToken cancellationToken = default)
     {
         return Ok(await _content.GetLandingAsync(cancellationToken));
     }

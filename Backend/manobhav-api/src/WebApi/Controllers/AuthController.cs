@@ -25,7 +25,7 @@ public sealed class AuthController(
     [AllowAnonymous]
     public async Task<ActionResult<AuthSessionResponse>> CompleteCallback(
         [FromBody] AuthCallbackRequest? request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         if (HasMissingCallbackField(request))
         {
@@ -43,7 +43,7 @@ public sealed class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> RequestEmailOtp(
         [FromBody] EmailOtpAuthRequest? request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         if (HasMissingEmailOtpRequestField(request))
         {
@@ -81,7 +81,7 @@ public sealed class AuthController(
     [AllowAnonymous]
     public async Task<ActionResult<EmailOtpVerifyResponse>> VerifyEmailOtp(
         [FromBody] EmailOtpVerifyRequest? request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         if (HasMissingEmailOtpVerifyField(request))
         {
@@ -153,7 +153,7 @@ public sealed class AuthController(
     /// the admin patient roster and the dashboard avatar — populated for every account, not only
     /// those that later book or onboard.
     /// </summary>
-    private async Task SyncUserFromIdTokenAsync(string? idToken, CancellationToken cancellationToken)
+    private async Task SyncUserFromIdTokenAsync(string? idToken, CancellationToken cancellationToken = default)
     {
         if (db is null)
         {
@@ -202,7 +202,7 @@ public sealed class AuthController(
     private async Task<AuthSessionResponse> BuildEnrichedSessionAsync(
         AuthSessionResponse session,
         string? cognitoSubject,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         if (db is null || string.IsNullOrWhiteSpace(cognitoSubject))
         {

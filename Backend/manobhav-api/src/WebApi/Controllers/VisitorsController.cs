@@ -28,7 +28,7 @@ public sealed class VisitorsController : ControllerBase
     [HttpPost("session")]
     [ProducesResponseType(typeof(CreateVisitorResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateSession(CreateVisitorRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateSession(CreateVisitorRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -55,7 +55,7 @@ public sealed class VisitorsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(CreateVisitorResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Create(CreateVisitorRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create(CreateVisitorRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -73,7 +73,7 @@ public sealed class VisitorsController : ControllerBase
     [HttpPost("events")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> RecordEventFromSession(VisitorEventRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> RecordEventFromSession(VisitorEventRequest request, CancellationToken cancellationToken = default)
     {
         if (!Request.Cookies.TryGetValue(VisitorCookieName, out var value) || !Guid.TryParse(value, out var visitorId))
         {
@@ -86,7 +86,7 @@ public sealed class VisitorsController : ControllerBase
     // Private helper only. The visitor id is taken from the HttpOnly mbv_vid cookie,
     // never from a caller-supplied route value, so events cannot be spoofed onto an
     // arbitrary visitor session.
-    private async Task<IActionResult> RecordEventForVisitorAsync(Guid visitorId, VisitorEventRequest request, CancellationToken cancellationToken)
+    private async Task<IActionResult> RecordEventForVisitorAsync(Guid visitorId, VisitorEventRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -107,7 +107,7 @@ public sealed class VisitorsController : ControllerBase
     [HttpPost("session/conversion")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> LinkSessionToAuthenticatedUser(CancellationToken cancellationToken)
+    public async Task<IActionResult> LinkSessionToAuthenticatedUser(CancellationToken cancellationToken = default)
     {
         if (!Request.Cookies.TryGetValue(VisitorCookieName, out var value) || !Guid.TryParse(value, out var visitorId))
         {
@@ -117,7 +117,7 @@ public sealed class VisitorsController : ControllerBase
         return await LinkVisitor(visitorId, cancellationToken);
     }
 
-    private async Task<IActionResult> LinkVisitor(Guid visitorId, CancellationToken cancellationToken)
+    private async Task<IActionResult> LinkVisitor(Guid visitorId, CancellationToken cancellationToken = default)
     {
         var userSubject = User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(userSubject))

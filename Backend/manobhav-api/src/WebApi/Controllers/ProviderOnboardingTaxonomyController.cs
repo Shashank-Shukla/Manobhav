@@ -31,7 +31,7 @@ public sealed class ProviderOnboardingTaxonomyController : ControllerBase
 
     [HttpGet("taxonomy")]
     [ProducesResponseType(typeof(ProviderOnboardingTaxonomyDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ProviderOnboardingTaxonomyDto>> Get(CancellationToken cancellationToken)
+    public async Task<ActionResult<ProviderOnboardingTaxonomyDto>> Get(CancellationToken cancellationToken = default)
     {
         var terms = await _db.ProviderTaxonomyTerms
             .AsNoTracking()

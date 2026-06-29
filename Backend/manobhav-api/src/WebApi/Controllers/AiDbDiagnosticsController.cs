@@ -6,19 +6,20 @@ using Microsoft.AspNetCore.Mvc;
 namespace WebApi.Controllers;
 
 /// <summary>
-/// Read-only, PII-redacted diagnostics over a curated subset of operational tables, for an AI agent
-/// to inspect production data when the private database isn't otherwise reachable. Highly sensitive
-/// tables (OTP, payout, raw intake answers, audit, visitor IPs) are never exposed, and fields such as
-/// email/phone are masked.
+/// Read-only diagnostics over EVERY operational table, for an AI agent to inspect production data when
+/// the private database isn't otherwise reachable. Rows are returned RAW and UNREDACTED (owner decision,
+/// alpha stage) so data correctness can be verified — full emails/phones, IPs, JSON blobs and ciphertext
+/// are all surfaced. The single exception is a denylist of live auth secrets (OTP hashes, Cognito
+/// session/lock tokens) which are suppressed in the repository because they are replayable credentials.
 /// </summary>
 /// <remarks>
-/// ⚠ SECURITY — this endpoint is intentionally UNGATED (publicly reachable, no key and no auth) while
-/// the product is in alpha with no real users (owner decision, 2026-06-29). It still returns redacted
-/// rows from appointments, user-roles and provider-applications, so it MUST be re-gated or further
-/// redacted before real users onboard. Re-gating recipe (tracked in docs/WORK_TRACKER.md): restore
-/// AiDbDiagnosticsOptions + AiDbDiagnosticsKeyAuthorizationFilter (see git history of PR #28), re-add
-/// [ServiceFilter(typeof(AiDbDiagnosticsKeyAuthorizationFilter))] to this controller, and re-bind the
-/// "AiDbDiagnostics" config section + filter registration in Program.cs.
+/// ⚠ SECURITY — this endpoint is intentionally UNGATED (publicly reachable, no key and no auth) AND
+/// unredacted while the product is in alpha with no real users (owner decision, 2026-06-29). It exposes
+/// raw rows from every table, so it MUST be re-gated AND re-redacted before real users onboard.
+/// Re-gating recipe (tracked in docs/WORK_TRACKER.md): restore AiDbDiagnosticsOptions +
+/// AiDbDiagnosticsKeyAuthorizationFilter (see git history of PR #28), re-add
+/// [ServiceFilter(typeof(AiDbDiagnosticsKeyAuthorizationFilter))] to this controller, re-bind the
+/// "AiDbDiagnostics" config section + filter registration in Program.cs, and reinstate column masking.
 /// </remarks>
 [ApiController]
 [AllowAnonymous]
@@ -34,7 +35,7 @@ public sealed class AiDbDiagnosticsController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AiDbDiagnosticsTableSummaryDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<AiDbDiagnosticsTableSummaryDto>>> GetSummary(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<AiDbDiagnosticsTableSummaryDto>>> GetSummary(CancellationToken cancellationToken = default)
     {
         return Ok(await _diagnostics.GetSummaryAsync(cancellationToken));
     }

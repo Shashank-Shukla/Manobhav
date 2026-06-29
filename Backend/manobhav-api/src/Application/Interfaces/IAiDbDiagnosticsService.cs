@@ -3,16 +3,17 @@ using Application.DTOs;
 namespace Application.Interfaces;
 
 /// <summary>
-/// Read-only diagnostics over a curated, PII-redacted subset of operational tables, for an AI agent
-/// to inspect production data. Gating (key/enabled) is enforced at the WebApi boundary.
+/// Read-only diagnostics over every operational table, for an AI agent to inspect production data.
+/// Data is returned RAW/unredacted (alpha-stage decision) apart from a small set of live auth secrets
+/// suppressed in the repository. The endpoint is intentionally ungated at the WebApi boundary.
 /// </summary>
 public interface IAiDbDiagnosticsService
 {
     /// <summary>The table keys this endpoint will serve (path segment values).</summary>
     IReadOnlyList<string> Tables { get; }
 
-    Task<IReadOnlyList<AiDbDiagnosticsTableSummaryDto>> GetSummaryAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<AiDbDiagnosticsTableSummaryDto>> GetSummaryAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Returns a typed, redacted list for a known table (boxed for serialization), or null for an unknown table.</summary>
-    Task<object?> GetTableAsync(string table, int limit, int offset, CancellationToken cancellationToken);
+    /// <summary>Returns a page of rows (column→value maps) for a known table, or null for an unknown table.</summary>
+    Task<object?> GetTableAsync(string table, int limit, int offset, CancellationToken cancellationToken = default);
 }

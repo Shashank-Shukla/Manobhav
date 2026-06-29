@@ -20,7 +20,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken = default)
     {
         var user = await _svc.GetUserDtoAsync(id, cancellationToken);
         return user == null ? NotFound() : Ok(user);

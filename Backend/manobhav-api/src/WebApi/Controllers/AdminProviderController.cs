@@ -20,7 +20,7 @@ public sealed class AdminProviderController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ProviderApplicationDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ProviderApplicationDto>>> List(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<ProviderApplicationDto>>> List(CancellationToken cancellationToken = default)
     {
         return Ok(await _service.ListAsync(cancellationToken));
     }
@@ -28,7 +28,7 @@ public sealed class AdminProviderController : ControllerBase
     [HttpGet("{applicationId:guid}")]
     [ProducesResponseType(typeof(ProviderApplicationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Get(Guid applicationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Get(Guid applicationId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -45,7 +45,7 @@ public sealed class AdminProviderController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Approve(Guid applicationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Approve(Guid applicationId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -67,7 +67,7 @@ public sealed class AdminProviderController : ControllerBase
         Guid applicationId,
         string sectionKey,
         ProviderApplicationSectionReviewRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -82,7 +82,7 @@ public sealed class AdminProviderController : ControllerBase
     [HttpPost("{applicationId:guid}/needs-changes")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> NeedsChanges(Guid applicationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> NeedsChanges(Guid applicationId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -100,7 +100,7 @@ public sealed class AdminProviderController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Reject(Guid applicationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Reject(Guid applicationId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -116,7 +116,7 @@ public sealed class AdminProviderController : ControllerBase
     [HttpPost("{applicationId:guid}/suspend")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Suspend(Guid applicationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Suspend(Guid applicationId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -132,7 +132,7 @@ public sealed class AdminProviderController : ControllerBase
     [HttpPost("/api/admin/provider-profiles/{providerProfileId:guid}/publish")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Publish(Guid providerProfileId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Publish(Guid providerProfileId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -148,7 +148,7 @@ public sealed class AdminProviderController : ControllerBase
     [HttpPost("/api/admin/provider-profiles/{providerProfileId:guid}/unpublish")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Unpublish(Guid providerProfileId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Unpublish(Guid providerProfileId, CancellationToken cancellationToken = default)
     {
         try
         {
