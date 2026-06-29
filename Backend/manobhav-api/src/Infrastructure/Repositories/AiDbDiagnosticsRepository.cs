@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories;
 
-public sealed class DiagnosticsRepository : IDiagnosticsRepository
+public sealed class AiDbDiagnosticsRepository : IAiDbDiagnosticsRepository
 {
     private readonly ApplicationDbContext _db;
 
-    public DiagnosticsRepository(ApplicationDbContext db)
+    public AiDbDiagnosticsRepository(ApplicationDbContext db)
     {
         _db = db;
     }

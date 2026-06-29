@@ -26,6 +26,7 @@ export function AboutPage() {
   const transitionLockRef = useRef(false);
   const exitTimeoutRef = useRef<number | null>(null);
   const enterTimeoutRef = useRef<number | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const clearTransitionTimers = useCallback(() => {
     if (exitTimeoutRef.current !== null) {
@@ -78,14 +79,26 @@ export function AboutPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrevious]);
 
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [currentIndex]);
 
+  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
     if (!isWheelNavigation(event.deltaY)) {
       return;
     }
 
-    moveByDelta(event.deltaY, goNext, goPrevious);
+    const direction: Direction = event.deltaY > 0 ? 1 : -1;
+    if (!isAtScrollEdge(scrollContainerRef.current, direction)) {
+      // The section is taller than the viewport and can still scroll natively in
+      // this direction, so let the browser handle it instead of paging.
+      return;
+    }
+
+    event.preventDefault();
+    moveByDirection(direction, goNext, goPrevious);
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
@@ -102,7 +115,10 @@ export function AboutPage() {
     const delta = touchStartY.current - touchEndY.current;
 
     if (isSwipeNavigation(delta)) {
-      moveByDelta(delta, goNext, goPrevious);
+      const direction: Direction = delta > 0 ? 1 : -1;
+      if (isAtScrollEdge(scrollContainerRef.current, direction)) {
+        moveByDirection(direction, goNext, goPrevious);
+      }
     }
 
     touchStartY.current = null;
@@ -118,7 +134,7 @@ export function AboutPage() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <div className={`h-full min-h-0 overflow-hidden ${transitionClass}`}>
+      <div ref={scrollContainerRef} className={`h-full min-h-0 overflow-y-auto overflow-x-hidden ${transitionClass}`}>
         <AboutSection currentIndex={currentIndex} onAdvanceSection={goNext} onExploreProviders={() => navigate('/providers')} />
       </div>
     </div>
@@ -168,9 +184,23 @@ function isSwipeNavigation(deltaY: number): boolean {
   return Math.abs(deltaY) >= SWIPE_THRESHOLD;
 }
 
-function moveByDelta(deltaY: number, goNext: () => void, goPrevious: () => void): void {
-  const direction = deltaY > 0 ? 1 : -1;
-  moveByDirection(direction, goNext, goPrevious);
+function isAtScrollEdge(container: HTMLDivElement | null, direction: Direction): boolean {
+  if (!container) {
+    return true;
+  }
+
+  const { scrollTop, clientHeight, scrollHeight } = container;
+
+  // No overflow: the section fits, so paging is always allowed.
+  if (scrollHeight - clientHeight <= 1) {
+    return true;
+  }
+
+  if (direction > 0) {
+    return scrollTop + clientHeight >= scrollHeight - 1;
+  }
+
+  return scrollTop <= 0;
 }
 
 function moveByDirection(direction: Direction, goNext: () => void, goPrevious: () => void): void {

@@ -260,8 +260,8 @@ public sealed class WebApiPipelineTests
         using var client = factory.CreateHttpsClient();
 
         // With no Diagnostics key/enabled configured, the gated endpoint is hidden entirely.
-        var summaryResponse = await client.GetAsync("/api/diagnostics");
-        var tableResponse = await client.GetAsync("/api/diagnostics/provider-profiles");
+        var summaryResponse = await client.GetAsync("/api/ai-db-diagnostics");
+        var tableResponse = await client.GetAsync("/api/ai-db-diagnostics/provider-profiles");
 
         Assert.Equal(HttpStatusCode.NotFound, summaryResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, tableResponse.StatusCode);

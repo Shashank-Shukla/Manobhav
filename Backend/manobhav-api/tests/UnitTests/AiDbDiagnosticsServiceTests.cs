@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace UnitTests;
 
-public sealed class DiagnosticsServiceTests
+public sealed class AiDbDiagnosticsServiceTests
 {
     [Fact]
     public async Task GetTable_Users_MasksEmailAndPhoneAndOmitsCognitoSubject()
@@ -25,14 +25,14 @@ public sealed class DiagnosticsServiceTests
         await db.SaveChangesAsync();
         var service = CreateService(db);
 
-        var rows = Assert.IsType<List<DiagnosticsUserDto>>(await service.GetTableAsync("users", 50, 0, CancellationToken.None));
+        var rows = Assert.IsType<List<AiDbDiagnosticsUserDto>>(await service.GetTableAsync("users", 50, 0, CancellationToken.None));
 
         var user = Assert.Single(rows);
         Assert.Equal("j***@example.com", user.Email);
         Assert.Equal("*******678", user.Phone);
         Assert.Equal("Dr. John", user.DisplayName);
         // The DTO has no CognitoSubject member at all — redaction is enforced by the projection type.
-        Assert.DoesNotContain("CognitoSubject", typeof(DiagnosticsUserDto).GetProperties().Select(property => property.Name));
+        Assert.DoesNotContain("CognitoSubject", typeof(AiDbDiagnosticsUserDto).GetProperties().Select(property => property.Name));
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public sealed class DiagnosticsServiceTests
         await db.SaveChangesAsync();
         var service = CreateService(db);
 
-        var rows = Assert.IsType<List<DiagnosticsProviderApplicationDto>>(
+        var rows = Assert.IsType<List<AiDbDiagnosticsProviderApplicationDto>>(
             await service.GetTableAsync("provider-applications", 50, 0, CancellationToken.None));
 
         var application = Assert.Single(rows);
@@ -89,9 +89,9 @@ public sealed class DiagnosticsServiceTests
         Assert.Equal(1, summary.Single(item => item.Table == "users").Count);
     }
 
-    private static DiagnosticsService CreateService(ApplicationDbContext db)
+    private static AiDbDiagnosticsService CreateService(ApplicationDbContext db)
     {
-        return new DiagnosticsService(new DiagnosticsRepository(db));
+        return new AiDbDiagnosticsService(new AiDbDiagnosticsRepository(db));
     }
 
     private static ApplicationDbContext CreateDbContext()

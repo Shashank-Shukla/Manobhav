@@ -3,11 +3,11 @@ namespace WebApi.Configuration;
 /// <summary>
 /// Controls the gated, read-only AI diagnostics endpoint. Off by default: both <see cref="Enabled"/>
 /// must be true and a non-empty <see cref="Key"/> must be configured (expected from SSM
-/// <c>/manobhav/prod/Diagnostics/*</c>) before any diagnostics route responds. Never commit a key.
+/// <c>/manobhav/prod/AiDbDiagnostics/*</c>) before any diagnostics route responds. Never commit a key.
 /// </summary>
-public sealed class DiagnosticsOptions
+public sealed class AiDbDiagnosticsOptions
 {
-    public const string SectionName = "Diagnostics";
+    public const string SectionName = "AiDbDiagnostics";
 
     public bool Enabled { get; set; }
 

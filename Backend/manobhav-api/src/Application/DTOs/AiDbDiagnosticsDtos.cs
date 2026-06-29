@@ -5,9 +5,9 @@ namespace Application.DTOs;
 /// (email OTP challenges, payout/bank details, raw intake answers, audit before/after JSON, visitor
 /// IPs) are intentionally NOT represented here, and emails/phones are masked.
 /// </summary>
-public sealed record DiagnosticsTableSummaryDto(string Table, int Count);
+public sealed record AiDbDiagnosticsTableSummaryDto(string Table, int Count);
 
-public sealed record DiagnosticsUserDto(
+public sealed record AiDbDiagnosticsUserDto(
     Guid Id,
     string? Email,
     string? Phone,
@@ -17,7 +17,7 @@ public sealed record DiagnosticsUserDto(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? LastLoginAtUtc);
 
-public sealed record DiagnosticsProviderProfileDto(
+public sealed record AiDbDiagnosticsProviderProfileDto(
     Guid Id,
     Guid? ProviderApplicationId,
     Guid? UserId,
@@ -36,7 +36,7 @@ public sealed record DiagnosticsProviderProfileDto(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? PublishedAtUtc);
 
-public sealed record DiagnosticsProviderApplicationDto(
+public sealed record AiDbDiagnosticsProviderApplicationDto(
     Guid Id,
     Guid UserId,
     string Status,
@@ -47,14 +47,14 @@ public sealed record DiagnosticsProviderApplicationDto(
     string BioJson,
     string AvailabilitySlotsJson);
 
-public sealed record DiagnosticsAvailabilitySlotDto(
+public sealed record AiDbDiagnosticsAvailabilitySlotDto(
     Guid Id,
     Guid ProviderProfileId,
     DateTimeOffset StartsAtUtc,
     DateTimeOffset EndsAtUtc,
     string Status);
 
-public sealed record DiagnosticsAppointmentDto(
+public sealed record AiDbDiagnosticsAppointmentDto(
     Guid Id,
     Guid ProviderProfileId,
     Guid PatientUserId,
@@ -64,7 +64,7 @@ public sealed record DiagnosticsAppointmentDto(
     string Status,
     string PaymentStatus);
 
-public sealed record DiagnosticsBookingHoldDto(
+public sealed record AiDbDiagnosticsBookingHoldDto(
     Guid Id,
     Guid ProviderProfileId,
     Guid SlotId,
@@ -73,7 +73,7 @@ public sealed record DiagnosticsBookingHoldDto(
     string Status,
     DateTimeOffset ExpiresAtUtc);
 
-public sealed record DiagnosticsUserRoleDto(
+public sealed record AiDbDiagnosticsUserRoleDto(
     Guid Id,
     Guid UserId,
     string Role,

@@ -4,7 +4,7 @@ using Application.Interfaces;
 
 namespace Application.Services;
 
-public sealed class DiagnosticsService : IDiagnosticsService
+public sealed class AiDbDiagnosticsService : IAiDbDiagnosticsService
 {
     private const int MaxLimit = 200;
 
@@ -19,20 +19,20 @@ public sealed class DiagnosticsService : IDiagnosticsService
         "user-roles",
     ];
 
-    private readonly IDiagnosticsRepository _repository;
+    private readonly IAiDbDiagnosticsRepository _repository;
 
-    public DiagnosticsService(IDiagnosticsRepository repository)
+    public AiDbDiagnosticsService(IAiDbDiagnosticsRepository repository)
     {
         _repository = repository;
     }
 
     public IReadOnlyList<string> Tables => ExposedTables;
 
-    public async Task<IReadOnlyList<DiagnosticsTableSummaryDto>> GetSummaryAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<AiDbDiagnosticsTableSummaryDto>> GetSummaryAsync(CancellationToken cancellationToken)
     {
         var counts = await _repository.GetTableCountsAsync(ExposedTables, cancellationToken);
         return ExposedTables
-            .Select(table => new DiagnosticsTableSummaryDto(table, counts.TryGetValue(table, out var count) ? count : 0))
+            .Select(table => new AiDbDiagnosticsTableSummaryDto(table, counts.TryGetValue(table, out var count) ? count : 0))
             .ToList();
     }
 
@@ -44,7 +44,7 @@ public sealed class DiagnosticsService : IDiagnosticsService
         return table switch
         {
             "users" => (await _repository.GetUsersAsync(safeLimit, safeOffset, cancellationToken))
-                .Select(item => new DiagnosticsUserDto(
+                .Select(item => new AiDbDiagnosticsUserDto(
                     item.Id,
                     MaskEmail(item.Email),
                     MaskPhone(item.Phone),
@@ -56,7 +56,7 @@ public sealed class DiagnosticsService : IDiagnosticsService
                 .ToList(),
 
             "provider-profiles" => (await _repository.GetProviderProfilesAsync(safeLimit, safeOffset, cancellationToken))
-                .Select(item => new DiagnosticsProviderProfileDto(
+                .Select(item => new AiDbDiagnosticsProviderProfileDto(
                     item.Id,
                     item.ProviderApplicationId,
                     item.UserId,
@@ -77,7 +77,7 @@ public sealed class DiagnosticsService : IDiagnosticsService
                 .ToList(),
 
             "provider-applications" => (await _repository.GetProviderApplicationsAsync(safeLimit, safeOffset, cancellationToken))
-                .Select(item => new DiagnosticsProviderApplicationDto(
+                .Select(item => new AiDbDiagnosticsProviderApplicationDto(
                     item.Id,
                     item.UserId,
                     item.Status,
@@ -90,24 +90,24 @@ public sealed class DiagnosticsService : IDiagnosticsService
                 .ToList(),
 
             "availability-slots" => (await _repository.GetAvailabilitySlotsAsync(safeLimit, safeOffset, cancellationToken))
-                .Select(item => new DiagnosticsAvailabilitySlotDto(
+                .Select(item => new AiDbDiagnosticsAvailabilitySlotDto(
                     item.Id, item.ProviderProfileId, item.StartsAtUtc, item.EndsAtUtc, item.Status))
                 .ToList(),
 
             "appointments" => (await _repository.GetAppointmentsAsync(safeLimit, safeOffset, cancellationToken))
-                .Select(item => new DiagnosticsAppointmentDto(
+                .Select(item => new AiDbDiagnosticsAppointmentDto(
                     item.Id, item.ProviderProfileId, item.PatientUserId, item.SlotId,
                     item.StartsAtUtc, item.EndsAtUtc, item.Status, item.PaymentStatus))
                 .ToList(),
 
             "booking-holds" => (await _repository.GetBookingHoldsAsync(safeLimit, safeOffset, cancellationToken))
-                .Select(item => new DiagnosticsBookingHoldDto(
+                .Select(item => new AiDbDiagnosticsBookingHoldDto(
                     item.Id, item.ProviderProfileId, item.SlotId, item.UserId, item.VisitorSessionId,
                     item.Status, item.ExpiresAtUtc))
                 .ToList(),
 
             "user-roles" => (await _repository.GetUserRolesAsync(safeLimit, safeOffset, cancellationToken))
-                .Select(item => new DiagnosticsUserRoleDto(item.Id, item.UserId, item.Role, item.IsActive))
+                .Select(item => new AiDbDiagnosticsUserRoleDto(item.Id, item.UserId, item.Role, item.IsActive))
                 .ToList(),
 
             _ => (object?)null,

@@ -22,7 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IProviderApplicationRepository, ProviderApplicationRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IPublicContentRepository, PublicContentRepository>();
-        services.AddScoped<IDiagnosticsRepository, DiagnosticsRepository>();
+        services.AddScoped<IAiDbDiagnosticsRepository, AiDbDiagnosticsRepository>();
 
         // add other infrastructure services as needed
 

@@ -6,7 +6,7 @@ namespace Application.Interfaces;
 /// Read-only, paged access to the operational tables surfaced by the diagnostics endpoint. Returns
 /// entities; the service redacts them. Sensitive tables are deliberately not represented here.
 /// </summary>
-public interface IDiagnosticsRepository
+public interface IAiDbDiagnosticsRepository
 {
     Task<IReadOnlyDictionary<string, int>> GetTableCountsAsync(IReadOnlyList<string> tables, CancellationToken cancellationToken);
 

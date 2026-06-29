@@ -10,15 +10,15 @@ namespace WebApi.Security;
 /// <summary>
 /// Gates the diagnostics endpoint. Returns 404 (hiding the route entirely) unless diagnostics is
 /// configured (enabled + a key set, expected from SSM) AND the request carries a matching
-/// <c>X-Debug-Key</c> header (compared in constant time). Off by default in every environment.
+/// <c>X-Ai-Db-Key</c> header (compared in constant time). Off by default in every environment.
 /// </summary>
-public sealed class DiagnosticsKeyAuthorizationFilter : IAuthorizationFilter
+public sealed class AiDbDiagnosticsKeyAuthorizationFilter : IAuthorizationFilter
 {
-    public const string HeaderName = "X-Debug-Key";
+    public const string HeaderName = "X-Ai-Db-Key";
 
-    private readonly DiagnosticsOptions _options;
+    private readonly AiDbDiagnosticsOptions _options;
 
-    public DiagnosticsKeyAuthorizationFilter(IOptions<DiagnosticsOptions> options)
+    public AiDbDiagnosticsKeyAuthorizationFilter(IOptions<AiDbDiagnosticsOptions> options)
     {
         _options = options.Value;
     }

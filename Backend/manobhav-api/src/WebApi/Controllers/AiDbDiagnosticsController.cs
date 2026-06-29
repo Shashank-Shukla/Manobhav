@@ -9,25 +9,25 @@ namespace WebApi.Controllers;
 /// <summary>
 /// Read-only, PII-redacted diagnostics over a curated subset of operational tables, for an AI agent
 /// to inspect production data when the private database isn't otherwise reachable. Disabled by
-/// default and gated by <see cref="DiagnosticsKeyAuthorizationFilter"/> (SSM-configured key); highly
+/// default and gated by <see cref="AiDbDiagnosticsKeyAuthorizationFilter"/> (SSM-configured key); highly
 /// sensitive tables (OTP, payout, raw intake answers, audit, visitor IPs) are never exposed.
 /// </summary>
 [ApiController]
 [AllowAnonymous]
-[Route("api/diagnostics")]
-[ServiceFilter(typeof(DiagnosticsKeyAuthorizationFilter))]
-public sealed class AiDbDebugController : ControllerBase
+[Route("api/ai-db-diagnostics")]
+[ServiceFilter(typeof(AiDbDiagnosticsKeyAuthorizationFilter))]
+public sealed class AiDbDiagnosticsController : ControllerBase
 {
-    private readonly IDiagnosticsService _diagnostics;
+    private readonly IAiDbDiagnosticsService _diagnostics;
 
-    public AiDbDebugController(IDiagnosticsService diagnostics)
+    public AiDbDiagnosticsController(IAiDbDiagnosticsService diagnostics)
     {
         _diagnostics = diagnostics;
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<DiagnosticsTableSummaryDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<DiagnosticsTableSummaryDto>>> GetSummary(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(IReadOnlyList<AiDbDiagnosticsTableSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AiDbDiagnosticsTableSummaryDto>>> GetSummary(CancellationToken cancellationToken)
     {
         return Ok(await _diagnostics.GetSummaryAsync(cancellationToken));
     }
