@@ -64,16 +64,16 @@ function SquishyCard({
 
 export function VisionSection() {
   return (
-    <section id="vision-section" className="relative min-h-full bg-[#FCF2F5] px-4 py-10 sm:px-6 sm:py-14 md:py-20">
+    <section id="vision-section" className="relative w-full bg-[#F9EEF0] px-4 py-20 sm:px-6 md:py-28">
       <RollingSectionWave className="absolute left-0 top-0 h-28 w-full md:h-36" />
       <RollingSectionWave className="absolute bottom-0 left-0 h-28 w-full rotate-180 md:h-36" />
 
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[8%] top-40 hidden h-32 w-32 rounded-full bg-[#FBEEF2] blur-3xl lg:block" />
-        <div className="absolute bottom-32 right-[10%] hidden h-36 w-36 rounded-full bg-[#e0eef4] blur-3xl lg:block" />
+      <div className="pointer-events-none absolute inset-0 overflow-x-hidden">
+        <div className="absolute left-[8%] top-40 hidden h-32 w-32 rounded-full bg-[#F7E6E8] blur-3xl lg:block" />
+        <div className="absolute bottom-32 right-[10%] hidden h-36 w-36 rounded-full bg-[#D6A2AD]/40 blur-3xl lg:block" />
       </div>
 
-      <div className="relative mx-auto grid min-h-full max-w-7xl items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12">
+      <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12">
         <SectionReveal className="lg:pr-4">
           <div className="space-y-6">
             <div className="max-w-xl">

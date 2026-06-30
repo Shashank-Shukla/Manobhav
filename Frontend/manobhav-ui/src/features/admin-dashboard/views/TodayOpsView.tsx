@@ -45,7 +45,7 @@ export function TodayOpsView({ data, onOpenProviderApplications }: { data: Admin
           <Stack spacing={4}>
             {data.providers.map((provider) => (
               <Box key={provider.id} border="1px solid" borderColor={toneStyles[provider.tone].border} bg="white" borderRadius="14px" p={4}>
-                <Flex justify="space-between" gap={4} mb={3}>
+                <Flex justify="space-between" align="flex-start" gap={4} mb={3}>
                   <Box>
                     <Text color={adminTheme.text} fontWeight="900">
                       {provider.name}

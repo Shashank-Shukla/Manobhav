@@ -23,6 +23,8 @@ export type ProviderRecord = {
   summary: string;
   specializations: string[];
   avatarColor: string;
+  /** Optional profile photo URL; when present it takes priority over the initials avatar. */
+  photoUrl?: string;
   /** The provider's recurring weekly schedule, straight from the API. */
   weeklyAvailability: WeeklyAvailabilitySlot[];
   /** Next available calendar dates (local time), derived from the weekly schedule. */

@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Application.DTOs;
+
 namespace Application.Interfaces;
 
 /// <summary>
@@ -23,4 +26,14 @@ public interface IAiDbDiagnosticsRepository
         int limit,
         int offset,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Updates the supplied (non-key) columns of a single row, addressed by table key + primary-key value.</summary>
+    Task<AiDbDiagnosticsWriteResult> UpdateRowAsync(
+        string table,
+        string id,
+        IReadOnlyDictionary<string, JsonElement> values,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes a single row by table key + primary-key value (EF cascades remove dependent rows where configured).</summary>
+    Task<AiDbDiagnosticsWriteResult> DeleteRowAsync(string table, string id, CancellationToken cancellationToken = default);
 }

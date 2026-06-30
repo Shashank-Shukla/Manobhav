@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Application.DTOs;
 using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -15,8 +16,9 @@ namespace WebApi.Controllers;
 /// <remarks>
 /// ⚠ SECURITY — this endpoint is intentionally UNGATED (publicly reachable, no key and no auth) AND
 /// fully unredacted (incl. live credentials) while the product is in alpha with no real users (owner
-/// decision, 2026-06-29). It exposes raw rows from every table, so it MUST be re-gated AND re-redacted
-/// before real users onboard.
+/// decision, 2026-06-29). It exposes raw rows from every table AND allows WRITES — PUT updates a row's
+/// columns and DELETE removes a row (EF cascades dependent rows where configured) — so it is destructive
+/// and MUST be re-gated AND re-redacted before real users onboard.
 /// Re-gating recipe (tracked in docs/WORK_TRACKER.md): restore AiDbDiagnosticsOptions +
 /// AiDbDiagnosticsKeyAuthorizationFilter (see git history of PR #28), re-add
 /// [ServiceFilter(typeof(AiDbDiagnosticsKeyAuthorizationFilter))] to this controller, re-bind the
@@ -52,5 +54,44 @@ public sealed class AiDbDiagnosticsController : ControllerBase
     {
         var rows = await _diagnostics.GetTableAsync(table, limit, offset, cancellationToken);
         return rows is null ? NotFound() : Ok(rows);
+    }
+
+    /// <summary>Updates a single row's (non-key) columns. Body is a JSON object of column→value, e.g. {"Summary":"...","IsFeatured":true}.</summary>
+    [HttpPut("{table}/{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateRow(
+        string table,
+        string id,
+        [FromBody] Dictionary<string, JsonElement>? values,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _diagnostics.UpdateRowAsync(table, id, values ?? new Dictionary<string, JsonElement>(), cancellationToken);
+        return MapWriteResult(result);
+    }
+
+    /// <summary>Deletes a single row by primary key (cascades to dependent rows where the schema allows).</summary>
+    [HttpDelete("{table}/{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteRow(string table, string id, CancellationToken cancellationToken = default)
+    {
+        var result = await _diagnostics.DeleteRowAsync(table, id, cancellationToken);
+        return MapWriteResult(result);
+    }
+
+    private IActionResult MapWriteResult(AiDbDiagnosticsWriteResult result)
+    {
+        return result.Status switch
+        {
+            AiDbDiagnosticsWriteStatus.UnknownTable or AiDbDiagnosticsWriteStatus.NotFound => NotFound(),
+            AiDbDiagnosticsWriteStatus.BadRequest => BadRequest(new { error = result.Message }),
+            AiDbDiagnosticsWriteStatus.Conflict => Conflict(new { error = result.Message }),
+            AiDbDiagnosticsWriteStatus.Success => Ok(result.Row ?? (object)new { status = "ok" }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
     }
 }

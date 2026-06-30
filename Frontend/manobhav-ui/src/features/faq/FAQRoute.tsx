@@ -19,22 +19,22 @@ type FAQSection = {
 function FAQIllustration() {
   return (
     <div className="relative mx-auto w-full max-w-[420px]">
-      <div className="absolute -left-6 top-10 h-28 w-28 rounded-full bg-[#f0dfc7]/70 blur-3xl" />
-      <div className="absolute -right-3 bottom-10 h-32 w-32 rounded-full bg-[#dce8ee]/75 blur-3xl" />
-      <div className="relative rounded-[2.4rem] border border-[#ece0cb] bg-[#f8efdf]/86 p-6 shadow-[0_24px_60px_rgba(36,59,107,0.08)]">
-        <div className="relative overflow-hidden rounded-[2rem] bg-[#f4e6ca] p-8">
+      <div className="absolute -left-6 top-10 h-28 w-28 rounded-full bg-[#CFE6EC]/70 blur-3xl" />
+      <div className="absolute -right-3 bottom-10 h-32 w-32 rounded-full bg-[#B0CED6]/75 blur-3xl" />
+      <div className="relative rounded-[2.4rem] border border-[#D3E6EB] bg-[#F4FAFB]/86 p-6 shadow-[0_24px_60px_rgba(36,59,107,0.08)]">
+        <div className="relative overflow-hidden rounded-[2rem] bg-[#E1EFF3] p-8">
           <div className="absolute inset-x-8 top-8 h-px bg-gradient-to-r from-transparent via-[#243b6b]/18 to-transparent" />
           <div className="absolute inset-x-8 bottom-8 h-px bg-gradient-to-r from-transparent via-[#243b6b]/18 to-transparent" />
           <div className="grid gap-4">
             {[0, 1, 2].map((index) => (
               <div
                 key={index}
-                className="animate-fade-slide rounded-[1.4rem] border border-[#ead9c5] bg-[#fbf4e9]/95 p-4 shadow-[0_10px_30px_rgba(36,59,107,0.04)]"
+                className="animate-fade-slide rounded-[1.4rem] border border-[#D3E6EB] bg-[#FFFFFF]/95 p-4 shadow-[0_10px_30px_rgba(36,59,107,0.04)]"
                 style={{ animationDelay: `${index * 120}ms` }}
               >
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="h-3 w-3 rounded-full bg-[#d6a2ad]" />
-                  <span className="h-2 w-16 rounded-full bg-[#dfe7ec]" />
+                  <span className="h-3 w-3 rounded-full bg-[#8BAAB3]" />
+                  <span className="h-2 w-16 rounded-full bg-[#B0CED6]" />
                 </div>
                 <div className="h-3 w-3/4 rounded-full bg-[#243b6b]/10" />
                 <div className="mt-2 h-3 w-1/2 rounded-full bg-[#243b6b]/8" />
@@ -57,9 +57,9 @@ function FAQAccordion({
   const [openIndex, setOpenIndex] = useState(0);
 
   return (
-    <section className="rounded-[2.2rem] border border-[#ece0cb] bg-[#fbf4e9]/88 p-6 shadow-[0_18px_44px_rgba(36,59,107,0.05)]">
+    <section className="rounded-[2.2rem] border border-[#D3E6EB] bg-[#FFFFFF]/88 p-6 shadow-[0_18px_44px_rgba(36,59,107,0.05)]">
       <div className="mb-6 flex items-center gap-3">
-        <span className="inline-flex rounded-full bg-[#e8dcc8] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#243b6b]">
+        <span className="inline-flex rounded-full bg-[#D7EAEE] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#243b6b]">
           {section.title}
         </span>
       </div>
@@ -70,7 +70,7 @@ function FAQAccordion({
           return (
             <div
               key={item.question}
-              className="overflow-hidden rounded-[1.6rem] border border-[#eadfcb] bg-[#fffaf2]/86"
+              className="overflow-hidden rounded-[1.6rem] border border-[#D3E6EB] bg-[#EBF5F7]/86"
               style={{ animationDelay: `${sectionIndex * 120 + itemIndex * 50}ms` }}
             >
               <button
@@ -90,7 +90,7 @@ function FAQAccordion({
                 className={`grid transition-all duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
               >
                 <div className="overflow-hidden">
-                  <div className="border-t border-[#efe4d0] px-5 py-4">
+                  <div className="border-t border-[#D3E6EB] px-5 py-4">
                     <Text variant="body" className="text-gray-600">
                       {item.answer}
                     </Text>
@@ -111,18 +111,18 @@ export function FAQPage() {
 
   return (
     <div className="animate-in fade-in duration-500">
-      <section className="relative overflow-hidden bg-[#f5efe3] px-6 pb-20 pt-32 md:pb-24 md:pt-36">
-        <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#f5efe3" />
-        <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full rotate-180 md:h-32" fill="#f5efe3" />
+      <section className="relative overflow-hidden bg-[#EBF5F7] px-6 pb-20 pt-32 md:pb-24 md:pt-36">
+        <RollingSectionWave className="absolute left-0 top-0 h-24 w-full md:h-32" fill="#EBF5F7" />
+        <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full rotate-180 md:h-32" fill="#EBF5F7" />
 
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-[10%] top-36 h-36 w-36 rounded-full bg-[#efe0c5]/55 blur-3xl" />
-          <div className="absolute right-[12%] top-28 h-32 w-32 rounded-full bg-[#dae8ef]/60 blur-3xl" />
+          <div className="absolute left-[10%] top-36 h-36 w-36 rounded-full bg-[#CFE6EC]/55 blur-3xl" />
+          <div className="absolute right-[12%] top-28 h-32 w-32 rounded-full bg-[#B0CED6]/60 blur-3xl" />
         </div>
 
         <div className="relative mx-auto grid max-w-7xl gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div className="max-w-xl space-y-6">
-            <Text variant="caption" className="text-[#7d8f8a]">
+            <Text variant="caption" className="text-[#8BAAB3]">
               FAQ
             </Text>
             <Text variant="h1" className="text-[#243b6b]">
@@ -131,7 +131,7 @@ export function FAQPage() {
             <Text variant="body" className="text-lg text-gray-600">
               Common questions about starting therapy, sessions, privacy, and how care at Manobhav is intended to feel.
             </Text>
-            <div className="inline-flex rounded-full border border-[#eadcc6] bg-[#faf1e1] px-5 py-3 text-sm font-medium text-[#5f6770]">
+            <div className="inline-flex rounded-full border border-[#B0CED6] bg-[#F4FAFB] px-5 py-3 text-sm font-medium text-[#5f6770]">
               Calm answers, practical guidance, no jargon.
             </div>
           </div>
@@ -140,10 +140,10 @@ export function FAQPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[#fbf6eb] px-6 py-20 md:py-24">
+      <section className="relative overflow-hidden bg-[#E1EFF3] px-6 py-20 md:py-24">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-[8%] top-24 h-32 w-32 rounded-full bg-[#f0e3c0]/35 blur-3xl" />
-          <div className="absolute bottom-24 right-[10%] h-36 w-36 rounded-full bg-[#e0edf2]/40 blur-3xl" />
+          <div className="absolute left-[8%] top-24 h-32 w-32 rounded-full bg-[#CFE6EC]/35 blur-3xl" />
+          <div className="absolute bottom-24 right-[10%] h-36 w-36 rounded-full bg-[#B0CED6]/40 blur-3xl" />
         </div>
 
         <div className="relative mx-auto grid max-w-7xl gap-8">
@@ -153,9 +153,9 @@ export function FAQPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[#f5efe3] px-6 pb-20 pt-10 md:pb-24">
-        <div className="mx-auto max-w-5xl rounded-[2.5rem] border border-[#e7dac4] bg-[#f8efdf]/88 p-8 text-center shadow-[0_22px_52px_rgba(36,59,107,0.06)] md:p-10">
-          <div className="mx-auto mb-5 inline-flex rounded-2xl bg-[#e8dcc8] p-4 text-[#243b6b]">
+      <section className="relative overflow-hidden bg-[#EBF5F7] px-6 pb-20 pt-10 md:pb-24">
+        <div className="mx-auto max-w-5xl rounded-[2.5rem] border border-[#D3E6EB] bg-[#F4FAFB]/88 p-8 text-center shadow-[0_22px_52px_rgba(36,59,107,0.06)] md:p-10">
+          <div className="mx-auto mb-5 inline-flex rounded-2xl bg-[#D7EAEE] p-4 text-[#243b6b]">
             <MessageCircleHeart size={26} />
           </div>
           <Text variant="h2" className="text-[#243b6b]">
@@ -168,14 +168,14 @@ export function FAQPage() {
             <Button
               variant="secondary"
               onClick={() => navigate('/providers')}
-              className="border-[#e4d6c8] bg-[#efe3cf] text-[#243b6b] hover:bg-[#e8d8c4]"
+              className="border-[#B0CED6] bg-[#EBF5F7] text-[#2D3748] hover:bg-[#DCEEF1]"
             >
               Browse Providers
             </Button>
             <Button
               variant="outline"
               onClick={() => navigate('/')}
-              className="border-[#9CAF88] text-[#7A8C6A] hover:bg-[#9CAF88] hover:text-white"
+              className="border-[#8BAAB3] text-[#5b7d86] hover:bg-[#B0CED6] hover:text-white"
             >
               Back to Home
             </Button>
