@@ -21,8 +21,9 @@ public sealed class ProviderProfileMaterializer
     public void Apply(ProviderProfile profile, ProviderOnboardingApplication application)
     {
         var (displayName, legalName) = ReadApplicationNames(application);
-        profile.Name = FirstNonEmpty(displayName, legalName) ?? "Provider";
-        profile.DisplayName = FirstNonEmpty(displayName, legalName);
+        var combinedName = NameFormatter.ToTitleCase(FirstNonEmpty(displayName, legalName));
+        profile.Name = combinedName ?? "Provider";
+        profile.DisplayName = combinedName;
 
         var basic = ReadSection<ProviderBasicIdentitySection>(application.BasicProfileJson, nestedProperty: null);
         if (!string.IsNullOrWhiteSpace(basic?.Location))

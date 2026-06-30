@@ -80,7 +80,7 @@ public sealed class ProviderOnboardingSectionService
         switch (sectionKey)
         {
             case "basic-profile":
-                application.BasicProfileJson = Serialize(ValidateBasicIdentity(request.BasicIdentity));
+                application.BasicProfileJson = Serialize(NormalizeNames(ValidateBasicIdentity(request.BasicIdentity)));
                 break;
             case "bio":
                 application.BioJson = PutSection(application.BioJson, "bio", ValidateBio(request.Bio));
@@ -350,5 +350,21 @@ public sealed class ProviderOnboardingSectionService
     private static string Serialize(object value)
     {
         return JsonSerializer.Serialize(value, JsonOptions);
+    }
+
+    /// <summary>
+    /// Stores the provider's names in title case (e.g. "abcd xyz" -> "Abcd Xyz"). Applied after
+    /// validation so a stray casing never blocks the save — the name is simply normalized.
+    /// </summary>
+    private static ProviderBasicIdentitySection NormalizeNames(ProviderBasicIdentitySection section)
+    {
+        return new ProviderBasicIdentitySection
+        {
+            LegalName = NameFormatter.ToTitleCase(section.LegalName),
+            DisplayName = NameFormatter.ToTitleCase(section.DisplayName),
+            Email = section.Email,
+            Phone = section.Phone,
+            Location = section.Location,
+        };
     }
 }

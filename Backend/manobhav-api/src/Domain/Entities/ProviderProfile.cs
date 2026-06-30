@@ -32,8 +32,8 @@ public sealed class ProviderProfile
     public Guid? IntroVideoDocumentId { get; set; }
     public string VisibilityStatus { get; set; } = "Hidden";
     public int Sessions { get; set; }
-    public decimal Rating { get; set; }
-    public decimal RatingAverage { get; set; }
+    public decimal Rating { get; set; } = 5m;
+    public decimal RatingAverage { get; set; } = 5m;
     public int ReviewCount { get; set; }
     public bool IsFeatured { get; set; }
     public bool IsActive { get; set; } = true;

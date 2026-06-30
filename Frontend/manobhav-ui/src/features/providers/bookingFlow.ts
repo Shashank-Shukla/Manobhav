@@ -100,7 +100,7 @@ async function resolveSlotId(
   return slot.id;
 }
 
-async function getProviderSlotsForDate(providerId: string, selectedDateIso: string, signal?: AbortSignal): Promise<ProviderSlot[]> {
+export async function getProviderSlotsForDate(providerId: string, selectedDateIso: string, signal?: AbortSignal): Promise<ProviderSlot[]> {
   if (!selectedDateIso) {
     throw new Error('Choose a provider date before booking.');
   }

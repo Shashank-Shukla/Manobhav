@@ -3,6 +3,7 @@ import { useBreakpointValue } from '@chakra-ui/react';
 import { theme } from '../../../utils/theme';
 import { getProviders } from '../../public-data';
 import type { ProviderDateOption, ProviderRecord } from '../types';
+import { getProviderSlotsForDate, type ProviderSlot } from '../bookingFlow';
 
 export function useProviderDirectory() {
   const isMobile = useBreakpointValue({ base: true, lg: false }) ?? false;
@@ -18,6 +19,9 @@ export function useProviderDirectory() {
   const [selectedDateLabel, setSelectedDateLabel] = useState('');
   const [selectedDateIso, setSelectedDateIso] = useState('');
   const [selectedSlotId, setSelectedSlotId] = useState('');
+  const [selectedSlotLabel, setSelectedSlotLabel] = useState('');
+  const [availableSlots, setAvailableSlots] = useState<ProviderSlot[]>([]);
+  const [slotsStatus, setSlotsStatus] = useState<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle');
   const [showCalendar, setShowCalendar] = useState(false);
   const [tempCalendarIso, setTempCalendarIso] = useState('');
   const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
@@ -68,22 +72,60 @@ export function useProviderDirectory() {
     [filteredProviders, selectedId],
   );
 
+  // Time is the atomic unit of booking: once a date is chosen, fetch that provider's open slots for the
+  // day so the user can pick a concrete time. Re-runs whenever the provider or the selected date changes.
+  useEffect(() => {
+    const providerId = selected?.id;
+    if (!providerId || !selectedDateIso) {
+      setAvailableSlots([]);
+      setSlotsStatus('idle');
+      return;
+    }
+
+    const controller = new AbortController();
+    setSlotsStatus('loading');
+    getProviderSlotsForDate(providerId, selectedDateIso, controller.signal)
+      .then((slots) => {
+        const open = slots.filter((slot) => slot.status === 'Available');
+        setAvailableSlots(open);
+        setSlotsStatus(open.length > 0 ? 'ready' : 'empty');
+      })
+      .catch(() => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setAvailableSlots([]);
+        setSlotsStatus('error');
+      });
+
+    return () => controller.abort();
+  }, [selected?.id, selectedDateIso]);
+
   const summary = useMemo(() => {
     return buildProviderFilterSummary({ dateFrom, dateTo, filter, search, sort });
   }, [dateFrom, dateTo, filter, search, sort]);
 
   const selectProvider = (providerId: string) => {
     setSelectedId(providerId);
+    setSelectedSlotId('');
+    setSelectedSlotLabel('');
     if (isMobile) {
       setIsMobileDetailsOpen(true);
     }
   };
 
-  const selectProviderDate = ({ display, iso, slotId }: ProviderDateOption) => {
+  const selectProviderDate = ({ display, iso }: ProviderDateOption) => {
     setSelectedDateLabel(display);
     setSelectedDateIso(iso);
-    setSelectedSlotId(slotId ?? '');
+    // Picking a date no longer auto-selects a slot — the user must choose a time under the date.
+    setSelectedSlotId('');
+    setSelectedSlotLabel('');
     setShowCalendar(false);
+  };
+
+  const selectSlot = (slotId: string, label: string) => {
+    setSelectedSlotId(slotId);
+    setSelectedSlotLabel(label);
   };
 
   const openCalendar = (providerId: string) => {
@@ -99,6 +141,7 @@ export function useProviderDirectory() {
     setSelectedDateIso(iso);
     setSelectedDateLabel(label);
     setSelectedSlotId('');
+    setSelectedSlotLabel('');
     setDateFrom(iso);
     setDateTo(iso);
     setShowCalendar(false);
@@ -120,6 +163,10 @@ export function useProviderDirectory() {
     cancelCalendar,
     chooseCalendarDate,
     clearDateRange,
+    availableSlots,
+    selectSlot,
+    selectedSlotLabel,
+    slotsStatus,
     dateFrom,
     dateTo,
     filter,

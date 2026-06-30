@@ -3,6 +3,9 @@ import { Avatar, Box, Button, Flex, HStack, Tag, Text, VStack } from '@chakra-ui
 import { CalendarDays, Star } from 'lucide-react';
 import { theme } from '../../../utils/theme';
 import type { ProviderRecord } from '../types';
+import type { ProviderSlot } from '../bookingFlow';
+
+type SlotsStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
 const ProviderDatePicker = lazy(() => import('./ProviderDatePicker'));
 
@@ -17,6 +20,11 @@ type ProviderDetailsPanelProps = {
   selected?: ProviderRecord;
   selectedDateIso: string;
   selectedDateLabel: string;
+  availableSlots: ProviderSlot[];
+  slotsStatus: SlotsStatus;
+  selectedSlotId: string;
+  selectedSlotLabel: string;
+  onSelectSlot: (slotId: string, label: string) => void;
   showCalendar: boolean;
   tempCalendarIso: string;
 };
@@ -32,6 +40,11 @@ export function ProviderDetailsPanel({
   selected,
   selectedDateIso,
   selectedDateLabel,
+  availableSlots,
+  slotsStatus,
+  selectedSlotId,
+  selectedSlotLabel,
+  onSelectSlot,
   showCalendar,
   tempCalendarIso,
 }: ProviderDetailsPanelProps) {
@@ -57,6 +70,11 @@ export function ProviderDetailsPanel({
       onOpenCalendar={onOpenCalendar}
       selected={selected}
       selectedDateLabel={selectedDateLabel}
+      availableSlots={availableSlots}
+      slotsStatus={slotsStatus}
+      selectedSlotId={selectedSlotId}
+      selectedSlotLabel={selectedSlotLabel}
+      onSelectSlot={onSelectSlot}
     />
   );
 }
@@ -105,6 +123,11 @@ function ProviderProfilePanel({
   onOpenCalendar,
   selected,
   selectedDateLabel,
+  availableSlots,
+  slotsStatus,
+  selectedSlotId,
+  selectedSlotLabel,
+  onSelectSlot,
 }: {
   bookingError: string;
   isBooking: boolean;
@@ -112,6 +135,11 @@ function ProviderProfilePanel({
   onOpenCalendar: (providerId: string) => void;
   selected: ProviderRecord;
   selectedDateLabel: string;
+  availableSlots: ProviderSlot[];
+  slotsStatus: SlotsStatus;
+  selectedSlotId: string;
+  selectedSlotLabel: string;
+  onSelectSlot: (slotId: string, label: string) => void;
 }) {
   const hasAvailability = selected.availableDaysOfWeek.length > 0;
 
@@ -163,10 +191,23 @@ function ProviderProfilePanel({
         </Text>
       </HStack>
 
+      <TimeSlotPicker
+        selectedDateLabel={selectedDateLabel}
+        slots={availableSlots}
+        status={slotsStatus}
+        selectedSlotId={selectedSlotId}
+        onSelectSlot={onSelectSlot}
+      />
+
       <VStack align="stretch" spacing={2} pt={1}>
         <Flex gap={3} align="stretch" w="100%">
           <Box w="75%">
-            <BookingButton isBooking={isBooking} onBook={onBook} selectedDateLabel={selectedDateLabel} />
+            <BookingButton
+              isBooking={isBooking}
+              onBook={onBook}
+              selectedDateLabel={selectedDateLabel}
+              selectedSlotLabel={selectedSlotLabel}
+            />
           </Box>
           <Box w="25%">
             <Button
@@ -193,12 +234,15 @@ function BookingButton({
   isBooking,
   onBook,
   selectedDateLabel,
+  selectedSlotLabel,
 }: {
   isBooking: boolean;
   onBook: () => void;
   selectedDateLabel: string;
+  selectedSlotLabel: string;
 }) {
-  const isDisabled = !selectedDateLabel || isBooking;
+  // A booking needs a concrete time slot, not just a date — enable only once a time is chosen.
+  const isDisabled = !selectedSlotLabel || isBooking;
   return (
     <Button
       width="100%"
@@ -217,7 +261,7 @@ function BookingButton({
         borderColor: theme.colors.grey.dark,
       }}
     >
-      {getBookingButtonLabel(isBooking, selectedDateLabel)}
+      {getBookingButtonLabel(isBooking, selectedDateLabel, selectedSlotLabel)}
     </Button>
   );
 }
@@ -234,12 +278,95 @@ function BookingErrorMessage({ message }: { message: string }) {
   );
 }
 
-function getBookingButtonLabel(isBooking: boolean, selectedDateLabel: string): string {
+function getBookingButtonLabel(isBooking: boolean, selectedDateLabel: string, selectedSlotLabel: string): string {
   if (isBooking) {
     return 'Creating hold...';
   }
 
-  return selectedDateLabel ? `Book appointment (${selectedDateLabel})` : 'Book appointment';
+  if (selectedSlotLabel) {
+    return `Book appointment (${selectedDateLabel}, ${selectedSlotLabel})`;
+  }
+
+  return 'Book appointment';
+}
+
+/**
+ * Lets the user pick a concrete time once a date is selected. Times are rendered in the provider's
+ * IST timezone (the platform is India-only) regardless of the visitor's local clock.
+ */
+function TimeSlotPicker({
+  selectedDateLabel,
+  slots,
+  status,
+  selectedSlotId,
+  onSelectSlot,
+}: {
+  selectedDateLabel: string;
+  slots: ProviderSlot[];
+  status: SlotsStatus;
+  selectedSlotId: string;
+  onSelectSlot: (slotId: string, label: string) => void;
+}) {
+  if (!selectedDateLabel) {
+    return (
+      <Text fontSize="sm" color="gray.500">
+        Select a date to see available times.
+      </Text>
+    );
+  }
+
+  return (
+    <VStack align="stretch" spacing={2}>
+      <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+        Available times on {selectedDateLabel}
+      </Text>
+      {status === 'loading' && (
+        <Text fontSize="sm" color="gray.500">
+          Loading times…
+        </Text>
+      )}
+      {status === 'error' && (
+        <Text fontSize="sm" color="red.600">
+          Couldn&apos;t load times. Try another date.
+        </Text>
+      )}
+      {status === 'empty' && (
+        <Text fontSize="sm" color="gray.500">
+          No open times on this date.
+        </Text>
+      )}
+      {status === 'ready' && (
+        <Flex gap={2} wrap="wrap">
+          {slots.map((slot) => {
+            const label = formatSlotTime(slot.startsAtUtc);
+            const isSelected = slot.id === selectedSlotId;
+            return (
+              <Button
+                key={slot.id}
+                size="sm"
+                variant={isSelected ? 'solid' : 'outline'}
+                bg={isSelected ? theme.colors.sage.DEFAULT : 'transparent'}
+                color={isSelected ? 'white' : theme.colors.sage.dark}
+                borderColor={theme.colors.sage.DEFAULT}
+                _hover={{ bg: isSelected ? theme.colors.sage.dark : theme.colors.sage.light }}
+                onClick={() => onSelectSlot(slot.id, label)}
+              >
+                {label}
+              </Button>
+            );
+          })}
+        </Flex>
+      )}
+    </VStack>
+  );
+}
+
+function formatSlotTime(startsAtUtc: string): string {
+  return new Date(startsAtUtc).toLocaleTimeString('en-US', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function RatingStar({ index, rating }: { index: number; rating: number }) {
