@@ -5,6 +5,8 @@ import { getProviders } from '../../public-data';
 import type { ProviderDateOption, ProviderRecord } from '../types';
 import { getProviderSlotsForDate, type ProviderSlot } from '../bookingFlow';
 
+type SlotsStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
+
 export function useProviderDirectory() {
   const isMobile = useBreakpointValue({ base: true, lg: false }) ?? false;
   const todayIso = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -20,8 +22,7 @@ export function useProviderDirectory() {
   const [selectedDateIso, setSelectedDateIso] = useState('');
   const [selectedSlotId, setSelectedSlotId] = useState('');
   const [selectedSlotLabel, setSelectedSlotLabel] = useState('');
-  const [availableSlots, setAvailableSlots] = useState<ProviderSlot[]>([]);
-  const [slotsStatus, setSlotsStatus] = useState<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle');
+  const [slotsResult, setSlotsResult] = useState<{ key: string; slots: ProviderSlot[]; error: boolean } | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [tempCalendarIso, setTempCalendarIso] = useState('');
   const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
@@ -73,33 +74,45 @@ export function useProviderDirectory() {
   );
 
   // Time is the atomic unit of booking: once a date is chosen, fetch that provider's open slots for the
-  // day so the user can pick a concrete time. Re-runs whenever the provider or the selected date changes.
+  // day so the user can pick a concrete time. All state writes happen in async callbacks (never
+  // synchronously inside the effect), and the result is keyed by provider+date so races resolve cleanly.
   useEffect(() => {
     const providerId = selected?.id;
     if (!providerId || !selectedDateIso) {
-      setAvailableSlots([]);
-      setSlotsStatus('idle');
       return;
     }
 
+    const key = `${providerId}|${selectedDateIso}`;
     const controller = new AbortController();
-    setSlotsStatus('loading');
     getProviderSlotsForDate(providerId, selectedDateIso, controller.signal)
       .then((slots) => {
-        const open = slots.filter((slot) => slot.status === 'Available');
-        setAvailableSlots(open);
-        setSlotsStatus(open.length > 0 ? 'ready' : 'empty');
+        setSlotsResult({ key, slots: slots.filter((slot) => slot.status === 'Available'), error: false });
       })
       .catch(() => {
         if (controller.signal.aborted) {
           return;
         }
-        setAvailableSlots([]);
-        setSlotsStatus('error');
+        setSlotsResult({ key, slots: [], error: true });
       });
 
     return () => controller.abort();
   }, [selected?.id, selectedDateIso]);
+
+  // Derive the picker's view-state from the latest fetch result (avoids setState-in-effect): a missing
+  // or stale-keyed result reads as "loading" until the fetch for the current provider+date resolves.
+  const slotsKey = selected?.id && selectedDateIso ? `${selected.id}|${selectedDateIso}` : '';
+  const { availableSlots, slotsStatus } = useMemo<{ availableSlots: ProviderSlot[]; slotsStatus: SlotsStatus }>(() => {
+    if (!slotsKey) {
+      return { availableSlots: [], slotsStatus: 'idle' };
+    }
+    if (!slotsResult || slotsResult.key !== slotsKey) {
+      return { availableSlots: [], slotsStatus: 'loading' };
+    }
+    if (slotsResult.error) {
+      return { availableSlots: [], slotsStatus: 'error' };
+    }
+    return { availableSlots: slotsResult.slots, slotsStatus: slotsResult.slots.length > 0 ? 'ready' : 'empty' };
+  }, [slotsKey, slotsResult]);
 
   const summary = useMemo(() => {
     return buildProviderFilterSummary({ dateFrom, dateTo, filter, search, sort });
