@@ -54,6 +54,17 @@ a {
   scrollbar-color: #d6a2ad #f5f5f5;
 }
 
+/* Page-scoped scrollbar hiding (toggled per-route in App.tsx for /faq and /about). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 @keyframes blob {
   0% {
     transform: translate(0px, 0px) scale(1);

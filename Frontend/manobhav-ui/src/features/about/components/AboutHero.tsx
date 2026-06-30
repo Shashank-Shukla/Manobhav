@@ -65,20 +65,20 @@ function ScrollIndicator({ onClick }: { onClick: () => void }) {
 export function AboutHero({ onAdvanceSection }: AboutHeroProps) {
   return (
     <section
-      className="relative min-h-full px-4 pb-16 pt-28 sm:px-6 sm:pt-32 md:pb-24 md:pt-28"
-      style={{ backgroundColor: 'rgb(241, 229, 191)' }}
+      className="relative w-full px-4 pb-20 pt-28 sm:px-6 sm:pt-32 md:pb-28 md:pt-36"
+      style={{ backgroundColor: '#FCF5F6' }}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-10 top-28 hidden h-24 w-24 rounded-full bg-white/20 blur-2xl lg:block" />
-        <div className="absolute right-12 top-24 hidden h-32 w-32 rounded-full bg-[#f3d1c8]/30 blur-3xl lg:block" />
-        <div className="absolute bottom-28 right-1/3 hidden h-28 w-28 rounded-full bg-white/20 blur-2xl lg:block" />
+      <div className="pointer-events-none absolute inset-0 overflow-x-hidden">
+        <div className="absolute left-10 top-28 hidden h-24 w-24 rounded-full bg-[#F7E6E8]/40 blur-2xl lg:block" />
+        <div className="absolute right-12 top-24 hidden h-32 w-32 rounded-full bg-[#D6A2AD]/30 blur-3xl lg:block" />
+        <div className="absolute bottom-28 right-1/3 hidden h-28 w-28 rounded-full bg-[#F7E6E8]/40 blur-2xl lg:block" />
         <HeroLeafVector className="absolute bottom-28 left-0 hidden h-40 w-24 lg:left-10 lg:block lg:h-48 lg:w-28" color="#92c29c" />
         <HeroLeafVector className="absolute bottom-24 right-6 hidden h-36 w-20 lg:right-20 lg:block lg:h-44 lg:w-24" color="#9acdb4" />
         <SpeechBubble className="left-[10%] top-32" tone="blue" tailSide="left" />
         <SpeechBubble className="top-28 right-[24%]" tone="mint" tailSide="right" />
       </div>
 
-      <div className="relative mx-auto grid min-h-full max-w-7xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
+      <div className="relative mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
         <div className="relative order-2 flex justify-center lg:order-1 lg:justify-start">
           <div className="relative w-full max-w-3xl">
             <div className="absolute inset-x-12 bottom-2 h-12 rounded-full bg-[#d7e5ef] opacity-80 blur-md" />

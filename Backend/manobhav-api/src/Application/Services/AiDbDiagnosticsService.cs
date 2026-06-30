@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Application.DTOs;
 using Application.Interfaces;
 
@@ -42,4 +43,21 @@ public sealed class AiDbDiagnosticsService : IAiDbDiagnosticsService
 
         return await _repository.GetRowsAsync(table.Trim(), safeLimit, safeOffset, cancellationToken);
     }
+
+    public Task<AiDbDiagnosticsWriteResult> UpdateRowAsync(
+        string table,
+        string id,
+        IReadOnlyDictionary<string, JsonElement> values,
+        CancellationToken cancellationToken = default)
+    {
+        return _repository.UpdateRowAsync(table, id, values ?? EmptyValues, cancellationToken);
+    }
+
+    public Task<AiDbDiagnosticsWriteResult> DeleteRowAsync(string table, string id, CancellationToken cancellationToken = default)
+    {
+        return _repository.DeleteRowAsync(table, id, cancellationToken);
+    }
+
+    private static readonly IReadOnlyDictionary<string, JsonElement> EmptyValues =
+        new Dictionary<string, JsonElement>();
 }

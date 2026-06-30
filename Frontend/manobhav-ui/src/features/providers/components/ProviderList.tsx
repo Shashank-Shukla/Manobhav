@@ -42,7 +42,7 @@ export function ProviderList({
             <Flex gap={4} align="stretch" direction={{ base: 'column', md: 'row' }}>
               <Flex gap={4} flex={1} align="flex-start">
                 <Flex align="center" justify="center" minW="72px">
-                  <Avatar name={provider.name} bg={provider.avatarColor} color="white" size="lg" />
+                  <Avatar name={provider.name} src={provider.photoUrl} bg={provider.avatarColor} color="white" size="lg" />
                 </Flex>
 
                 <Flex direction="column" flex={1} gap={1}>
@@ -59,7 +59,7 @@ export function ProviderList({
                 </Flex>
               </Flex>
 
-              <VStack align="flex-start" spacing={2} minW={{ base: '100%', md: '160px' }}>
+              <VStack align="flex-start" spacing={2} minW={{ base: '100%', md: '160px' }} maxW={{ base: '100%', md: '15vw' }}>
                 <Text fontSize="sm" fontWeight="semibold" color="gray.700">
                   Next available
                 </Text>

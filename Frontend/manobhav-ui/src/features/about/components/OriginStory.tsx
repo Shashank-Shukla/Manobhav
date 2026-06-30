@@ -27,7 +27,7 @@ const typedStoryPoints = storyPoints as StoryPoint[];
 
 function StoryIllustrationBackground() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div className="pointer-events-none absolute inset-0 overflow-x-hidden" aria-hidden="true">
       <WavyThreadIllustration className="absolute inset-0 h-full w-full" />
       <ChildVectorIllustration className="absolute left-[2%] top-16 hidden h-44 w-44 opacity-75 lg:block xl:h-52 xl:w-52" />
       <AdultWomanVectorIllustration className="absolute bottom-10 right-[2%] hidden h-52 w-52 opacity-75 lg:block xl:h-60 xl:w-60" />
@@ -37,16 +37,16 @@ function StoryIllustrationBackground() {
 
 export function OriginStory() {
   return (
-    <section className="relative min-h-full bg-[#FBF1F4] px-4 py-10 sm:px-6 sm:py-14 md:py-20">
+    <section className="relative w-full bg-[#F6E4E7] px-4 py-20 sm:px-6 md:py-28">
       <StoryTopWave className="absolute left-0 top-0 h-24 w-full md:h-32" />
       <StoryIllustrationBackground />
 
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[10%] top-44 hidden h-28 w-28 rounded-full bg-white/35 blur-3xl lg:block" />
-        <div className="absolute right-[12%] bottom-24 hidden h-36 w-36 rounded-full bg-[#e4edf1] blur-3xl lg:block" />
+      <div className="pointer-events-none absolute inset-0 overflow-x-hidden">
+        <div className="absolute left-[10%] top-44 hidden h-28 w-28 rounded-full bg-[#F7E6E8]/50 blur-3xl lg:block" />
+        <div className="absolute right-[12%] bottom-24 hidden h-36 w-36 rounded-full bg-[#D6A2AD]/40 blur-3xl lg:block" />
       </div>
 
-      <SectionReveal className="relative mx-auto flex min-h-full max-w-7xl items-center">
+      <SectionReveal className="relative mx-auto flex max-w-7xl items-center">
         <div className="grid w-full gap-10 md:grid-cols-2 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
           <div className="max-w-xl space-y-5">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[#7d8f8a]">Origin Story</p>

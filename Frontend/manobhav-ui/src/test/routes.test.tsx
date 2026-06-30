@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -293,13 +293,12 @@ describe('public route interactions', () => {
     expect(screen.getByText(/describe your mood over the past week/i)).toBeInTheDocument();
   });
 
-  it('supports about page keyboard navigation', async () => {
+  it('renders all about page sections in a single scrolling page', async () => {
     renderWithRouter(<AboutPage />, ['/about']);
     expect(screen.getByText(/manobhav creates a calm/i)).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-
-    expect(await screen.findByText(/vision and mission/i, {}, { timeout: 1500 })).toBeInTheDocument();
+    // The page now stacks every section (no pager), so later sections are present without navigation.
+    expect(await screen.findByText(/vision and mission/i)).toBeInTheDocument();
   });
 
   it('opens and closes disclaimer policy details', async () => {

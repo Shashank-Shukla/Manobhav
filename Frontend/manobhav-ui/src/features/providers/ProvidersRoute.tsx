@@ -123,7 +123,7 @@ function ProvidersDirectory({ onBackHome: _onBackHome, onBook }: ProvidersRouteP
         <Box
           width={{ base: '100%', lg: '60vw' }}
           overflowY="auto"
-          className="min-h-0 px-4 backdrop-blur-[8px] md:px-6 lg:h-full"
+          className="min-h-0 px-4 backdrop-blur-[8px] md:pl-6 md:pr-0 lg:h-full"
           sx={{ scrollbarWidth: 'thin' }}
         >
           {directoryState ?? (

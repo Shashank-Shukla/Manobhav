@@ -34,9 +34,9 @@ const MoodSearchBar = lazy(() => import('./shared/interactive/MoodSearchBar'));
 type ThemeMode = 'light' | 'dark';
 type FlowStep = 'home' | 'journey' | 'providers';
 
-const viewportLockedPaths = new Set(['/providers', '/about', '/disclaimer', '/login']);
+const viewportLockedPaths = new Set(['/providers', '/disclaimer', '/login']);
+const scrollbarHiddenPaths = new Set(['/faq', '/about']);
 const standaloneFooterHiddenPaths = new Set([
-  '/about',
   '/dashboard',
   '/disclaimer',
   '/login',
@@ -73,6 +73,12 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   const isVisitorAuthenticated = getStoredAuthSession() !== null;
   useVisitorAnalytics(location.pathname, isVisitorAuthenticated);
   const layout = getRouteLayout(location.pathname, flow);
+
+  useEffect(() => {
+    const hideScrollbar = scrollbarHiddenPaths.has(location.pathname);
+    document.documentElement.classList.toggle('no-scrollbar', hideScrollbar);
+    return () => document.documentElement.classList.remove('no-scrollbar');
+  }, [location.pathname]);
 
   const handleBook = () => {
     if (!getStoredAuthSession()) {

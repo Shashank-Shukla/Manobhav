@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Application.DTOs;
 using Application.Services;
 using Domain.Entities;
@@ -150,6 +151,77 @@ public sealed class AiDbDiagnosticsServiceTests
         Assert.Contains(summary, item => item.Table == "email-otp-challenge");
         Assert.Contains(summary, item => item.Table == "appointment");
         Assert.True(summary.Count >= 20, $"expected the full table set, got {summary.Count}");
+    }
+
+    [Fact]
+    public async Task UpdateRow_AppliesSuppliedColumnsAndReturnsUpdatedRow()
+    {
+        await using var db = CreateDbContext();
+        var profile = NewProfile(summary: "Old summary");
+        db.ProviderProfiles.Add(profile);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        var values = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+            """{ "Summary": "Updated summary", "IsFeatured": true }""")!;
+        var result = await service.UpdateRowAsync("provider-profile", profile.Id.ToString(), values, CancellationToken.None);
+
+        Assert.Equal(AiDbDiagnosticsWriteStatus.Success, result.Status);
+        Assert.NotNull(result.Row);
+        Assert.Equal("Updated summary", result.Row!["Summary"]);
+        Assert.Equal(true, result.Row!["IsFeatured"]);
+
+        var reread = await db.ProviderProfiles.FindAsync(profile.Id);
+        Assert.Equal("Updated summary", reread!.Summary);
+        Assert.True(reread.IsFeatured);
+    }
+
+    [Fact]
+    public async Task UpdateRow_ReturnsNotFoundForMissingRow_AndUnknownTableForBadKey()
+    {
+        await using var db = CreateDbContext();
+        var service = CreateService(db);
+        var values = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>("""{ "Summary": "x" }""")!;
+
+        var missing = await service.UpdateRowAsync("provider-profile", Guid.NewGuid().ToString(), values, CancellationToken.None);
+        Assert.Equal(AiDbDiagnosticsWriteStatus.NotFound, missing.Status);
+
+        var unknown = await service.UpdateRowAsync("not-a-real-table", Guid.NewGuid().ToString(), values, CancellationToken.None);
+        Assert.Equal(AiDbDiagnosticsWriteStatus.UnknownTable, unknown.Status);
+
+        var badKey = await service.UpdateRowAsync("provider-profile", "not-a-guid", values, CancellationToken.None);
+        Assert.Equal(AiDbDiagnosticsWriteStatus.BadRequest, badKey.Status);
+    }
+
+    [Fact]
+    public async Task DeleteRow_RemovesTheRow()
+    {
+        await using var db = CreateDbContext();
+        var profile = NewProfile(summary: "Doomed");
+        db.ProviderProfiles.Add(profile);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        var result = await service.DeleteRowAsync("provider-profile", profile.Id.ToString(), CancellationToken.None);
+
+        Assert.Equal(AiDbDiagnosticsWriteStatus.Success, result.Status);
+        Assert.Null(await db.ProviderProfiles.FindAsync(profile.Id));
+
+        var missingAgain = await service.DeleteRowAsync("provider-profile", profile.Id.ToString(), CancellationToken.None);
+        Assert.Equal(AiDbDiagnosticsWriteStatus.NotFound, missingAgain.Status);
+    }
+
+    private static ProviderProfile NewProfile(string summary)
+    {
+        return new ProviderProfile
+        {
+            Name = "Test Provider",
+            Role = "Therapist",
+            Summary = summary,
+            LongDescription = "A longer bio.",
+            AvatarColor = "#9CAF88",
+            VisibilityStatus = "Published",
+        };
     }
 
     private static AiDbDiagnosticsService CreateService(ApplicationDbContext db)

@@ -118,28 +118,25 @@ function ProviderProfilePanel({
   return (
     <VStack align="stretch" spacing={3} className="h-full transition-all duration-700 ease-in-out">
       <Flex justify="center">
-        <Avatar name={selected.name} bg={selected.avatarColor} color="white" boxSize="7rem" />
+        <Avatar name={selected.name} src={selected.photoUrl} bg={selected.avatarColor} color="white" boxSize="7rem" />
       </Flex>
       <Text fontSize="xl" fontWeight="bold" color="gray.800" textAlign="center">
         {selected.name}
       </Text>
 
-      <Box
-        fontSize="md"
-        color="gray.700"
-        maxH="6.5rem"
-        overflowY="auto"
-        sx={{ scrollbarWidth: 'thin' }}
-      >
+      <Box fontSize="md" color="gray.700" minH="10vh">
         {selected.longDescription || 'This provider has not added a bio yet.'}
       </Box>
 
       {selected.specializations.length > 0 && (
         <HStack
           spacing={2}
+          align="center"
           overflowX="auto"
+          overflowY="hidden"
           flexWrap="nowrap"
-          pb={1}
+          pt={1}
+          pb={2}
           sx={{ scrollbarWidth: 'thin' }}
         >
           {selected.specializations.map((specialization) => (
@@ -167,22 +164,24 @@ function ProviderProfilePanel({
       </HStack>
 
       <VStack align="stretch" spacing={2} pt={1}>
-        <Flex justify="center">
-          <BookingButton isBooking={isBooking} onBook={onBook} selectedDateLabel={selectedDateLabel} />
-        </Flex>
-        <Flex justify="center">
-          <Button
-            width="75%"
-            variant="outline"
-            leftIcon={<CalendarDays size={16} aria-hidden="true" />}
-            borderColor={theme.colors.sage.DEFAULT}
-            color={theme.colors.sage.dark}
-            _hover={{ bg: theme.colors.sage.light }}
-            isDisabled={!hasAvailability}
-            onClick={() => onOpenCalendar(selected.id)}
-          >
-            More dates
-          </Button>
+        <Flex gap={3} align="stretch" w="100%">
+          <Box w="75%">
+            <BookingButton isBooking={isBooking} onBook={onBook} selectedDateLabel={selectedDateLabel} />
+          </Box>
+          <Box w="25%">
+            <Button
+              width="100%"
+              variant="outline"
+              leftIcon={<CalendarDays size={16} aria-hidden="true" />}
+              borderColor={theme.colors.sage.DEFAULT}
+              color={theme.colors.sage.dark}
+              _hover={{ bg: theme.colors.sage.light }}
+              isDisabled={!hasAvailability}
+              onClick={() => onOpenCalendar(selected.id)}
+            >
+              More dates
+            </Button>
+          </Box>
         </Flex>
         <BookingErrorMessage message={bookingError} />
       </VStack>
@@ -202,7 +201,7 @@ function BookingButton({
   const isDisabled = !selectedDateLabel || isBooking;
   return (
     <Button
-      width="75%"
+      width="100%"
       py="0.5em"
       borderRadius="8px"
       bg={theme.colors.sage.DEFAULT}

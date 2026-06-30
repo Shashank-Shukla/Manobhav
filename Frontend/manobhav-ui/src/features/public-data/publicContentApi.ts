@@ -1,6 +1,26 @@
 import { apiRequest } from '../../shared/api/apiClient';
 import { computeNextDates, getAvailableDaysOfWeek } from '../providers';
 import type { ProviderRecord, WeeklyAvailabilitySlot } from '../providers';
+import { theme } from '../../utils/theme';
+
+// Fallback avatar backgrounds when a provider has no profile photo: a stable, varied colour per
+// provider drawn from the brand palette (instead of everyone defaulting to sage green).
+const AVATAR_PALETTE = [
+  theme.colors.sage.DEFAULT,
+  theme.colors.dustyRose.DEFAULT,
+  theme.colors.powderBlue.DEFAULT,
+  theme.colors.sage.dark,
+  theme.colors.dustyRose.dark,
+  theme.colors.powderBlue.dark,
+];
+
+function pickAvatarColor(seed: string): string {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) | 0;
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
 
 export type FeaturedExpert = {
   id: string;
@@ -152,6 +172,7 @@ type ProviderDirectoryItemResponse = {
   longDescription?: string | null;
   specializations?: string[] | null;
   avatarColor?: string | null;
+  photoUrl?: string | null;
   sessions?: number | null;
   rating?: number | null;
   weeklyAvailability?: WeeklyAvailabilitySlot[] | null;
@@ -169,7 +190,8 @@ function toProviderRecord(item: ProviderDirectoryItemResponse): ProviderRecord {
     name: item.name,
     summary: item.summary ?? '',
     specializations: Array.isArray(item.specializations) ? item.specializations : [],
-    avatarColor: item.avatarColor || '#9CAF88',
+    avatarColor: item.avatarColor || pickAvatarColor(item.id || item.name),
+    photoUrl: item.photoUrl ?? undefined,
     weeklyAvailability,
     nextDates: computeNextDates(weeklyAvailability),
     availableDaysOfWeek: getAvailableDaysOfWeek(weeklyAvailability),
