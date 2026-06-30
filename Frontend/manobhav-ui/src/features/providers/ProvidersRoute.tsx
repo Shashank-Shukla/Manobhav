@@ -84,6 +84,11 @@ function ProvidersDirectory({ onBackHome: _onBackHome, onBook }: ProvidersRouteP
       selected={directory.selected}
       selectedDateIso={directory.selectedDateIso}
       selectedDateLabel={directory.selectedDateLabel}
+      availableSlots={directory.availableSlots}
+      slotsStatus={directory.slotsStatus}
+      selectedSlotId={directory.selectedSlotId}
+      selectedSlotLabel={directory.selectedSlotLabel}
+      onSelectSlot={directory.selectSlot}
       showCalendar={directory.showCalendar}
       tempCalendarIso={directory.tempCalendarIso}
     />

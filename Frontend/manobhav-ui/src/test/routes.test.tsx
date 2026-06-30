@@ -347,6 +347,8 @@ describe('operational routes', () => {
       // The provider name shows on both the list card and the detail panel.
       expect((await screen.findAllByText(/Clinical Specialist/i)).length).toBeGreaterThan(0);
       await user.click(await screen.findByRole('button', { name: /^Jun 5$/i }));
+      // Time is the atomic booking unit: pick the available slot (09:00 UTC -> 2:30 PM IST) under the date.
+      await user.click(await screen.findByRole('button', { name: /2:30/i }));
       await user.click(screen.getByRole('button', { name: /book appointment/i }));
 
       await waitFor(() => expect(onBook).toHaveBeenCalledTimes(1));

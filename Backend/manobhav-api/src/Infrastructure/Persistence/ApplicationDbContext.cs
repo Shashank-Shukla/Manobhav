@@ -258,8 +258,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(provider => provider.WeeklyAvailabilityJson).HasColumnType("jsonb").HasDefaultValue("[]");
             entity.Property(provider => provider.AvatarColor).HasMaxLength(16).IsRequired();
             entity.Property(provider => provider.VisibilityStatus).HasMaxLength(40).IsRequired();
-            entity.Property(provider => provider.Rating).HasPrecision(3, 2);
-            entity.Property(provider => provider.RatingAverage).HasPrecision(3, 2);
+            entity.Property(provider => provider.Rating).HasPrecision(3, 2).HasDefaultValue(5m);
+            entity.Property(provider => provider.RatingAverage).HasPrecision(3, 2).HasDefaultValue(5m);
             entity.HasIndex(provider => provider.ProviderApplicationId).IsUnique();
             entity.HasOne<ProviderOnboardingApplication>()
                 .WithOne()
