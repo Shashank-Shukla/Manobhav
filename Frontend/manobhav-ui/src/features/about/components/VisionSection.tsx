@@ -65,8 +65,10 @@ function SquishyCard({
 export function VisionSection() {
   return (
     <section id="vision-section" className="relative w-full bg-[#F9EEF0] px-4 py-20 sm:px-6 md:py-28">
-      <RollingSectionWave className="absolute left-0 top-0 h-28 w-full md:h-36" />
-      <RollingSectionWave className="absolute bottom-0 left-0 h-28 w-full rotate-180 md:h-36" />
+      {/* Layered transition into the Origin section: two back-to-back waves with flat edges flush at the
+          boundary. The front wave is mirrored so its crests sit over the back wave's troughs. */}
+      <RollingSectionWave className="absolute bottom-0 left-0 h-28 w-full md:h-36" fill="#F2E0E4" />
+      <RollingSectionWave className="absolute bottom-0 left-0 h-24 w-full -scale-x-100 md:h-32" fill="#F6E4E7" />
 
       <div className="pointer-events-none absolute inset-0 overflow-x-hidden">
         <div className="absolute left-[8%] top-40 hidden h-32 w-32 rounded-full bg-[#F7E6E8] blur-3xl lg:block" />

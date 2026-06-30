@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -86,6 +86,9 @@ type RosterTableProps<T> = {
   status: RosterStatus;
   emptyLabel: string;
   errorLabel: string;
+  /** When provided (together with `onRowClick`), rows become selectable and gain selected styling. */
+  selectedIds?: Set<string>;
+  onRowClick?: (id: string, event: MouseEvent) => void;
 };
 
 export function RosterTable<T>({
@@ -99,9 +102,12 @@ export function RosterTable<T>({
   status,
   emptyLabel,
   errorLabel,
+  selectedIds,
+  onRowClick,
 }: RosterTableProps<T>) {
   const showPlaceholder = status !== 'ready' || rows.length === 0;
   const placeholder = status === 'loading' ? 'Loading…' : status === 'error' ? errorLabel : emptyLabel;
+  const selectable = Boolean(onRowClick);
 
   return (
     <MuiThemeProvider theme={muiAdminTheme}>
@@ -127,15 +133,53 @@ export function RosterTable<T>({
             </TableHead>
             <TableBody>
               {status === 'ready' &&
-                rows.map((row) => (
-                  <TableRow hover key={getRowKey(row)} sx={{ '&:hover': { backgroundColor: '#FAFBF8' } }}>
-                    {columns.map((column) => (
-                      <TableCell key={column.key} align={column.align ?? 'left'} sx={bodyCellSx}>
-                        {column.render(row)}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                rows.map((row) => {
+                  const rowId = getRowKey(row);
+                  const isSelected = selectable && (selectedIds?.has(rowId) ?? false);
+
+                  const handleKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
+                    if (!onRowClick) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      // KeyboardEvent carries the same modifier flags MouseEvent does.
+                      onRowClick(rowId, event as unknown as MouseEvent);
+                    }
+                  };
+
+                  return (
+                    <TableRow
+                      hover={!selectable}
+                      key={rowId}
+                      selected={isSelected}
+                      aria-selected={selectable ? isSelected : undefined}
+                      tabIndex={selectable ? 0 : undefined}
+                      onClick={onRowClick ? (event) => onRowClick(rowId, event) : undefined}
+                      onKeyDown={selectable ? handleKeyDown : undefined}
+                      sx={{
+                        ...(selectable
+                          ? {
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                            }
+                          : {}),
+                        ...(isSelected
+                          ? {
+                              backgroundColor: adminTheme.sage.light,
+                              boxShadow: `inset 3px 0 0 0 ${adminTheme.sage.DEFAULT}`,
+                              '&.Mui-selected': { backgroundColor: adminTheme.sage.light },
+                              '&.Mui-selected:hover': { backgroundColor: adminTheme.sage.light },
+                            }
+                          : { '&:hover': { backgroundColor: '#FAFBF8' } }),
+                      }}
+                    >
+                      {columns.map((column) => (
+                        <TableCell key={column.key} align={column.align ?? 'left'} sx={bodyCellSx}>
+                          {column.render(row)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })}
               {showPlaceholder && (
                 <TableRow>
                   <TableCell

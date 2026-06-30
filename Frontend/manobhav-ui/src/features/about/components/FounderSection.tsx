@@ -15,8 +15,8 @@ export function FounderSection() {
       </div>
 
       <SectionReveal className="relative mx-auto flex max-w-7xl items-center">
-        <div className="grid w-full gap-6 rounded-[2.5rem] border border-[#ECD9D4] bg-[#F9EAEE]/88 p-6 shadow-[0_24px_60px_rgba(61,72,92,0.08)] backdrop-blur-sm lg:grid-cols-[0.72fr_1.28fr] lg:p-8">
-          <div className="relative overflow-hidden rounded-[2rem] border border-[#ECD9D4] bg-[#F2DBE0]/72 p-8">
+        <div className="grid w-full gap-6 rounded-[2.5rem] border border-[#EAD7DC] bg-white p-6 shadow-[0_28px_64px_rgba(61,72,92,0.12)] lg:grid-cols-[0.72fr_1.28fr] lg:p-8">
+          <div className="relative overflow-hidden rounded-[2rem] border border-[#EFE0E4] bg-[#FAF6F7] p-8">
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/25 to-transparent" />
             <div className="relative z-10 flex h-full flex-col justify-between gap-8">
               <div>
@@ -44,7 +44,7 @@ export function FounderSection() {
                 </Text>
               </div>
 
-              <div className="shine-shake-card space-y-3 rounded-[1.5rem] border border-[#ECD9D4] bg-[#F9EAEE]/78 p-5">
+              <div className="shine-shake-card space-y-3 rounded-[1.5rem] border border-[#EFE0E4] bg-white p-5">
                 <Text variant="body" className="font-medium text-slate-800">
                   Training
                 </Text>
@@ -58,7 +58,7 @@ export function FounderSection() {
             </div>
           </div>
 
-          <div className="space-y-6 rounded-[2rem] border border-[#ECD9D4] bg-[#F9EAEE]/82 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+          <div className="space-y-6 rounded-[2rem] border border-[#EFE0E4] bg-[#FAF6F7] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-[#f1d8d1] p-3 text-[#b57f8b]">
                 <Quote size={22} />
@@ -80,7 +80,7 @@ export function FounderSection() {
               genuinely human. Manobhav exists to hold all of that with sensitivity and integrity.&quot;
             </Text>
 
-            <div className="rounded-[1.5rem] border border-[#ECD9D4] bg-[#F1D8DE]/72 p-5">
+            <div className="rounded-[1.5rem] border border-[#EAD7DC] bg-[#F6EAEE] p-5">
               <Text variant="body" className="text-gray-700">
                 The goal is not only to make therapy available, but to make it feel accessible in the truest sense:
                 emotionally safe, clinically grounded, and rooted in compassion.

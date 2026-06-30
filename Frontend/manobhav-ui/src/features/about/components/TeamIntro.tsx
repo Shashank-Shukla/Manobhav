@@ -59,10 +59,10 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
           </div>
 
           <Button
-            variant="secondary"
+            variant="primary"
             icon={ArrowRight}
             onClick={onExploreProviders}
-            className="border-[#ECD0D6] bg-[#F1D8DE] text-[#243b6b] hover:bg-[#ECD0D6]"
+            className="bg-gradient-to-r from-[#9CAF88] to-[#bcd0a6] text-white shadow-sm hover:from-[#7A8C6A] hover:to-[#9CAF88] hover:shadow-md"
           >
             Browse Providers
           </Button>
@@ -75,7 +75,7 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
               return (
                 <div
                   key={signal.title}
-                  className={`rounded-[2rem] border p-6 shadow-[0_18px_40px_rgba(36,59,107,0.06)] ${signal.surface}`}
+                  className="rounded-[2rem] border border-[#EAD7DC] bg-white p-6 shadow-[0_18px_40px_rgba(36,59,107,0.08)]"
                 >
                   <div className={`mb-5 inline-flex rounded-2xl p-3 ${signal.tint}`}>
                     <Icon size={22} />
@@ -91,7 +91,7 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
             })}
           </div>
 
-          <div className="rounded-[2rem] border border-[#ECD9D4] bg-[#F9EAEE]/84 p-7 shadow-[0_20px_45px_rgba(36,59,107,0.06)]">
+          <div className="rounded-[2rem] border border-[#EAD7DC] bg-white p-7 shadow-[0_20px_45px_rgba(36,59,107,0.08)]">
             <Text variant="caption" className="text-[#7d8f8a]">
               Team Promise
             </Text>
@@ -102,7 +102,7 @@ export function TeamIntro({ onExploreProviders }: TeamIntroProps) {
               As Manobhav grows, this section can expand into fuller therapist profiles, but the standard remains the
               same: empathy, confidentiality, and competence first.
             </Text>
-            <div className="mt-6 rounded-[1.5rem] border border-[#E6C7CF] bg-[#F1D8DE]/72 p-5">
+            <div className="mt-6 rounded-[1.5rem] border border-[#EAD7DC] bg-[#F6EAEE] p-5">
               <Text variant="body" className="text-gray-700">
                 Today, the clearest named voice behind the platform is Guramrit Kaur. Over time, that story can expand
                 into a wider team without changing the values at its core.

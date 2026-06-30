@@ -7,10 +7,13 @@ import { Logo } from '../Logo';
 import { Button } from '../primitives/Button';
 import { theme } from '../../utils/theme';
 
+type NavAccent = 'sage' | 'dustyRose' | 'powderBlue';
+
 type NavBarProps = {
   onNavigate: (path: string) => void;
   themeMode: 'light' | 'dark';
   variant?: 'glass' | 'flat';
+  accent?: NavAccent;
 };
 
 type NavItem = {
@@ -22,17 +25,19 @@ type ThemeCssProperties = CSSProperties & {
   '--profile-button-focus-ring'?: string;
   '--profile-menu-item-active-bg'?: string;
   '--profile-menu-item-active-color'?: string;
+  '--nav-accent'?: string;
 };
 
 type CloseProfileMenuOptions = {
   restoreFocus?: boolean;
 };
 
-export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps) {
+export function NavBar({ onNavigate, themeMode, variant = 'glass', accent = 'sage' }: NavBarProps) {
   const location = useLocation();
   const { session } = useAuthSession();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const accentColor = theme.colors[accent].DEFAULT;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -50,7 +55,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
       >
         <div
           className="relative flex items-center justify-between px-6 py-3 shadow-lg border transition-all duration-300 w-full max-w-[1200px] gap-4"
-          style={getNavStyle(variant, themeMode)}
+          style={{ ...getNavStyle(variant, themeMode), ['--nav-accent']: accentColor } as ThemeCssProperties}
         >
           <Logo onClick={() => onNavigate('/')} />
 
@@ -67,6 +72,7 @@ export function NavBar({ onNavigate, themeMode, variant = 'glass' }: NavBarProps
       </nav>
 
       <MobileNavMenu
+        accentColor={accentColor}
         isAuthenticated={isAuthenticated}
         isOpen={mobileOpen}
         items={navItems}
@@ -89,6 +95,7 @@ function DesktopNavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate: 
 }
 
 function MobileNavMenu({
+  accentColor,
   isAuthenticated,
   isOpen,
   items,
@@ -96,6 +103,7 @@ function MobileNavMenu({
   onNavigate,
   session,
 }: {
+  accentColor: string;
   isAuthenticated: boolean;
   isOpen: boolean;
   items: NavItem[];
@@ -108,7 +116,10 @@ function MobileNavMenu({
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl pt-32 px-6 md:hidden animate-in fade-in slide-in-from-top-10 duration-300">
+    <div
+      className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl pt-32 px-6 md:hidden animate-in fade-in slide-in-from-top-10 duration-300"
+      style={{ ['--nav-accent']: accentColor } as ThemeCssProperties}
+    >
       <div className="flex flex-col space-y-6 text-center">
         {items.map((item) => (
           <NavAnchor key={item.label} iconSize={18} item={item} onClose={onClose} onNavigate={onNavigate} />
@@ -359,11 +370,11 @@ function NavAnchor({
     <a
       href={item.path}
       onClick={(event) => handleNavClick(event, item.path, onNavigate, onClose)}
-      className="text-sm font-medium text-gray-600 hover:text-[#9CAF88] transition-colors relative group flex items-center justify-center gap-1 md:justify-start"
+      className="text-sm font-medium text-gray-600 hover:text-[color:var(--nav-accent,#9CAF88)] transition-colors relative group flex items-center justify-center gap-1 md:justify-start"
     >
       {item.label}
       <TalkToUsIcon iconSize={iconSize} label={item.label} />
-      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#9CAF88] transition-all duration-300 group-hover:w-full" />
+      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[color:var(--nav-accent,#9CAF88)] transition-all duration-300 group-hover:w-full" />
     </a>
   );
 }
@@ -373,7 +384,7 @@ function TalkToUsIcon({ iconSize, label }: { iconSize: number; label: string }) 
     return null;
   }
 
-  return <ArrowUpRight size={iconSize} className="text-[#9CAF88]" />;
+  return <ArrowUpRight size={iconSize} className="text-[color:var(--nav-accent,#9CAF88)]" />;
 }
 
 function MobileMenuIcon({ mobileOpen }: { mobileOpen: boolean }) {

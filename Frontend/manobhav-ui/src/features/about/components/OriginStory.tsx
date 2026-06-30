@@ -4,7 +4,6 @@ import storyPoints from '../../../assets/originStoryPoints.json';
 import {
   AdultWomanVectorIllustration,
   ChildVectorIllustration,
-  StoryTopWave,
   WavyThreadIllustration,
 } from '../../../shared/interactive/AboutVectors';
 import { SectionReveal } from './SectionReveal';
@@ -38,7 +37,6 @@ function StoryIllustrationBackground() {
 export function OriginStory() {
   return (
     <section className="relative w-full bg-[#F6E4E7] px-4 py-20 sm:px-6 md:py-28">
-      <StoryTopWave className="absolute left-0 top-0 h-24 w-full md:h-32" />
       <StoryIllustrationBackground />
 
       <div className="pointer-events-none absolute inset-0 overflow-x-hidden">
