@@ -4,9 +4,7 @@ import { Text } from '../../shared/primitives/Text';
 import { ContactMethodRow } from './ContactMethodRow';
 import { UrgentHelpModal } from './UrgentHelpModal';
 
-// TODO: replace with real business number
-const PLACEHOLDER_PHONE = '+91 00000 00000';
-
+const CONTACT_PHONE = '+91 78279 48680';
 const CONTACT_EMAIL = 'manobhavcounsellingservices@gmail.com';
 const INSTAGRAM_URL = 'https://www.instagram.com/manobhavwellness';
 
@@ -16,15 +14,15 @@ export function ContactPage() {
   return (
     <div className="animate-in fade-in duration-500 bg-white">
       <section className="mx-auto max-w-5xl px-6 pb-24 pt-28 md:pt-32">
-        <Text variant="caption" className="text-[#8BAAB3]">
+        <Text variant="caption" color="#8BAAB3">
           Contact
         </Text>
 
-        <Text variant="h1" className="mt-6 max-w-3xl text-[#243b6b]">
+        <Text variant="h1" className="mt-6 max-w-3xl" color="#243b6b">
           Don't hesitate to reach out to us
         </Text>
 
-        <Text variant="body" className="mt-6 max-w-xl text-lg text-gray-600">
+        <Text variant="body" className="mt-6 max-w-xl text-lg" color="#4b5563">
           Whether you have a question, need support, or simply want to say hello, we are here and glad to hear from you.
         </Text>
 
@@ -45,8 +43,8 @@ export function ContactPage() {
           <ContactMethodRow
             icon={Phone}
             label="Call"
-            value={PLACEHOLDER_PHONE}
-            href={`tel:${PLACEHOLDER_PHONE.replace(/\s/g, '')}`}
+            value={CONTACT_PHONE}
+            href={`tel:${CONTACT_PHONE.replace(/\s/g, '')}`}
           />
         </div>
 

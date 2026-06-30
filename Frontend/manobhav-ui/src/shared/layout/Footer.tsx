@@ -20,7 +20,7 @@ export function Footer() {
           <ul className="space-y-4 text-gray-500">
             <li><a href="/providers" className="hover:text-[#D6A2AD]">Browse Therapists</a></li>
             <li><a href="/faq" className="hover:text-[#D6A2AD]">FAQ</a></li>
-            <li><button type="button" onClick={() => setIsPricingOpen(true)} className="hover:text-[#D6A2AD]">Pricing</button></li>
+            <li><button type="button" onClick={() => setIsPricingOpen(true)} className="cursor-pointer hover:text-[#D6A2AD]">Pricing</button></li>
           </ul>
         </div>
 

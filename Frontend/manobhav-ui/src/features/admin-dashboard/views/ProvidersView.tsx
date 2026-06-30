@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import { getAdminProviders } from '../adminDashboardApi';
@@ -65,7 +65,7 @@ const columns: RosterColumn<AdminProviderRosterRecord>[] = [
 
 export function ProvidersView({ search }: ProvidersViewProps) {
   const { page, setPage, data, status } = useRosterPage(getAdminProviders, search);
-  const orderedIds = data.items.map((provider) => provider.id);
+  const orderedIds = useMemo(() => data.items.map((provider) => provider.id), [data.items]);
   const { selectedIds, handleRowClick, clear, count } = useRowSelection(orderedIds);
 
   // Selection is scoped to the visible page/query; reset when either changes.

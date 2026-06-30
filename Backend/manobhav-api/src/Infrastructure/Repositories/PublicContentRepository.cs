@@ -16,14 +16,12 @@ public sealed class PublicContentRepository : IPublicContentRepository
 
     public async Task<IReadOnlyList<ProviderProfile>> GetFeaturedExpertsAsync(int take, CancellationToken cancellationToken)
     {
-        // Surface any published, active provider on the landing page, with explicitly-featured providers
-        // leading. Previously this hard-required IsFeatured, so the section silently disappeared whenever
-        // no one had been flagged featured (the common case) even with plenty of published providers.
+        // Featured is a hard requirement: only providers explicitly flagged IsFeatured appear on the landing
+        // page. Curating the featured set will become admin-configurable from the admin portal (item-10).
         return await _db.ProviderProfiles
             .AsNoTracking()
-            .Where(provider => provider.IsActive && provider.VisibilityStatus == "Published")
-            .OrderByDescending(provider => provider.IsFeatured)
-            .ThenBy(provider => provider.DisplayOrder)
+            .Where(provider => provider.IsActive && provider.IsFeatured && provider.VisibilityStatus == "Published")
+            .OrderBy(provider => provider.DisplayOrder)
             .ThenBy(provider => provider.DisplayName ?? provider.Name)
             .Take(take)
             .ToListAsync(cancellationToken);

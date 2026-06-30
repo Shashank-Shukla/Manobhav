@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { type KeyboardEvent, type ReactNode } from 'react';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -14,6 +14,7 @@ import { adminTheme, toneStyles } from '../adminTheme';
 import { muiAdminTheme } from '../muiAdminTheme';
 import type { StatusTone } from '../types';
 import type { RosterStatus } from './useRosterPage';
+import { type RowSelectionEvent } from './useRowSelection';
 
 export type RosterColumn<T> = {
   key: string;
@@ -88,7 +89,7 @@ type RosterTableProps<T> = {
   errorLabel: string;
   /** When provided (together with `onRowClick`), rows become selectable and gain selected styling. */
   selectedIds?: Set<string>;
-  onRowClick?: (id: string, event: MouseEvent) => void;
+  onRowClick?: (id: string, event: RowSelectionEvent) => void;
 };
 
 export function RosterTable<T>({
@@ -141,8 +142,8 @@ export function RosterTable<T>({
                     if (!onRowClick) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      // KeyboardEvent carries the same modifier flags MouseEvent does.
-                      onRowClick(rowId, event as unknown as MouseEvent);
+                      // RowSelectionEvent only reads modifier flags, which KeyboardEvent also carries.
+                      onRowClick(rowId, event);
                     }
                   };
 
