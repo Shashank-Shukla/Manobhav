@@ -166,9 +166,9 @@ export function FAQPage() {
           </Text>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Button
-              variant="secondary"
+              variant="primary"
               onClick={() => navigate('/providers')}
-              className="border-[#B0CED6] bg-[#EBF5F7] text-[#2D3748] hover:bg-[#DCEEF1]"
+              className="bg-gradient-to-r from-[#9CAF88] to-[#bcd0a6] text-white shadow-sm hover:from-[#7A8C6A] hover:to-[#9CAF88] hover:shadow-md"
             >
               Browse Providers
             </Button>

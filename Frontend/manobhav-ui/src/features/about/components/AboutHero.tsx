@@ -1,8 +1,4 @@
-import { AboutBottomWave, HeroLeafVector, ScrollArrowIcon } from '../../../shared/interactive/AboutVectors';
-
-type AboutHeroProps = {
-  onAdvanceSection: () => void;
-};
+import { AboutBottomWave, HeroLeafVector } from '../../../shared/interactive/AboutVectors';
 
 function SpeechBubble({
   className,
@@ -45,24 +41,7 @@ function getBubbleTailTone(tone: 'blue' | 'mint'): string {
   return tone === 'blue' ? 'bg-[#b7d3e8]' : 'bg-[#c6decd]';
 }
 
-function ScrollIndicator({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3 text-[#243b6b] transition-opacity duration-300 hover:opacity-80"
-      aria-label="Scroll to vision and mission"
-    >
-      <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#6f7e7b]">Scroll</span>
-      <span className="flex h-14 w-9 items-start justify-center rounded-full border-2 border-[#243b6b]/45 p-2">
-        <span className="h-3 w-1.5 rounded-full bg-[#243b6b] animate-scroll-dot" />
-      </span>
-      <ScrollArrowIcon className="h-6 w-6 animate-scroll-bob" />
-    </button>
-  );
-}
-
-export function AboutHero({ onAdvanceSection }: AboutHeroProps) {
+export function AboutHero() {
   return (
     <section
       className="relative w-full px-4 pb-20 pt-28 sm:px-6 sm:pt-32 md:pb-28 md:pt-36"
@@ -103,8 +82,9 @@ export function AboutHero({ onAdvanceSection }: AboutHeroProps) {
         </div>
       </div>
 
-      <ScrollIndicator onClick={onAdvanceSection} />
-      <AboutBottomWave className="absolute bottom-0 left-0 h-24 w-full md:h-32" />
+      {/* Single clean transition into the Vision section: flat edge flush at its top, wavy crest rising
+          into the hero, mirrored horizontally and filled in the next section's colour. */}
+      <AboutBottomWave className="absolute bottom-0 left-0 h-24 w-full -scale-x-100 md:h-32" fill="#F9EEF0" />
     </section>
   );
 }

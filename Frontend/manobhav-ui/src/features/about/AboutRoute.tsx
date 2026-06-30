@@ -9,18 +9,10 @@ import { VisionSection } from './components/VisionSection';
 export function AboutPage() {
   const navigate = useNavigate();
 
-  // Normal vertically-scrolling page (like FAQ): all sections stack and the window scrolls. The hero's
-  // scroll indicator nudges the page down by roughly a viewport instead of paging section-by-section.
-  const scrollToNextSection = () => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.scrollBy({ top: Math.round(window.innerHeight * 0.9), behavior: 'smooth' });
-  };
-
+  // Normal vertically-scrolling page (like FAQ): all sections stack and the window scrolls.
   return (
     <div className="animate-in fade-in duration-500">
-      <AboutHero onAdvanceSection={scrollToNextSection} />
+      <AboutHero />
       <VisionSection />
       <OriginStory />
       <FounderSection />

@@ -1,5 +1,7 @@
+import { useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import { getAdminPatients } from '../adminDashboardApi';
+import { RosterActionToolbar, type RosterAction } from '../components/RosterActionToolbar';
 import {
   RosterChip,
   RosterPrimary,
@@ -8,6 +10,7 @@ import {
   type RosterColumn,
 } from '../components/RosterTable';
 import { useRosterPage } from '../components/useRosterPage';
+import { useRowSelection } from '../components/useRowSelection';
 import type { AdminPatientRosterRecord, StatusTone } from '../types';
 import { SectionCard } from './shared';
 
@@ -54,9 +57,21 @@ const columns: RosterColumn<AdminPatientRosterRecord>[] = [
 
 export function PatientsView({ search }: PatientsViewProps) {
   const { page, setPage, data, status } = useRosterPage(getAdminPatients, search);
+  const orderedIds = useMemo(() => data.items.map((patient) => patient.id), [data.items]);
+  const { selectedIds, handleRowClick, clear, count } = useRowSelection(orderedIds);
+
+  // Selection is scoped to the visible page/query; reset when either changes.
+  useEffect(() => {
+    clear();
+  }, [page, search, clear]);
+
+  const handleAction = (action: RosterAction) => {
+    console.warn(`TODO: ${action}`, [...selectedIds]);
+  };
 
   return (
     <SectionCard title="Patient management" helper="Registered care-seekers">
+      <RosterActionToolbar count={count} onAction={handleAction} onClear={clear} />
       <RosterTable
         columns={columns}
         rows={data.items}
@@ -68,6 +83,8 @@ export function PatientsView({ search }: PatientsViewProps) {
         status={status}
         emptyLabel="No patient records match this search."
         errorLabel="Unable to load patients."
+        selectedIds={selectedIds}
+        onRowClick={handleRowClick}
       />
     </SectionCard>
   );

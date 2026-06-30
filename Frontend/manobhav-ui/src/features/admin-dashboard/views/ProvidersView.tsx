@@ -1,6 +1,8 @@
+import { useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import { getAdminProviders } from '../adminDashboardApi';
+import { RosterActionToolbar, type RosterAction } from '../components/RosterActionToolbar';
 import {
   RosterChip,
   RosterPrimary,
@@ -9,6 +11,7 @@ import {
   type RosterColumn,
 } from '../components/RosterTable';
 import { useRosterPage } from '../components/useRosterPage';
+import { useRowSelection } from '../components/useRowSelection';
 import type { AdminProviderRosterRecord } from '../types';
 import { SectionCard } from './shared';
 
@@ -62,9 +65,21 @@ const columns: RosterColumn<AdminProviderRosterRecord>[] = [
 
 export function ProvidersView({ search }: ProvidersViewProps) {
   const { page, setPage, data, status } = useRosterPage(getAdminProviders, search);
+  const orderedIds = useMemo(() => data.items.map((provider) => provider.id), [data.items]);
+  const { selectedIds, handleRowClick, clear, count } = useRowSelection(orderedIds);
+
+  // Selection is scoped to the visible page/query; reset when either changes.
+  useEffect(() => {
+    clear();
+  }, [page, search, clear]);
+
+  const handleAction = (action: RosterAction) => {
+    console.warn(`TODO: ${action}`, [...selectedIds]);
+  };
 
   return (
     <SectionCard title="Provider roster" helper="Every onboarded provider">
+      <RosterActionToolbar count={count} onAction={handleAction} onClear={clear} />
       <RosterTable
         columns={columns}
         rows={data.items}
@@ -76,6 +91,8 @@ export function ProvidersView({ search }: ProvidersViewProps) {
         status={status}
         emptyLabel="No providers match this search."
         errorLabel="Unable to load providers."
+        selectedIds={selectedIds}
+        onRowClick={handleRowClick}
       />
     </SectionCard>
   );

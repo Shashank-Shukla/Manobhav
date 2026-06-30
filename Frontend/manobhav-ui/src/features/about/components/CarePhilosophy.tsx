@@ -54,7 +54,7 @@ export function CarePhilosophy() {
             return (
               <div
                 key={principle.title}
-                className={`shine-shake-card rounded-[2rem] border p-6 shadow-[0_18px_40px_rgba(36,59,107,0.06)] ${principle.surface}`}
+                className="shine-shake-card rounded-[2rem] border border-[#EAD7DC] bg-white p-6 shadow-[0_18px_40px_rgba(36,59,107,0.08)]"
               >
                 <div className={`mb-5 inline-flex rounded-2xl p-3 ${principle.tone}`}>
                   <Icon size={22} />

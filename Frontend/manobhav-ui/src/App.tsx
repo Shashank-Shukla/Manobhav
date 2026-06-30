@@ -14,6 +14,7 @@ const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then((m) 
 const JourneyPage = lazy(() => import('./pages/JourneyPage').then((m) => ({ default: m.JourneyPage || m.default })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage || m.default })));
 const FAQPage = lazy(() => import('./pages/FAQPage').then((m) => ({ default: m.FAQPage || m.default })));
+const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage || m.default })));
 const DisclaimerPage = lazy(() => import('./pages/DisclaimerPage').then((m) => ({ default: m.DisclaimerPage || m.default })));
 const ProvidersPage = lazy(() => import('./pages/ProvidersPage').then((m) => ({ default: m.ProvidersPage || m.default })));
 const AppointmentPage = lazy(() => import('./pages/AppointmentPage').then((m) => ({ default: m.AppointmentPage || m.default })));
@@ -91,7 +92,7 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
   return (
     <>
       <div className={layout.containerClassName}>
-        {!layout.hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} variant={layout.navVariant} />}
+        {!layout.hideNav && <NavBar onNavigate={navigate} themeMode={themeMode} variant={layout.navVariant} accent={layout.navAccent} />}
 
         <div className={`flex flex-1 flex-col ${layout.viewportLocked ? 'min-h-0 overflow-hidden' : ''}`}>
           <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">Loading...</div>}>
@@ -132,6 +133,7 @@ function AppRoutes({
       <Route path="/journey" element={<JourneyRouteElement navigate={navigate} />} />
       <Route path="/about" element={<BoundedRoute context="route-about" navigate={navigate}><AboutPage /></BoundedRoute>} />
       <Route path="/faq" element={<BoundedRoute context="route-faq" navigate={navigate}><FAQPage /></BoundedRoute>} />
+      <Route path="/contact" element={<BoundedRoute context="route-contact" navigate={navigate}><ContactPage /></BoundedRoute>} />
       <Route path="/disclaimer" element={<BoundedRoute context="route-disclaimer" navigate={navigate}><DisclaimerPage /></BoundedRoute>} />
       <Route path="/providers" element={<ProvidersRouteElement navigate={navigate} onBook={onBook} />} />
       <Route path="/appointment" element={<AuthenticatedBoundedRoute context="route-appointment" navigate={navigate} returnTo="/appointment"><AppointmentPage /></AuthenticatedBoundedRoute>} />
@@ -314,6 +316,7 @@ function getRouteLayout(pathname: string, flow: FlowStep) {
     hideFooter: shouldHideFooter(pathname, hideNav),
     hideNav,
     navVariant: getNavVariant(pathname),
+    navAccent: getNavAccent(pathname),
     viewportLocked,
   };
 }
@@ -335,6 +338,20 @@ function shouldShowStandaloneFooter(pathname: string, hideFooter: boolean): bool
 
 function getNavVariant(pathname: string): 'flat' | 'glass' {
   return pathname === '/providers' ? 'flat' : 'glass';
+}
+
+// The navbar accent (link hover + underline + Talk-to-Us arrow) tracks each page's dominant tone:
+// pink-led pages use dustyRose, white/powder-blue pages use powderBlue, everything else keeps sage.
+function getNavAccent(pathname: string): 'sage' | 'dustyRose' | 'powderBlue' {
+  if (pathname === '/about') {
+    return 'dustyRose';
+  }
+
+  if (pathname === '/faq' || pathname === '/contact') {
+    return 'powderBlue';
+  }
+
+  return 'sage';
 }
 
 function OnboardingChooser({ onProvider, onPatient }: { onProvider: () => void; onPatient: () => void }) {
