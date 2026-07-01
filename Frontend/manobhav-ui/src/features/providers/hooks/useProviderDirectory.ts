@@ -127,13 +127,20 @@ export function useProviderDirectory() {
     }
   };
 
-  const selectProviderDate = ({ display, iso }: ProviderDateOption) => {
+  const selectProviderDate = (providerId: string, { display, iso }: ProviderDateOption) => {
+    // A date chip belongs to a specific provider card, so picking it must also make that provider the
+    // selected one — otherwise the details panel keeps showing whoever was selected before and fetches
+    // the wrong provider's times for the chosen date.
+    setSelectedId(providerId);
     setSelectedDateLabel(display);
     setSelectedDateIso(iso);
     // Picking a date no longer auto-selects a slot — the user must choose a time under the date.
     setSelectedSlotId('');
     setSelectedSlotLabel('');
     setShowCalendar(false);
+    if (isMobile) {
+      setIsMobileDetailsOpen(true);
+    }
   };
 
   const selectSlot = (slotId: string, label: string) => {

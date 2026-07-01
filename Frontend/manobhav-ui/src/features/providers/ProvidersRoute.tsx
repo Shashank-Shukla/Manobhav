@@ -138,6 +138,7 @@ function ProvidersDirectory({ onBackHome: _onBackHome, onBook }: ProvidersRouteP
               onSelectProvider={directory.selectProvider}
               providers={directory.filteredProviders}
               selectedId={directory.selected?.id ?? directory.selectedId ?? undefined}
+              selectedDateIso={directory.selectedDateIso}
             />
           )}
         </Box>

@@ -190,7 +190,9 @@ function toProviderRecord(item: ProviderDirectoryItemResponse): ProviderRecord {
     name: item.name,
     summary: item.summary ?? '',
     specializations: Array.isArray(item.specializations) ? item.specializations : [],
-    avatarColor: item.avatarColor || pickAvatarColor(item.id || item.name),
+    // The API returns a constant sage for everyone, so derive a stable, varied brand-palette colour
+    // per provider instead (only a fallback anyway — a real profile photo always takes priority).
+    avatarColor: pickAvatarColor(item.id || item.name),
     photoUrl: item.photoUrl ?? undefined,
     weeklyAvailability,
     nextDates: computeNextDates(weeklyAvailability),

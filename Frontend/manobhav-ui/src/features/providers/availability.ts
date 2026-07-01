@@ -20,6 +20,27 @@ export function getAvailableDaysOfWeek(weekly: WeeklyAvailabilitySlot[]): number
   return [...days].sort((left, right) => left - right);
 }
 
+/**
+ * True when, on `dayOfWeek`, at least one availability window's end time is still in the future
+ * relative to `now` (both in local/IST time — the platform is India-only). Malformed times are
+ * treated as still-open so bad data can never hide a day that might actually be bookable.
+ */
+export function hasRemainingWindow(weekly: WeeklyAvailabilitySlot[], dayOfWeek: number, now: Date): boolean {
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  return weekly.some((slot) => slot.dayOfWeek === dayOfWeek && endTimeMinutes(slot.endTime) > nowMinutes);
+}
+
+/** Minutes since midnight for an "HH:mm" end time; unparseable values read as +Infinity (still open). */
+function endTimeMinutes(time: string): number {
+  const [hours, minutes] = String(time).split(':');
+  const h = Number(hours);
+  const m = Number(minutes);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return h * 60 + m;
+}
+
 function toLocalIso(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -45,11 +66,17 @@ export function computeNextDates(
     return [];
   }
 
+  const todayMidnight = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
   const results: ProviderDateOption[] = [];
   const cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
   for (let scanned = 0; scanned <= 366 && results.length < count; scanned += 1) {
     if (availableDays.has(cursor.getDay())) {
-      results.push({ display: toDisplay(cursor), iso: toLocalIso(cursor) });
+      // Offer today only while it still has a bookable window left. Once every window for today has
+      // ended (e.g. it's 9pm and all slots closed hours ago), today has no open times and is dropped.
+      const isToday = cursor.getTime() === todayMidnight;
+      if (!isToday || hasRemainingWindow(weekly, cursor.getDay(), from)) {
+        results.push({ display: toDisplay(cursor), iso: toLocalIso(cursor) });
+      }
     }
     cursor.setDate(cursor.getDate() + 1);
   }

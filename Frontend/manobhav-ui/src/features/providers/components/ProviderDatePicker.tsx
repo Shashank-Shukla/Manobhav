@@ -10,6 +10,7 @@ import { muiCalendarTheme } from '../providerCalendarTheme';
 
 type ProviderDatePickerProps = {
   availableDaysOfWeek: number[];
+  disableToday?: boolean;
   onCancel: () => void;
   onChoose: (iso: string, label: string) => void;
   onTempDateChange: (iso: string) => void;
@@ -20,6 +21,7 @@ type ProviderDatePickerProps = {
 
 export function ProviderDatePicker({
   availableDaysOfWeek,
+  disableToday = false,
   onCancel,
   onChoose,
   onTempDateChange,
@@ -28,8 +30,14 @@ export function ProviderDatePicker({
   tempCalendarIso,
 }: ProviderDatePickerProps) {
   const availableDays = new Set(availableDaysOfWeek);
-  // Only leave enabled the weekdays the provider actually works (dayjs day(): 0=Sunday..6=Saturday).
-  const isDateDisabled = (day: Dayjs) => !availableDays.has(day.day());
+  // Only leave enabled the weekdays the provider actually works (dayjs day(): 0=Sunday..6=Saturday),
+  // and drop today once its windows have all closed so a date with no open times can't be picked.
+  const isDateDisabled = (day: Dayjs) => {
+    if (!availableDays.has(day.day())) {
+      return true;
+    }
+    return disableToday && day.isSame(dayjs(), 'day');
+  };
   const activeIso = tempCalendarIso || selectedDateIso || dayjs().format('YYYY-MM-DD');
 
   return (
