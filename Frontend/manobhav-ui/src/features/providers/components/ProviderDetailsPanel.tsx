@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Avatar, Box, Button, Flex, HStack, Tag, Text, VStack } from '@chakra-ui/react';
 import { CalendarDays, Star } from 'lucide-react';
 import { theme } from '../../../utils/theme';
+import { hasRemainingWindow } from '../availability';
 import type { ProviderRecord } from '../types';
 import type { ProviderSlot } from '../bookingFlow';
 
@@ -52,9 +53,15 @@ export function ProviderDetailsPanel({
     return null;
   }
 
+  // Today is bookable only while a window is still open; once they've all ended, the calendar must
+  // disable today too (mirrors the "next available" chip logic so both surfaces agree).
+  const now = new Date();
+  const disableToday = !hasRemainingWindow(selected.weeklyAvailability, now.getDay(), now);
+
   return showCalendar ? (
     <ProviderCalendarPanel
       availableDaysOfWeek={selected.availableDaysOfWeek}
+      disableToday={disableToday}
       onCalendarCancel={onCalendarCancel}
       onCalendarChoose={onCalendarChoose}
       onTempCalendarChange={onTempCalendarChange}
@@ -81,6 +88,7 @@ export function ProviderDetailsPanel({
 
 function ProviderCalendarPanel({
   availableDaysOfWeek,
+  disableToday,
   onCalendarCancel,
   onCalendarChoose,
   onTempCalendarChange,
@@ -89,6 +97,7 @@ function ProviderCalendarPanel({
   tempCalendarIso,
 }: {
   availableDaysOfWeek: number[];
+  disableToday: boolean;
   onCalendarCancel: () => void;
   onCalendarChoose: (iso: string, label: string) => void;
   onTempCalendarChange: (iso: string) => void;
@@ -104,6 +113,7 @@ function ProviderCalendarPanel({
       <Suspense fallback={<Text color="gray.600">Loading calendar...</Text>}>
         <ProviderDatePicker
           availableDaysOfWeek={availableDaysOfWeek}
+          disableToday={disableToday}
           onCancel={onCalendarCancel}
           onChoose={onCalendarChoose}
           onTempDateChange={onTempCalendarChange}

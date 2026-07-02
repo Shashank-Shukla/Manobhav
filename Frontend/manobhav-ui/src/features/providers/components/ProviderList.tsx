@@ -1,12 +1,14 @@
 import { Avatar, Box, Button, Card, CardBody, CardHeader, Flex, Text, VStack } from '@chakra-ui/react';
+import { theme } from '../../../utils/theme';
 import type { ProviderDateOption, ProviderRecord } from '../types';
 
 type ProviderListProps = {
   onOpenCalendar: (providerId: string) => void;
-  onSelectDate: (date: ProviderDateOption) => void;
+  onSelectDate: (providerId: string, date: ProviderDateOption) => void;
   onSelectProvider: (providerId: string) => void;
   providers: ProviderRecord[];
   selectedId?: string;
+  selectedDateIso?: string;
 };
 
 export function ProviderList({
@@ -15,6 +17,7 @@ export function ProviderList({
   onSelectProvider,
   providers,
   selectedId,
+  selectedDateIso,
 }: ProviderListProps) {
   if (providers.length === 0) {
     return (
@@ -69,22 +72,28 @@ export function ProviderList({
                   </Text>
                 )}
                 <Flex gap={2} wrap="wrap">
-                  {provider.nextDates.slice(0, 10).map((date) => (
-                    <Button
-                      key={date.iso}
-                      size="xs"
-                      variant="outline"
-                      colorScheme="green"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onSelectDate(date);
-                      }}
-                    >
-                      {date.display}
-                    </Button>
-                  ))}
+                  {provider.nextDates.slice(0, 10).map((date) => {
+                    const isActiveDate = selectedId === provider.id && selectedDateIso === date.iso;
+                    return (
+                      <Button
+                        key={date.iso}
+                        size="xs"
+                        variant={isActiveDate ? 'solid' : 'outline'}
+                        bg={isActiveDate ? theme.colors.sage.DEFAULT : 'transparent'}
+                        color={isActiveDate ? 'white' : theme.colors.sage.dark}
+                        borderColor={theme.colors.sage.DEFAULT}
+                        _hover={{ bg: isActiveDate ? theme.colors.sage.dark : theme.colors.sage.light }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onSelectDate(provider.id, date);
+                        }}
+                      >
+                        {date.display}
+                      </Button>
+                    );
+                  })}
                 </Flex>
-                <Flex justify={{ base: 'flex-start', md: 'flex-end' }} w="100%">
+                <Flex justify="flex-start" w="100%">
                   <Button
                     size="xs"
                     variant="outline"
