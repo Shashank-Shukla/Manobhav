@@ -62,7 +62,7 @@ export function AboutHero() {
           <div className="relative w-full max-w-3xl">
             <div className="absolute inset-x-12 bottom-2 h-12 rounded-full bg-[#d7e5ef] opacity-80 blur-md" />
             <img
-              src="/girl-in-pink-panties-with-a-heart-in-her-hand-sitting-on-the-floor-vector.svg"
+              src="/homepage-picture.png"
               alt="Illustration representing a calm, supportive conversation"
               className="relative z-10 w-full object-contain"
               loading="eager"

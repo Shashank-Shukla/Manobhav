@@ -11,7 +11,7 @@ function VectorMotion() {
           <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#dce8ee] opacity-80 animate-spin-slow" />
           <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#f3d5cf] opacity-60 animate-spin-slower" />
           <img
-            src="/girl-in-pink-panties-with-a-heart-in-her-hand-sitting-on-the-floor-vector.svg"
+            src="/homepage-picture.png"
             alt="Animated vector illustration for Manobhav vision"
             className="relative z-10 mx-auto w-full max-w-[280px] object-contain animate-float-gentle"
             loading="lazy"

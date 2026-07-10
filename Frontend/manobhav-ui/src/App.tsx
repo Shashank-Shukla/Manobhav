@@ -183,7 +183,7 @@ function HomeFlowContent({
 
   return (
     <>
-      <HomePage onStartJourney={() => setFlow('journey')} />
+      <HomePage onStartJourney={() => setFlow('journey')} onContact={() => navigate('/contact')} />
       <Suspense fallback={null}>
         <MoodSearchBar onReachHuman={() => setFlow('journey')} />
       </Suspense>
@@ -340,7 +340,7 @@ function getNavVariant(pathname: string): 'flat' | 'glass' {
   return pathname === '/providers' ? 'flat' : 'glass';
 }
 
-// The navbar accent (link hover + underline + Talk-to-Us arrow) tracks each page's dominant tone:
+// The navbar accent (link hover + underline + contact arrow) tracks each page's dominant tone:
 // pink-led pages use dustyRose, white/powder-blue pages use powderBlue, everything else keeps sage.
 function getNavAccent(pathname: string): 'sage' | 'dustyRose' | 'powderBlue' {
   if (pathname === '/about') {

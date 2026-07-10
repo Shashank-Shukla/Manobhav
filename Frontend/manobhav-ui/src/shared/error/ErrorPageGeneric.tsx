@@ -11,7 +11,7 @@ export function ErrorPageGeneric({ onHome }: Props) {
         title="Something feels off"
         message="We hit a snag while loading this part of Manobhav. Take a breath and try again."
         accentColor="#D6A2AD"
-        illustration="/girl-in-pink-panties-with-a-heart-in-her-hand-sitting-on-the-floor-vector.svg"
+        illustration="/homepage-picture.png"
         action={{ label: 'Back to home', onClick: onHome }}
       />
     </div>

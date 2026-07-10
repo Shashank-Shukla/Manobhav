@@ -6,9 +6,10 @@ import { theme } from '../../../utils/theme';
 
 type HeroProps = {
   onStartJourney?: () => void;
+  onContact?: () => void;
 };
 
-export function HeroSection({ onStartJourney }: HeroProps) {
+export function HeroSection({ onStartJourney, onContact }: HeroProps) {
   return (
     <section id="about" className="relative min-h-screen pt-32 pb-20 px-6 flex items-center overflow-hidden">
       <div className="absolute top-0 right-0 w-2/3 h-full bg-[#E6EDE8]/30 -z-10 rounded-l-[100px] translate-x-20" />
@@ -45,7 +46,7 @@ export function HeroSection({ onStartJourney }: HeroProps) {
               Get Started
             </Button>
           </div>
-          <Button variant="secondary" icon={MessageCircle}>How it works</Button>
+          <Button variant="secondary" icon={MessageCircle} onClick={onContact}>Contact us</Button>
         </div>
         </div>
 
@@ -54,7 +55,7 @@ export function HeroSection({ onStartJourney }: HeroProps) {
             <div className="absolute inset-4 bg-white/40 backdrop-blur-sm rounded-full border border-white/60" />
             <div className="absolute inset-0 flex items-center justify-center">
               <img
-                src="/girl-in-pink-panties-with-a-heart-in-her-hand-sitting-on-the-floor-vector.svg"
+                src="/homepage-picture.png"
                 alt="Calm illustration"
                 className="w-[82%] h-[82%] object-contain drop-shadow-xl"
                 loading="lazy"

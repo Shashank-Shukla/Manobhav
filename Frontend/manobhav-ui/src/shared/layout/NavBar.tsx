@@ -380,7 +380,7 @@ function NavAnchor({
 }
 
 function TalkToUsIcon({ iconSize, label }: { iconSize: number; label: string }) {
-  if (label !== 'Talk to Us') {
+  if (label !== 'Contact us') {
     return null;
   }
 
@@ -395,7 +395,7 @@ function getNavItems(pathname: string): NavItem[] {
   return [
     getAboutNavItem(pathname),
     { label: 'FAQ', path: '/faq' },
-    { label: 'Talk to Us', path: '/providers' },
+    { label: 'Contact us', path: '/contact' },
   ];
 }
 
