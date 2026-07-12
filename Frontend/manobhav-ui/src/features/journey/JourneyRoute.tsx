@@ -493,24 +493,26 @@ function JourneyStepCard({
   return (
     <div
       className="bg-white/70 rounded-3xl shadow-2xl border border-white/30 flex items-center justify-center transition-all duration-300"
-      style={{ width: '70vw', minWidth: '320px', maxWidth: '1100px', height: '50vh', minHeight: '260px', maxHeight: '620px', padding: '2.5rem 3em' }}
+      style={{ width: '70vw', minWidth: '320px', maxWidth: '1100px', height: '50vh', minHeight: '260px', maxHeight: '620px' }}
     >
-      <JourneyStepCardBody
-        answers={answers}
-        current={current}
-        isSavingStep={isSavingStep}
-        onChange={onChange}
-        onNext={onNext}
-        onPolicyChange={onPolicyChange}
-        onSingleChoiceSelect={onSingleChoiceSelect}
-        onSubmit={onSubmit}
-        policyAcknowledged={policyAcknowledged}
-        policyVersion={policyVersion}
-        submissionId={submissionId}
-        consentSections={consentSections}
-        questions={questions}
-        saveError={saveError}
-      />
+      <div className="w-full h-full overflow-y-auto px-12 py-10">
+        <JourneyStepCardBody
+          answers={answers}
+          current={current}
+          isSavingStep={isSavingStep}
+          onChange={onChange}
+          onNext={onNext}
+          onPolicyChange={onPolicyChange}
+          onSingleChoiceSelect={onSingleChoiceSelect}
+          onSubmit={onSubmit}
+          policyAcknowledged={policyAcknowledged}
+          policyVersion={policyVersion}
+          submissionId={submissionId}
+          consentSections={consentSections}
+          questions={questions}
+          saveError={saveError}
+        />
+      </div>
     </div>
   );
 }

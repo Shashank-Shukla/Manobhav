@@ -11,6 +11,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.font-playfair {
+  font-family: 'Playfair Display SC', Georgia, serif;
+}
+
 :root[data-theme='dark'] {
   --bg-gradient: linear-gradient(145deg, #0f172a, #0b1220, #0a0f1c);
   --text-color: #e5e7eb;
