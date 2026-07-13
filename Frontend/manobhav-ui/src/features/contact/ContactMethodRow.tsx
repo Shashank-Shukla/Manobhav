@@ -16,22 +16,22 @@ export function ContactMethodRow({ icon: Icon, label, value, href, external = fa
     <a
       href={href}
       {...externalProps}
-      className="group flex items-center justify-between gap-6 border-b border-[#E8DDD8] py-6 transition-colors hover:border-[#84956E] md:py-8"
+      className="group flex flex-col gap-6 border-b border-[#E8DDD8] py-6 transition-colors hover:border-[#84956E] md:py-8 sm:flex-row sm:items-center sm:justify-between sm:min-w-0"
     >
-      <span className="flex items-center gap-4 md:gap-6">
+      <span className="flex flex-col items-start gap-4 md:gap-6 sm:flex-row sm:items-center sm:gap-6 sm:min-w-0">
         <span className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-[#9CAF88] p-3 text-white transition-colors group-hover:bg-[#7A8C6A]">
           <Icon size={24} />
         </span>
-        <span className="flex flex-col">
+        <span className="flex flex-col min-w-0 w-full">
           <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#84956E]">{label}</span>
-          <span className="text-xl font-medium text-[#4E453C] underline-offset-4 group-hover:underline md:text-3xl">
+          <span className="break-words whitespace-normal text-xl font-medium text-[#4E453C] underline-offset-4 group-hover:underline md:text-3xl">
             {value}
           </span>
         </span>
       </span>
       <ArrowUpRight
         size={28}
-        className="shrink-0 text-[#B1B0AA] transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:text-[#84956E]"
+        className="shrink-0 self-start text-[#B1B0AA] transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:text-[#84956E] sm:self-auto"
       />
     </a>
   );
