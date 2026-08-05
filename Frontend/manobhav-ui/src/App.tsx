@@ -260,22 +260,46 @@ export function RoleDashboard() {
 }
 
 function PatientOnboardingGuard() {
-  const [state, setState] = useState<'checking' | 'onboard' | 'ready'>('checking');
+  const [state, setState] = useState<'checking' | 'get-started' | 'onboard' | 'ready'>('checking');
 
   useEffect(() => {
     let cancelled = false;
-    import('./features/patient-dashboard/patientApi')
-      .then(({ getPatientOnboardingStatus }) => getPatientOnboardingStatus())
-      .then((status) => {
-        if (!cancelled) {
-          setState(status.hasCompletedProfile ? 'ready' : 'onboard');
+
+    Promise.all([
+      import('./features/patient-dashboard/patientApi'),
+      import('./features/providers'),
+    ])
+      .then(async ([{ getPatientOnboardingStatus }, { hasStoredBookingHold, ACTIVE_INTAKE_SUBMISSION_STORAGE_KEY }]) => {
+        const status = await getPatientOnboardingStatus();
+        if (cancelled) return;
+
+        if (status.hasCompletedProfile) {
+          setState('ready');
+          return;
         }
+
+        const hasLocalProgress =
+          hasStoredBookingHold() || Boolean(window.sessionStorage.getItem(ACTIVE_INTAKE_SUBMISSION_STORAGE_KEY));
+
+        if (hasLocalProgress || status.activeBookingHoldId) {
+          if (status.resumableIntakeSubmissionId) {
+            window.sessionStorage.setItem(ACTIVE_INTAKE_SUBMISSION_STORAGE_KEY, status.resumableIntakeSubmissionId);
+          }
+          setState('onboard');
+          return;
+        }
+
+        // Brand-new patient (e.g. signed in via the navbar Login button, never ran the
+        // Get Started journey) has nothing to complete a profile with yet — send them
+        // into the intake flow instead of a dead-end profile form.
+        setState('get-started');
       })
       .catch(() => {
         if (!cancelled) {
           setState('ready');
         }
       });
+
     return () => {
       cancelled = true;
     };
@@ -287,6 +311,10 @@ function PatientOnboardingGuard() {
         Loading your dashboard…
       </div>
     );
+  }
+
+  if (state === 'get-started') {
+    return <Navigate replace to="/journey" />;
   }
 
   if (state === 'onboard') {
