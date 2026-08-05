@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Interfaces.IBookingService, BookingService>();
         services.AddScoped<Application.Interfaces.IPublicContentService, PublicContentService>();
         services.AddScoped<Application.Interfaces.IAiDbDiagnosticsService, AiDbDiagnosticsService>();
+        services.AddScoped<Application.Interfaces.IPatientService, PatientService>();
         return services;
     }
 }

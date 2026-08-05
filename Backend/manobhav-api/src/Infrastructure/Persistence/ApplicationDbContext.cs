@@ -73,6 +73,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(user => user.Name).HasMaxLength(200);
             entity.Property(user => user.DisplayName).HasMaxLength(200);
             entity.Property(user => user.AccountStatus).HasMaxLength(40).IsRequired();
+            entity.Property(user => user.PreferredName).HasMaxLength(200);
+            entity.Property(user => user.Gender).HasMaxLength(40);
+            entity.Property(user => user.Occupation).HasMaxLength(160);
+            entity.Property(user => user.Address).HasMaxLength(500);
+            entity.Property(user => user.EmergencyContactName).HasMaxLength(200);
+            entity.Property(user => user.EmergencyContactRelation).HasMaxLength(80);
+            entity.Property(user => user.EmergencyContactPhone).HasMaxLength(40);
         });
 
         modelBuilder.Entity<UserRole>(entity =>

@@ -1,1 +1,3 @@
-export { DashboardPatientPage as PatientDashboardRoute } from './PatientDashboardRoute';
+export { PatientDashboardRoute } from './PatientDashboardRoute';
+export { completeIntakeProfile } from './patientApi';
+export type { CompleteProfileInput } from './patientApi';

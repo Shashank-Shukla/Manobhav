@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { theme } from '../../utils/theme';
 import { ProviderDashboardAside } from './components/ProviderDashboardAside';
-import { ProviderDashboardMain } from './components/ProviderDashboardMain';
 import { ProviderDashboardSidebar } from './components/ProviderDashboardSidebar';
+import { ProviderAppointmentsPage } from './components/pages/ProviderAppointmentsPage';
+import { ProviderCalendarPage } from './components/pages/ProviderCalendarPage';
+import { ProviderOverviewPage } from './components/pages/ProviderOverviewPage';
+import { ProviderTodayPage } from './components/pages/ProviderTodayPage';
+import { ProviderWeeklyReportPage } from './components/pages/ProviderWeeklyReportPage';
 import { getProviderDashboard, type ProviderDashboard } from './providerDashboardApi';
 
 type LoadState =
@@ -11,25 +16,38 @@ type LoadState =
   | { status: 'ready'; data: ProviderDashboard };
 
 export function DashboardProviderPage() {
+  const { section } = useParams<{ section?: string }>();
   const state = useProviderDashboard();
 
   if (state.status !== 'ready') {
     return <ProviderDashboardStatus status={state.status} />;
   }
 
-  // The sidebar column is a fixed 5rem; expanding the sidebar overlays the content rather than
-  // resizing the grid, so opening/closing it never reflows the whole dashboard (that grid-track
-  // animation was the lag). Only the sidebar element animates, which stays smooth.
   return (
     <div
       className="relative grid min-h-screen grid-cols-1 lg:grid-cols-[5rem_minmax(0,1fr)_23rem]"
       style={{ backgroundColor: theme.colors.smokeWhite, fontFamily: theme.font }}
     >
       <ProviderDashboardSidebar />
-      <ProviderDashboardMain data={state.data} />
+      <ProviderDashboardSection data={state.data} section={section} />
       <ProviderDashboardAside data={state.data} />
     </div>
   );
+}
+
+function ProviderDashboardSection({ data, section }: { data: ProviderDashboard; section?: string }) {
+  switch (section) {
+    case 'weekly-report':
+      return <ProviderWeeklyReportPage data={data} />;
+    case 'appointments':
+      return <ProviderAppointmentsPage data={data} />;
+    case 'calendar':
+      return <ProviderCalendarPage data={data} />;
+    case 'today':
+      return <ProviderTodayPage data={data} />;
+    default:
+      return <ProviderOverviewPage data={data} />;
+  }
 }
 
 function useProviderDashboard(): LoadState {

@@ -45,7 +45,8 @@ public sealed class IntakeController : ControllerBase
     {
         try
         {
-            var response = await _intake.CreateSubmissionAsync(ResolveCreateSubmissionRequest(request), cancellationToken);
+            var owner = await ReadOwnerContextAsync(cancellationToken);
+            var response = await _intake.CreateSubmissionAsync(ResolveCreateSubmissionRequest(request), owner, cancellationToken);
             return Created($"/api/intake/submissions/{response.Id}", response);
         }
         catch (IntakeValidationException ex)

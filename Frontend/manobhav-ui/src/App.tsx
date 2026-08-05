@@ -83,9 +83,9 @@ function AppShell({ themeMode }: { themeMode: ThemeMode }) {
 
   const handleBook = () => {
     if (!getStoredAuthSession()) {
-      navigate(`/login?returnTo=${encodeURIComponent('/appointment')}`);
+      navigate(`/login?returnTo=${encodeURIComponent('/onboarding/patient')}`);
     } else {
-      navigate('/appointment');
+      navigate('/onboarding/patient');
     }
   };
 
@@ -139,8 +139,12 @@ function AppRoutes({
       <Route path="/appointment" element={<AuthenticatedBoundedRoute context="route-appointment" navigate={navigate} returnTo="/appointment"><AppointmentPage /></AuthenticatedBoundedRoute>} />
       <Route path="/onboarding" element={<OnboardingChooser onProvider={() => navigate('/onboarding/provider')} onPatient={() => navigate('/onboarding/patient')} />} />
       <Route path="/onboarding/provider" element={<AuthenticatedBoundedRoute context="route-provider-onboarding" navigate={navigate} returnTo="/onboarding/provider"><OnboardingProviderPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
-      <Route path="/onboarding/patient" element={<AuthenticatedBoundedRoute context="route-patient-onboarding" navigate={navigate} returnTo="/onboarding/patient"><OnboardingPatientPage onBack={() => navigate('/onboarding')} /></AuthenticatedBoundedRoute>} />
-      <Route path="/dashboard" element={<RoleDashboard navigate={navigate} />} />
+      <Route path="/onboarding/patient" element={<AuthenticatedBoundedRoute context="route-patient-onboarding" navigate={navigate} returnTo="/onboarding/patient"><OnboardingPatientPage onBack={() => navigate('/onboarding')} onComplete={() => navigate('/dashboard')} /></AuthenticatedBoundedRoute>} />
+      <Route path="/dashboard" element={<RoleDashboard />} />
+      <Route path="/dashboard/patient" element={<PatientDashboardRouteElement navigate={navigate} />} />
+      <Route path="/dashboard/patient/:section" element={<PatientDashboardRouteElement navigate={navigate} />} />
+      <Route path="/dashboard/provider" element={<ProviderDashboardRouteElement navigate={navigate} />} />
+      <Route path="/dashboard/provider/:section" element={<ProviderDashboardRouteElement navigate={navigate} />} />
       <Route path="/dashboard/admin/:module" element={<AdminDashboardRouteElement />} />
       <Route path="/dashboard/admin/:module/:applicationId" element={<AdminDashboardRouteElement />} />
       <Route path="*" element={<ErrorPage40x onHome={() => navigate('/')} />} />
@@ -229,7 +233,7 @@ function ProvidersRouteElement({ navigate, onBook }: { navigate: (path: string) 
   );
 }
 
-export function RoleDashboard({ navigate }: { navigate: (path: string) => void }) {
+export function RoleDashboard() {
   const { session, loading } = useAuthSession();
 
   if (loading) {
@@ -244,25 +248,68 @@ export function RoleDashboard({ navigate }: { navigate: (path: string) => void }
     return <Navigate replace to={`/login?returnTo=${encodeURIComponent('/dashboard')}`} />;
   }
 
+  if (isAdminSession(session)) {
+    return <Navigate replace to="/dashboard/admin/applications" />;
+  }
+
+  if (hasProviderRole(session)) {
+    return <Navigate replace to="/dashboard/provider" />;
+  }
+
+  return <Navigate replace to="/dashboard/patient" />;
+}
+
+function PatientOnboardingGuard() {
+  const [state, setState] = useState<'checking' | 'onboard' | 'ready'>('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    import('./features/patient-dashboard/patientApi')
+      .then(({ getPatientOnboardingStatus }) => getPatientOnboardingStatus())
+      .then((status) => {
+        if (!cancelled) {
+          setState(status.hasCompletedProfile ? 'ready' : 'onboard');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setState('ready');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (state === 'checking') {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">
+        Loading your dashboard…
+      </div>
+    );
+  }
+
+  if (state === 'onboard') {
+    return <Navigate replace to="/onboarding/patient" />;
+  }
+
+  return <DashboardPatientPage />;
+}
+
+function PatientDashboardRouteElement({ navigate }: { navigate: (path: string) => void }) {
   return (
-    <BoundedRoute context="route-dashboard" navigate={navigate}>
-      <RoleDashboardContent />
+    <BoundedRoute context="route-patient-dashboard" navigate={navigate}>
+      <PatientOnboardingGuard />
     </BoundedRoute>
   );
 }
 
-function RoleDashboardContent() {
-  const { session } = useAuthSession();
-
-  if (isAdminSession(session)) {
-    return <AdminDashboardRouteElement />;
-  }
-
-  if (hasProviderRole(session)) {
-    return <DashboardProviderPage />;
-  }
-
-  return <DashboardPatientPage />;
+function ProviderDashboardRouteElement({ navigate }: { navigate: (path: string) => void }) {
+  return (
+    <BoundedRoute context="route-provider-dashboard" navigate={navigate}>
+      <DashboardProviderPage />
+    </BoundedRoute>
+  );
 }
 
 function AdminDashboardRouteElement() {

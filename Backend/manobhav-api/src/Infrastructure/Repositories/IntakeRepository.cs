@@ -81,6 +81,24 @@ public sealed class IntakeRepository : IIntakeRepository
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public Task<User?> GetUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return _db.Users.FirstOrDefaultAsync(user => user.Id == userId, cancellationToken);
+    }
+
+    public async Task EnsureActiveRoleAsync(Guid userId, string role, CancellationToken cancellationToken)
+    {
+        var alreadyGranted = await _db.UserRoles
+            .AsNoTracking()
+            .AnyAsync(item => item.UserId == userId && item.Role == role && item.IsActive, cancellationToken);
+        if (alreadyGranted)
+        {
+            return;
+        }
+
+        await _db.UserRoles.AddAsync(new UserRole { UserId = userId, Role = role }, cancellationToken);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         return _db.SaveChangesAsync(cancellationToken);

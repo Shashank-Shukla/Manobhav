@@ -1,5 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProviderDashboardRoute } from '.';
 import type { ProviderDashboard } from './providerDashboardApi';
@@ -61,10 +61,13 @@ function stubDashboard(response: () => Response) {
   }));
 }
 
-function renderProviderDashboard(initialEntry = '/dashboard') {
+function renderProviderDashboard(initialEntry = '/dashboard/provider') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <ProviderDashboardRoute />
+      <Routes>
+        <Route path="/dashboard/provider" element={<ProviderDashboardRoute />} />
+        <Route path="/dashboard/provider/:section" element={<ProviderDashboardRoute />} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -82,7 +85,7 @@ describe('ProviderDashboardRoute data wiring', () => {
     expect(dashboardCalls).toHaveLength(1);
   });
 
-  it('renders icon-only navigation pointing at the single /dashboard surface', async () => {
+  it('renders icon-only navigation pointing at the section-based dashboard routes', async () => {
     renderProviderDashboard();
 
     const navigation = await screen.findByRole('navigation', { name: /provider dashboard navigation/i });
@@ -92,28 +95,28 @@ describe('ProviderDashboardRoute data wiring', () => {
     const navTargets = navLinks.map((link) => [link.getAttribute('aria-label'), link.getAttribute('href')]);
 
     expect(navTargets).toEqual([
-      ['Dashboard overview', '/dashboard'],
-      ['Weekly report', '/dashboard#weekly-report'],
-      ['My appointments', '/dashboard#my-appointments'],
-      ['This week calendar', '/dashboard#provider-calendar'],
-      ["Today's appointments", '/dashboard#todays-appointments'],
+      ['Dashboard overview', '/dashboard/provider'],
+      ['Weekly report', '/dashboard/provider/weekly-report'],
+      ['My appointments', '/dashboard/provider/appointments'],
+      ['This week calendar', '/dashboard/provider/calendar'],
+      ["Today's appointments", '/dashboard/provider/today'],
     ]);
   });
 
   it('renders real provider identity, metrics, and the View profile link', async () => {
-    renderProviderDashboard();
+    renderProviderDashboard('/dashboard/provider/weekly-report');
 
     const profileBlock = await screen.findByRole('group', { name: /provider profile/i });
     expect(within(profileBlock).getByText('Dr. Asha Rao')).toBeInTheDocument();
     expect(within(profileBlock).getByRole('link', { name: /view profile/i })).toHaveAttribute('href', '/dashboard#dashboard-overview');
     expect(within(profileBlock).getByRole('button', { name: /open provider account menu/i })).toHaveTextContent('AR');
 
-    const snapshot = screen.getByRole('region', { name: /dashboard activity/i });
+    const snapshot = screen.getByRole('region', { name: /care snapshot/i });
     const totalCard = within(snapshot).getByText('Total sessions').closest('article') as HTMLElement;
     expect(within(totalCard).getByText('18')).toBeInTheDocument();
     const upcomingCard = within(snapshot).getByText('Upcoming').closest('article') as HTMLElement;
     expect(within(upcomingCard).getByText('7')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /welcome back, dr\. asha/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /care snapshot/i })).toBeInTheDocument();
   });
 
   it('renders the notification badge and today appointments with formatted times', async () => {
@@ -169,9 +172,9 @@ describe('ProviderDashboardRoute empty and applicant states', () => {
   });
 
   it('renders zero metrics for a provider with no sessions', async () => {
-    renderProviderDashboard();
+    renderProviderDashboard('/dashboard/provider/weekly-report');
 
-    const snapshot = await screen.findByRole('region', { name: /dashboard activity/i });
+    const snapshot = await screen.findByRole('region', { name: /care snapshot/i });
     expect(within(snapshot).getAllByText('0').length).toBeGreaterThanOrEqual(3);
   });
 });

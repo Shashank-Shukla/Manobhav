@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AboutPage } from '../pages/AboutPage';
 import { AppointmentPage } from '../pages/AppointmentPage';
 import { DashboardAdminPage } from '../pages/dashboard/DashboardAdminPage';
+import { DashboardPatientPage } from '../pages/dashboard/DashboardPatientPage';
+import { DashboardProviderPage } from '../pages/dashboard/DashboardProviderPage';
 import { DisclaimerPage } from '../pages/DisclaimerPage';
 import { FAQPage } from '../pages/FAQPage';
 import { HomePage } from '../pages/HomePage';
@@ -215,6 +217,42 @@ const routeApiMocks = [
     }),
   },
   {
+    matches: (url: string) => url.endsWith('/api/patient/onboarding-status'),
+    response: () => apiJson({
+      isRegisteredPatient: true,
+      hasCompletedProfile: true,
+      hasAppointments: false,
+      resumableIntakeSubmissionId: null,
+      activeBookingHoldId: null,
+      nextStep: 'Dashboard',
+    }),
+  },
+  {
+    matches: (url: string) => url.endsWith('/api/patient/dashboard'),
+    response: () => apiJson({
+      profile: {
+        fullName: 'Test Patient',
+        preferredName: 'Test',
+        email: 'test@example.com',
+        phone: null,
+        dateOfBirth: null,
+        gender: null,
+        occupation: null,
+        address: null,
+        emergencyContactName: null,
+        emergencyContactRelation: null,
+        emergencyContactPhone: null,
+        avatarInitials: 'TP',
+        profileCompletedAtUtc: null,
+      },
+      metrics: { upcomingCount: 0, completedCount: 0, cancelledCount: 0 },
+      upcomingAppointments: [],
+      pastAppointments: [],
+      intake: { submissionId: null, status: null, submittedAtUtc: null, completedAtUtc: null, answers: [] },
+      consents: [],
+    }),
+  },
+  {
     matches: (url: string) => url.endsWith('/api/visitors'),
     response: () => apiJson({ visitorId: '00000000-0000-0000-0000-000000000001', fullCaptureEnabled: true, retentionDays: 90 }, 201),
   },
@@ -401,7 +439,11 @@ function renderRoleDashboard() {
     <MemoryRouter initialEntries={['/dashboard']}>
       <Suspense fallback={<div>Loading...</div>}>
         <Routes>
-          <Route path="/dashboard" element={<RoleDashboard navigate={vi.fn()} />} />
+          <Route path="/dashboard" element={<RoleDashboard />} />
+          <Route path="/dashboard/patient" element={<DashboardPatientPage />} />
+          <Route path="/dashboard/patient/:section" element={<DashboardPatientPage />} />
+          <Route path="/dashboard/provider" element={<DashboardProviderPage />} />
+          <Route path="/dashboard/provider/:section" element={<DashboardProviderPage />} />
           <Route path="/dashboard/admin/:module" element={<DashboardAdminPage />} />
           <Route path="/login" element={<div>Sign in route</div>} />
         </Routes>
@@ -416,7 +458,7 @@ describe('single /dashboard role routing', () => {
 
     renderRoleDashboard();
 
-    expect(await screen.findByText(/coming up/i)).toBeInTheDocument();
+    expect(await screen.findByText(/welcome,/i)).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: /provider dashboard navigation/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/manobhav admin/i)).not.toBeInTheDocument();
   });
@@ -429,7 +471,7 @@ describe('single /dashboard role routing', () => {
       renderRoleDashboard();
 
       expect(await screen.findByRole('navigation', { name: /provider dashboard navigation/i })).toBeInTheDocument();
-      expect(screen.queryByText(/coming up/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/welcome,/i)).not.toBeInTheDocument();
       await waitFor(() => {
         expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/api/provider/dashboard'))).toBe(true);
       });
@@ -443,7 +485,7 @@ describe('single /dashboard role routing', () => {
 
     expect(await screen.findByText(/admin command center/i)).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: /provider dashboard navigation/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/coming up/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/welcome,/i)).not.toBeInTheDocument();
   });
 
   it('redirects an unauthenticated visitor to the login route in place', async () => {

@@ -149,17 +149,7 @@ public sealed class BookingService : IBookingService
         };
         await _repository.AddAppointmentAsync(appointment, cancellationToken);
 
-        return new AppointmentDto(
-            appointment.Id,
-            appointment.BookingHoldId,
-            appointment.PatientUserId,
-            appointment.ProviderProfileId,
-            appointment.SlotId,
-            appointment.IntakeSubmissionId,
-            appointment.StartsAtUtc,
-            appointment.EndsAtUtc,
-            appointment.Status,
-            appointment.PaymentStatus);
+        return ToDto(appointment);
     }
 
     public async Task CancelHoldAsync(Guid holdId, BookingOwnerContext owner, CancellationToken cancellationToken)
@@ -171,6 +161,64 @@ public sealed class BookingService : IBookingService
         }
 
         await _repository.CancelHoldAsync(hold, DateTimeOffset.UtcNow, cancellationToken);
+    }
+
+    public async Task<AppointmentDto> CancelAppointmentAsync(Guid appointmentId, Guid patientUserId, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var appointment = await ReadChangeableAppointmentAsync(appointmentId, patientUserId, now, cancellationToken);
+        await _repository.CancelAppointmentAsync(appointment, now, cancellationToken);
+        return ToDto(appointment);
+    }
+
+    public async Task<AppointmentDto> RescheduleAppointmentAsync(
+        Guid appointmentId,
+        Guid patientUserId,
+        Guid targetSlotId,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var appointment = await ReadChangeableAppointmentAsync(appointmentId, patientUserId, now, cancellationToken);
+        if (targetSlotId == appointment.SlotId)
+        {
+            throw new BookingException("Choose a different slot to reschedule.", 400);
+        }
+
+        await _repository.ReleaseExpiredHoldsAsync(appointment.ProviderProfileId, targetSlotId, now, cancellationToken);
+        var target = await _repository.GetSlotByIdAsync(targetSlotId, cancellationToken);
+        if (target is null || target.ProviderProfileId != appointment.ProviderProfileId)
+        {
+            throw new BookingException("Selected slot does not belong to this provider.", 400);
+        }
+
+        if (!await _repository.TryMoveAppointmentAsync(appointment, targetSlotId, now, cancellationToken))
+        {
+            throw new BookingException("Selected slot is not available.", 409);
+        }
+
+        return ToDto(appointment);
+    }
+
+    private async Task<Appointment> ReadChangeableAppointmentAsync(
+        Guid appointmentId,
+        Guid patientUserId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var appointment = await _repository.GetPatientAppointmentAsync(appointmentId, patientUserId, cancellationToken)
+            ?? throw new BookingException("Appointment does not exist.", 404);
+
+        if (appointment.Status != "Scheduled")
+        {
+            throw new BookingException("Only scheduled appointments can be changed.", 409);
+        }
+
+        if (appointment.StartsAtUtc <= now)
+        {
+            throw new BookingException("Appointments that have already started cannot be changed.", 409);
+        }
+
+        return appointment;
     }
 
     private static bool HasOwnerContext(BookingOwnerContext owner)
@@ -207,6 +255,21 @@ public sealed class BookingService : IBookingService
     private static bool IsExpiredActiveHold(BookingHold hold, DateTimeOffset now)
     {
         return hold.Status == "Active" && hold.ExpiresAtUtc <= now;
+    }
+
+    private static AppointmentDto ToDto(Appointment appointment)
+    {
+        return new AppointmentDto(
+            appointment.Id,
+            appointment.BookingHoldId,
+            appointment.PatientUserId,
+            appointment.ProviderProfileId,
+            appointment.SlotId,
+            appointment.IntakeSubmissionId,
+            appointment.StartsAtUtc,
+            appointment.EndsAtUtc,
+            appointment.Status,
+            appointment.PaymentStatus);
     }
 
     private static BookingHoldDto ToDto(BookingHold hold)

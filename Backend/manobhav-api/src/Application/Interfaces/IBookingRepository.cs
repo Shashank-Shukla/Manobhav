@@ -54,5 +54,21 @@ public interface IBookingRepository
     /// <summary>Cancels a hold and frees its slot (if still held), then saves.</summary>
     Task CancelHoldAsync(BookingHold hold, DateTimeOffset now, CancellationToken cancellationToken);
 
+    /// <summary>Tracked appointment owned by the given patient; null when missing or not owned.</summary>
+    Task<Appointment?> GetPatientAppointmentAsync(Guid appointmentId, Guid patientUserId, CancellationToken cancellationToken);
+
+    /// <summary>Cancels the appointment and releases its booked slot back to available, then saves.</summary>
+    Task CancelAppointmentAsync(Appointment appointment, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Atomically books <paramref name="targetSlotId"/> and releases the appointment's current slot in
+    /// one transaction. Returns false (nothing persisted) when the target slot is no longer available.
+    /// </summary>
+    Task<bool> TryMoveAppointmentAsync(
+        Appointment appointment,
+        Guid targetSlotId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

@@ -32,7 +32,10 @@ public sealed class IntakeWorkflowService
         return ToDto(form);
     }
 
-    public async Task<IntakeSubmissionDto> CreateSubmissionAsync(CreateIntakeSubmissionRequest request, CancellationToken cancellationToken)
+    public async Task<IntakeSubmissionDto> CreateSubmissionAsync(
+        CreateIntakeSubmissionRequest request,
+        IntakeOwnerContext owner,
+        CancellationToken cancellationToken)
     {
         if (!string.Equals(request.SubmissionKind, "PatientIntake", StringComparison.Ordinal) &&
             !string.Equals(request.SubmissionKind, "ProviderOnboarding", StringComparison.Ordinal))
@@ -54,6 +57,10 @@ public sealed class IntakeWorkflowService
             FormDefinitionId = form.Id,
             FormVersion = form.Version,
             VisitorSessionId = request.VisitorSessionId,
+            // Signed-in visitors (e.g. a fresh Google sign-in that lands straight in the get-started
+            // flow) own their submission from the first step, so later answer saves resolve ownership
+            // by user id and never depend on a visitor-analytics session existing.
+            UserId = owner.UserId,
             Status = "Draft",
             CurrentStep = NormalizeCurrentStep(request.CurrentStep, "start")
         };
@@ -122,6 +129,12 @@ public sealed class IntakeWorkflowService
         }
 
         var submission = await GetMutableSubmissionAsync(submissionId, new IntakeOwnerContext(userId, visitorSessionId), cancellationToken);
+        var user = await _repository.GetUserAsync(userId, cancellationToken)
+            ?? throw new IntakeValidationException("Authenticated user does not exist.");
+
+        ApplyProfile(user, request);
+        await _repository.EnsureActiveRoleAsync(userId, "Patient", cancellationToken);
+
         submission.UserId = userId;
         submission.Status = "Completed";
         submission.CompletedAtUtc = DateTimeOffset.UtcNow;
@@ -163,6 +176,28 @@ public sealed class IntakeWorkflowService
         submission.LastSavedAtUtc = DateTimeOffset.UtcNow;
         await _repository.AddConsentAsync(consent, cancellationToken);
         return ToDto(submission);
+    }
+
+    /// <summary>
+    /// Persists the Section 1 personal/profile answers onto the patient's user row. Previously these
+    /// values were validated and then discarded, so the patient dashboard had no profile to render.
+    /// </summary>
+    private static void ApplyProfile(User user, CompleteProfileRequest request)
+    {
+        var now = DateTimeOffset.UtcNow;
+        user.Name = Limit(request.FullName.Trim(), 200);
+        user.PreferredName = Limit(request.PreferredName?.Trim(), 200) ?? user.PreferredName;
+        user.Email = Limit(request.Email?.Trim(), 320) ?? user.Email;
+        user.Phone = Limit(request.Phone?.Trim(), 40) ?? user.Phone;
+        user.DateOfBirth = request.DateOfBirth ?? user.DateOfBirth;
+        user.Gender = Limit(request.Gender?.Trim(), 40) ?? user.Gender;
+        user.Occupation = Limit(request.Occupation?.Trim(), 160) ?? user.Occupation;
+        user.Address = Limit(request.Address?.Trim(), 500) ?? user.Address;
+        user.EmergencyContactName = Limit(request.EmergencyContactName.Trim(), 200);
+        user.EmergencyContactRelation = Limit(request.EmergencyContactRelation.Trim(), 80);
+        user.EmergencyContactPhone = Limit(request.EmergencyContactPhone.Trim(), 40);
+        user.ProfileCompletedAtUtc ??= now;
+        user.UpdatedAtUtc = now;
     }
 
     private async Task<IntakeSubmission> GetMutableSubmissionAsync(

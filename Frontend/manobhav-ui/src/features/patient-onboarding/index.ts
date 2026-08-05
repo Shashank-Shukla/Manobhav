@@ -1,1 +1,1 @@
-export { OnboardingPatientPage as PatientOnboardingRoute } from './PatientOnboardingRoute';
+export { PatientOnboardingRoute } from './PatientOnboardingRoute';

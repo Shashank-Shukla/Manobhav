@@ -27,4 +27,14 @@ public interface IBookingService
     Task<AppointmentDto> FinalizeAsync(Guid holdId, Guid userId, Guid? visitorSessionId, CancellationToken cancellationToken);
 
     Task CancelHoldAsync(Guid holdId, BookingOwnerContext owner, CancellationToken cancellationToken);
+
+    /// <summary>Cancels the patient's own scheduled appointment and frees the slot.</summary>
+    Task<AppointmentDto> CancelAppointmentAsync(Guid appointmentId, Guid patientUserId, CancellationToken cancellationToken);
+
+    /// <summary>Moves the patient's own scheduled appointment to another available slot of the same provider.</summary>
+    Task<AppointmentDto> RescheduleAppointmentAsync(
+        Guid appointmentId,
+        Guid patientUserId,
+        Guid targetSlotId,
+        CancellationToken cancellationToken);
 }

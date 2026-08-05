@@ -168,9 +168,109 @@ public sealed class BookingRepository : IBookingRepository
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public Task<Appointment?> GetPatientAppointmentAsync(Guid appointmentId, Guid patientUserId, CancellationToken cancellationToken)
+    {
+        return _db.Appointments
+            .FirstOrDefaultAsync(item => item.Id == appointmentId && item.PatientUserId == patientUserId, cancellationToken);
+    }
+
+    public async Task CancelAppointmentAsync(Appointment appointment, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        appointment.Status = "Cancelled";
+        appointment.CancelledAtUtc = now;
+        appointment.UpdatedAtUtc = now;
+        await ReleaseBookedSlotAsync(appointment.SlotId, now, cancellationToken);
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> TryMoveAppointmentAsync(
+        Appointment appointment,
+        Guid targetSlotId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+
+        var target = await TryBookSlotAsync(appointment.ProviderProfileId, targetSlotId, now, cancellationToken);
+        if (target is null)
+        {
+            if (transaction is not null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
+
+            return false;
+        }
+
+        await ReleaseBookedSlotAsync(appointment.SlotId, now, cancellationToken);
+        appointment.SlotId = target.Id;
+        appointment.StartsAtUtc = target.StartsAtUtc;
+        appointment.EndsAtUtc = target.EndsAtUtc;
+        appointment.UpdatedAtUtc = now;
+        await _db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return true;
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         return _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task ReleaseBookedSlotAsync(Guid slotId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var slot = await _db.ProviderAvailabilitySlots.FirstOrDefaultAsync(item => item.Id == slotId, cancellationToken);
+        if (slot is null || slot.Status == "Available")
+        {
+            return;
+        }
+
+        slot.Status = "Available";
+        slot.UpdatedAtUtc = now;
+    }
+
+    /// <summary>
+    /// Claims an available future slot for the provider by flipping it straight to Booked. Uses a
+    /// single conditional update on relational providers so two concurrent reschedules cannot both win.
+    /// </summary>
+    private async Task<ProviderAvailabilitySlot?> TryBookSlotAsync(
+        Guid providerId,
+        Guid slotId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        if (_db.Database.IsRelational())
+        {
+            var updated = await _db.ProviderAvailabilitySlots
+                .Where(item =>
+                    item.Id == slotId &&
+                    item.ProviderProfileId == providerId &&
+                    item.Status == "Available" &&
+                    item.StartsAtUtc > now)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(slot => slot.Status, "Booked")
+                    .SetProperty(slot => slot.UpdatedAtUtc, now), cancellationToken);
+            return updated == 1
+                ? await _db.ProviderAvailabilitySlots.FirstOrDefaultAsync(item => item.Id == slotId, cancellationToken)
+                : null;
+        }
+
+        var slot = await _db.ProviderAvailabilitySlots
+            .FirstOrDefaultAsync(item => item.Id == slotId && item.ProviderProfileId == providerId, cancellationToken);
+        if (slot is null || slot.Status != "Available" || slot.StartsAtUtc <= now)
+        {
+            return null;
+        }
+
+        slot.Status = "Booked";
+        slot.UpdatedAtUtc = now;
+        return slot;
     }
 
     private async Task<bool> TryHoldSlotAsync(Guid providerId, Guid slotId, DateTimeOffset now, CancellationToken cancellationToken)

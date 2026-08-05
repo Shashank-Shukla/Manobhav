@@ -54,6 +54,7 @@ public sealed class IntakeWorkflowServiceTests
         var form = await repository.CreateFormAsync(CancellationToken.None);
         var submission = await service.CreateSubmissionAsync(
             new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            new IntakeOwnerContext(null, null),
             CancellationToken.None);
 
         await service.SaveAnswerAsync(
@@ -77,6 +78,7 @@ public sealed class IntakeWorkflowServiceTests
         var form = await repository.CreateFormAsync(CancellationToken.None);
         var submission = await service.CreateSubmissionAsync(
             new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            new IntakeOwnerContext(null, null),
             CancellationToken.None);
         var controller = CreateController(service, Guid.NewGuid());
 
@@ -99,6 +101,7 @@ public sealed class IntakeWorkflowServiceTests
         var form = await repository.CreateFormAsync(CancellationToken.None);
         var submission = await service.CreateSubmissionAsync(
             new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            new IntakeOwnerContext(null, null),
             CancellationToken.None);
 
         var saved = await service.SaveAnswerAsync(
@@ -119,6 +122,7 @@ public sealed class IntakeWorkflowServiceTests
         var form = await repository.CreateFormAsync(CancellationToken.None);
         var submission = await service.CreateSubmissionAsync(
             new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            new IntakeOwnerContext(null, null),
             CancellationToken.None);
 
         await service.SaveAnswerAsync(
@@ -148,6 +152,7 @@ public sealed class IntakeWorkflowServiceTests
         var form = await repository.CreateFormAsync(CancellationToken.None);
         var submission = await service.CreateSubmissionAsync(
             new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            new IntakeOwnerContext(null, null),
             CancellationToken.None);
 
         var exception = await Assert.ThrowsAsync<IntakeValidationException>(() =>
@@ -169,6 +174,7 @@ public sealed class IntakeWorkflowServiceTests
         var form = await repository.CreateFormAsync(CancellationToken.None);
         var submission = await service.CreateSubmissionAsync(
             new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            new IntakeOwnerContext(null, null),
             CancellationToken.None);
 
         await Assert.ThrowsAsync<IntakeValidationException>(() =>
@@ -188,6 +194,7 @@ public sealed class IntakeWorkflowServiceTests
         var form = await repository.CreateFormAsync(CancellationToken.None);
         var submission = await service.CreateSubmissionAsync(
             new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            new IntakeOwnerContext(null, null),
             CancellationToken.None);
 
         await Assert.ThrowsAsync<IntakeValidationException>(() =>
@@ -206,6 +213,7 @@ public sealed class IntakeWorkflowServiceTests
         var form = await repository.CreateFormAsync(CancellationToken.None);
         var submission = await service.CreateSubmissionAsync(
             new CreateIntakeSubmissionRequest("PatientIntake", form.Id, Guid.NewGuid()),
+            new IntakeOwnerContext(null, null),
             CancellationToken.None);
         var controller = CreateController(service, Guid.NewGuid());
 
@@ -336,6 +344,16 @@ public sealed class IntakeWorkflowServiceTests
         }
 
         public Task AddConsentAsync(Consent consent, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<User?> GetUserAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<User?>(null);
+        }
+
+        public Task EnsureActiveRoleAsync(Guid userId, string role, CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
         }

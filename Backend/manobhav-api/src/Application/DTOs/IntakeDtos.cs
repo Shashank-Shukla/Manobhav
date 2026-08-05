@@ -73,4 +73,9 @@ public sealed record CompleteProfileRequest(
     string? Phone,
     string EmergencyContactName,
     string EmergencyContactRelation,
-    string EmergencyContactPhone);
+    string EmergencyContactPhone,
+    string? PreferredName = null,
+    DateOnly? DateOfBirth = null,
+    string? Gender = null,
+    string? Occupation = null,
+    string? Address = null);
