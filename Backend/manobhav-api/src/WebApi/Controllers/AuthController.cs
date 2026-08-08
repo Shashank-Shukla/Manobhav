@@ -41,7 +41,7 @@ public sealed class AuthController(
         catch (Exception exception)
         {
             logger.LogError(exception, "Cognito token exchange failed during auth callback.");
-            throw;
+            return CallbackStageFailure("token_exchange", exception);
         }
 
         var session = cookies.SignIn(Response, tokens);
@@ -53,7 +53,7 @@ public sealed class AuthController(
         catch (Exception exception)
         {
             logger.LogError(exception, "Syncing the signed-in user into the database failed during auth callback.");
-            throw;
+            return CallbackStageFailure("user_sync", exception);
         }
 
         try
@@ -63,10 +63,28 @@ public sealed class AuthController(
         catch (Exception exception)
         {
             logger.LogError(exception, "Building the enriched session failed during auth callback.");
-            throw;
+            return CallbackStageFailure("session_enrichment", exception);
         }
 
         return Ok(session);
+    }
+
+    /// <summary>
+    /// Reports which auth-callback stage failed without leaking exception details to the client —
+    /// the exception type name is safe (e.g. "InvalidOperationException", "DbUpdateException") and
+    /// lets the caller distinguish an upstream Cognito rejection from a local DB/config failure
+    /// straight from the browser's network tab, without needing server log access.
+    /// </summary>
+    private ActionResult<AuthSessionResponse> CallbackStageFailure(string stage, Exception exception)
+    {
+        return ProblemWithExtensions(
+            "We couldn't complete sign in. Please try again.",
+            StatusCodes.Status500InternalServerError,
+            new Dictionary<string, object?>
+            {
+                ["stage"] = stage,
+                ["exceptionType"] = exception.GetType().Name
+            });
     }
 
     [HttpPost("email-otp/request")]
