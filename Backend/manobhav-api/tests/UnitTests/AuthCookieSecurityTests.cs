@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using WebApi.Controllers;
 using WebApi.Security;
 
@@ -18,7 +19,8 @@ public sealed class AuthCookieSecurityTests
         var controller = new AuthController(
             new StubCognitoTokenExchange(new CognitoTokenSet(accessToken, "id-token", "refresh-token", 900)),
             new AuthCookieManager(options),
-            new StubEmailOtpAuthService())
+            new StubEmailOtpAuthService(),
+            NullLogger<AuthController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -43,7 +45,7 @@ public sealed class AuthCookieSecurityTests
     [Fact]
     public async Task Session_ReturnsClaimsWithoutTokens()
     {
-        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubEmailOtpAuthService())
+        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubEmailOtpAuthService(), NullLogger<AuthController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
@@ -71,7 +73,7 @@ public sealed class AuthCookieSecurityTests
     [Fact]
     public void CsrfToken_ReturnsCookieBackedToken()
     {
-        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubEmailOtpAuthService())
+        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), new StubEmailOtpAuthService(), NullLogger<AuthController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -88,7 +90,7 @@ public sealed class AuthCookieSecurityTests
     public async Task EmailOtpRequestAndVerify_StoreChallengeThenSetAuthCookies()
     {
         var emailOtpAuth = new StubEmailOtpAuthService(new CognitoTokenSet(CreateJwt("""{"cognito:groups":["Patient"]}"""), null, null, 900));
-        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), emailOtpAuth)
+        var controller = new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateOptions()), emailOtpAuth, NullLogger<AuthController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };

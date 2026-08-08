@@ -539,7 +539,7 @@ public sealed class EmailOtpAuthFlowTests
         IEmailOtpRateLimiter? limiter = null)
     {
         var service = CreateEmailOtpService(db, cognito, clock, limiter);
-        return new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateAuthOptions()), service)
+        return new AuthController(new StubCognitoTokenExchange(), new AuthCookieManager(CreateAuthOptions()), service, NullLogger<AuthController>.Instance)
         {
             ControllerContext = new ControllerContext
             {

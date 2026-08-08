@@ -12,6 +12,7 @@ public sealed class AuthController(
     ICognitoTokenExchange tokenExchange,
     AuthCookieManager cookies,
     IEmailOtpAuthService emailOtpAuth,
+    ILogger<AuthController> logger,
     ApplicationDbContext? db = null) : ControllerBase
 {
     [HttpGet("csrf-token")]
@@ -32,10 +33,39 @@ public sealed class AuthController(
             return Problem(title: "Auth callback request is incomplete.", statusCode: StatusCodes.Status400BadRequest);
         }
 
-        var tokens = await tokenExchange.ExchangeCodeAsync(request!, cancellationToken);
+        CognitoTokenSet tokens;
+        try
+        {
+            tokens = await tokenExchange.ExchangeCodeAsync(request!, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Cognito token exchange failed during auth callback.");
+            throw;
+        }
+
         var session = cookies.SignIn(Response, tokens);
-        await SyncUserFromIdTokenAsync(tokens.IdToken, cancellationToken);
-        session = await BuildEnrichedSessionAsync(session, AuthCookieManager.ReadSubjectFromAccessToken(tokens.AccessToken), cancellationToken);
+
+        try
+        {
+            await SyncUserFromIdTokenAsync(tokens.IdToken, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Syncing the signed-in user into the database failed during auth callback.");
+            throw;
+        }
+
+        try
+        {
+            session = await BuildEnrichedSessionAsync(session, AuthCookieManager.ReadSubjectFromAccessToken(tokens.AccessToken), cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Building the enriched session failed during auth callback.");
+            throw;
+        }
+
         return Ok(session);
     }
 
